@@ -26,6 +26,427 @@
 const _PROTOBUF_VERSION_CHECK: () = ::protobuf::VERSION_3_2_0;
 
 #[derive(PartialEq,Clone,Default,Debug)]
+// @@protoc_insertion_point(message:picoMessage)
+pub struct PicoMessage {
+    // message oneof groups
+    pub payload: ::std::option::Option<pico_message::Payload>,
+    // special fields
+    // @@protoc_insertion_point(special_field:picoMessage.special_fields)
+    pub special_fields: ::protobuf::SpecialFields,
+}
+
+impl<'a> ::std::default::Default for &'a PicoMessage {
+    fn default() -> &'a PicoMessage {
+        <PicoMessage as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl PicoMessage {
+    pub fn new() -> PicoMessage {
+        ::std::default::Default::default()
+    }
+
+    // .Projector projector = 1;
+
+    pub fn projector(&self) -> &Projector {
+        match self.payload {
+            ::std::option::Option::Some(pico_message::Payload::Projector(ref v)) => v,
+            _ => <Projector as ::protobuf::Message>::default_instance(),
+        }
+    }
+
+    pub fn clear_projector(&mut self) {
+        self.payload = ::std::option::Option::None;
+    }
+
+    pub fn has_projector(&self) -> bool {
+        match self.payload {
+            ::std::option::Option::Some(pico_message::Payload::Projector(..)) => true,
+            _ => false,
+        }
+    }
+
+    // Param is passed by value, moved
+    pub fn set_projector(&mut self, v: Projector) {
+        self.payload = ::std::option::Option::Some(pico_message::Payload::Projector(v))
+    }
+
+    // Mutable pointer to the field.
+    pub fn mut_projector(&mut self) -> &mut Projector {
+        if let ::std::option::Option::Some(pico_message::Payload::Projector(_)) = self.payload {
+        } else {
+            self.payload = ::std::option::Option::Some(pico_message::Payload::Projector(Projector::new()));
+        }
+        match self.payload {
+            ::std::option::Option::Some(pico_message::Payload::Projector(ref mut v)) => v,
+            _ => panic!(),
+        }
+    }
+
+    // Take field
+    pub fn take_projector(&mut self) -> Projector {
+        if self.has_projector() {
+            match self.payload.take() {
+                ::std::option::Option::Some(pico_message::Payload::Projector(v)) => v,
+                _ => panic!(),
+            }
+        } else {
+            Projector::new()
+        }
+    }
+
+    // .Light light = 2;
+
+    pub fn light(&self) -> &Light {
+        match self.payload {
+            ::std::option::Option::Some(pico_message::Payload::Light(ref v)) => v,
+            _ => <Light as ::protobuf::Message>::default_instance(),
+        }
+    }
+
+    pub fn clear_light(&mut self) {
+        self.payload = ::std::option::Option::None;
+    }
+
+    pub fn has_light(&self) -> bool {
+        match self.payload {
+            ::std::option::Option::Some(pico_message::Payload::Light(..)) => true,
+            _ => false,
+        }
+    }
+
+    // Param is passed by value, moved
+    pub fn set_light(&mut self, v: Light) {
+        self.payload = ::std::option::Option::Some(pico_message::Payload::Light(v))
+    }
+
+    // Mutable pointer to the field.
+    pub fn mut_light(&mut self) -> &mut Light {
+        if let ::std::option::Option::Some(pico_message::Payload::Light(_)) = self.payload {
+        } else {
+            self.payload = ::std::option::Option::Some(pico_message::Payload::Light(Light::new()));
+        }
+        match self.payload {
+            ::std::option::Option::Some(pico_message::Payload::Light(ref mut v)) => v,
+            _ => panic!(),
+        }
+    }
+
+    // Take field
+    pub fn take_light(&mut self) -> Light {
+        if self.has_light() {
+            match self.payload.take() {
+                ::std::option::Option::Some(pico_message::Payload::Light(v)) => v,
+                _ => panic!(),
+            }
+        } else {
+            Light::new()
+        }
+    }
+
+    fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
+        let mut fields = ::std::vec::Vec::with_capacity(2);
+        let mut oneofs = ::std::vec::Vec::with_capacity(1);
+        fields.push(::protobuf::reflect::rt::v2::make_oneof_message_has_get_mut_set_accessor::<_, Projector>(
+            "projector",
+            PicoMessage::has_projector,
+            PicoMessage::projector,
+            PicoMessage::mut_projector,
+            PicoMessage::set_projector,
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_oneof_message_has_get_mut_set_accessor::<_, Light>(
+            "light",
+            PicoMessage::has_light,
+            PicoMessage::light,
+            PicoMessage::mut_light,
+            PicoMessage::set_light,
+        ));
+        oneofs.push(pico_message::Payload::generated_oneof_descriptor_data());
+        ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<PicoMessage>(
+            "picoMessage",
+            fields,
+            oneofs,
+        )
+    }
+}
+
+impl ::protobuf::Message for PicoMessage {
+    const NAME: &'static str = "picoMessage";
+
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
+        while let Some(tag) = is.read_raw_tag_or_eof()? {
+            match tag {
+                10 => {
+                    self.payload = ::std::option::Option::Some(pico_message::Payload::Projector(is.read_message()?));
+                },
+                18 => {
+                    self.payload = ::std::option::Option::Some(pico_message::Payload::Light(is.read_message()?));
+                },
+                tag => {
+                    ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u64 {
+        let mut my_size = 0;
+        if let ::std::option::Option::Some(ref v) = self.payload {
+            match v {
+                &pico_message::Payload::Projector(ref v) => {
+                    let len = v.compute_size();
+                    my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+                },
+                &pico_message::Payload::Light(ref v) => {
+                    let len = v.compute_size();
+                    my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+                },
+            };
+        }
+        my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
+        self.special_fields.cached_size().set(my_size as u32);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
+        if let ::std::option::Option::Some(ref v) = self.payload {
+            match v {
+                &pico_message::Payload::Projector(ref v) => {
+                    ::protobuf::rt::write_message_field_with_cached_size(1, v, os)?;
+                },
+                &pico_message::Payload::Light(ref v) => {
+                    ::protobuf::rt::write_message_field_with_cached_size(2, v, os)?;
+                },
+            };
+        }
+        os.write_unknown_fields(self.special_fields.unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn special_fields(&self) -> &::protobuf::SpecialFields {
+        &self.special_fields
+    }
+
+    fn mut_special_fields(&mut self) -> &mut ::protobuf::SpecialFields {
+        &mut self.special_fields
+    }
+
+    fn new() -> PicoMessage {
+        PicoMessage::new()
+    }
+
+    fn clear(&mut self) {
+        self.payload = ::std::option::Option::None;
+        self.payload = ::std::option::Option::None;
+        self.special_fields.clear();
+    }
+
+    fn default_instance() -> &'static PicoMessage {
+        static instance: PicoMessage = PicoMessage {
+            payload: ::std::option::Option::None,
+            special_fields: ::protobuf::SpecialFields::new(),
+        };
+        &instance
+    }
+}
+
+impl ::protobuf::MessageFull for PicoMessage {
+    fn descriptor() -> ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::Lazy::new();
+        descriptor.get(|| file_descriptor().message_by_package_relative_name("picoMessage").unwrap()).clone()
+    }
+}
+
+impl ::std::fmt::Display for PicoMessage {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for PicoMessage {
+    type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
+}
+
+/// Nested message and enums of message `picoMessage`
+pub mod pico_message {
+
+    #[derive(Clone,PartialEq,Debug)]
+    #[non_exhaustive]
+    // @@protoc_insertion_point(oneof:picoMessage.payload)
+    pub enum Payload {
+        // @@protoc_insertion_point(oneof_field:picoMessage.projector)
+        Projector(super::Projector),
+        // @@protoc_insertion_point(oneof_field:picoMessage.light)
+        Light(super::Light),
+    }
+
+    impl ::protobuf::Oneof for Payload {
+    }
+
+    impl ::protobuf::OneofFull for Payload {
+        fn descriptor() -> ::protobuf::reflect::OneofDescriptor {
+            static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::OneofDescriptor> = ::protobuf::rt::Lazy::new();
+            descriptor.get(|| <super::PicoMessage as ::protobuf::MessageFull>::descriptor().oneof_by_name("payload").unwrap()).clone()
+        }
+    }
+
+    impl Payload {
+        pub(in super) fn generated_oneof_descriptor_data() -> ::protobuf::reflect::GeneratedOneofDescriptorData {
+            ::protobuf::reflect::GeneratedOneofDescriptorData::new::<Payload>("payload")
+        }
+    }
+}
+
+#[derive(PartialEq,Clone,Default,Debug)]
+// @@protoc_insertion_point(message:Projector)
+pub struct Projector {
+    // message fields
+    // @@protoc_insertion_point(field:Projector.header)
+    pub header: ::protobuf::MessageField<Header>,
+    // @@protoc_insertion_point(field:Projector.drawInstructions)
+    pub drawInstructions: ::std::vec::Vec<DrawInstruction>,
+    // special fields
+    // @@protoc_insertion_point(special_field:Projector.special_fields)
+    pub special_fields: ::protobuf::SpecialFields,
+}
+
+impl<'a> ::std::default::Default for &'a Projector {
+    fn default() -> &'a Projector {
+        <Projector as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl Projector {
+    pub fn new() -> Projector {
+        ::std::default::Default::default()
+    }
+
+    fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
+        let mut fields = ::std::vec::Vec::with_capacity(2);
+        let mut oneofs = ::std::vec::Vec::with_capacity(0);
+        fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, Header>(
+            "header",
+            |m: &Projector| { &m.header },
+            |m: &mut Projector| { &mut m.header },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_vec_simpler_accessor::<_, _>(
+            "drawInstructions",
+            |m: &Projector| { &m.drawInstructions },
+            |m: &mut Projector| { &mut m.drawInstructions },
+        ));
+        ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<Projector>(
+            "Projector",
+            fields,
+            oneofs,
+        )
+    }
+}
+
+impl ::protobuf::Message for Projector {
+    const NAME: &'static str = "Projector";
+
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
+        while let Some(tag) = is.read_raw_tag_or_eof()? {
+            match tag {
+                10 => {
+                    ::protobuf::rt::read_singular_message_into_field(is, &mut self.header)?;
+                },
+                18 => {
+                    self.drawInstructions.push(is.read_message()?);
+                },
+                tag => {
+                    ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u64 {
+        let mut my_size = 0;
+        if let Some(v) = self.header.as_ref() {
+            let len = v.compute_size();
+            my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+        }
+        for value in &self.drawInstructions {
+            let len = value.compute_size();
+            my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+        };
+        my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
+        self.special_fields.cached_size().set(my_size as u32);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
+        if let Some(v) = self.header.as_ref() {
+            ::protobuf::rt::write_message_field_with_cached_size(1, v, os)?;
+        }
+        for v in &self.drawInstructions {
+            ::protobuf::rt::write_message_field_with_cached_size(2, v, os)?;
+        };
+        os.write_unknown_fields(self.special_fields.unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn special_fields(&self) -> &::protobuf::SpecialFields {
+        &self.special_fields
+    }
+
+    fn mut_special_fields(&mut self) -> &mut ::protobuf::SpecialFields {
+        &mut self.special_fields
+    }
+
+    fn new() -> Projector {
+        Projector::new()
+    }
+
+    fn clear(&mut self) {
+        self.header.clear();
+        self.drawInstructions.clear();
+        self.special_fields.clear();
+    }
+
+    fn default_instance() -> &'static Projector {
+        static instance: Projector = Projector {
+            header: ::protobuf::MessageField::none(),
+            drawInstructions: ::std::vec::Vec::new(),
+            special_fields: ::protobuf::SpecialFields::new(),
+        };
+        &instance
+    }
+}
+
+impl ::protobuf::MessageFull for Projector {
+    fn descriptor() -> ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::Lazy::new();
+        descriptor.get(|| file_descriptor().message_by_package_relative_name("Projector").unwrap()).clone()
+    }
+}
+
+impl ::std::fmt::Display for Projector {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for Projector {
+    type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
+}
+
+#[derive(PartialEq,Clone,Default,Debug)]
 // @@protoc_insertion_point(message:Header)
 pub struct Header {
     // message fields
@@ -34,9 +455,17 @@ pub struct Header {
     // @@protoc_insertion_point(field:Header.pointCount)
     pub pointCount: ::std::option::Option<i32>,
     // @@protoc_insertion_point(field:Header.home)
-    pub home: ::std::option::Option<i32>,
+    pub home: ::std::option::Option<bool>,
     // @@protoc_insertion_point(field:Header.enable)
-    pub enable: ::std::option::Option<i32>,
+    pub enable: ::std::option::Option<bool>,
+    // @@protoc_insertion_point(field:Header.configuration_mode)
+    pub configuration_mode: ::std::option::Option<bool>,
+    // @@protoc_insertion_point(field:Header.draw_boundary)
+    pub draw_boundary: ::std::option::Option<bool>,
+    // @@protoc_insertion_point(field:Header.oneshot)
+    pub oneshot: ::std::option::Option<bool>,
+    // @@protoc_insertion_point(field:Header.speed_profile)
+    pub speed_profile: ::std::option::Option<i32>,
     // @@protoc_insertion_point(field:Header.checksum)
     pub checksum: ::std::option::Option<bool>,
     // special fields
@@ -55,103 +484,8 @@ impl Header {
         ::std::default::Default::default()
     }
 
-    // optional int32 projectorId = 1;
-
-    pub fn projectorId(&self) -> i32 {
-        self.projectorId.unwrap_or(0)
-    }
-
-    pub fn clear_projectorId(&mut self) {
-        self.projectorId = ::std::option::Option::None;
-    }
-
-    pub fn has_projectorId(&self) -> bool {
-        self.projectorId.is_some()
-    }
-
-    // Param is passed by value, moved
-    pub fn set_projectorId(&mut self, v: i32) {
-        self.projectorId = ::std::option::Option::Some(v);
-    }
-
-    // optional int32 pointCount = 2;
-
-    pub fn pointCount(&self) -> i32 {
-        self.pointCount.unwrap_or(0)
-    }
-
-    pub fn clear_pointCount(&mut self) {
-        self.pointCount = ::std::option::Option::None;
-    }
-
-    pub fn has_pointCount(&self) -> bool {
-        self.pointCount.is_some()
-    }
-
-    // Param is passed by value, moved
-    pub fn set_pointCount(&mut self, v: i32) {
-        self.pointCount = ::std::option::Option::Some(v);
-    }
-
-    // optional int32 home = 3;
-
-    pub fn home(&self) -> i32 {
-        self.home.unwrap_or(0)
-    }
-
-    pub fn clear_home(&mut self) {
-        self.home = ::std::option::Option::None;
-    }
-
-    pub fn has_home(&self) -> bool {
-        self.home.is_some()
-    }
-
-    // Param is passed by value, moved
-    pub fn set_home(&mut self, v: i32) {
-        self.home = ::std::option::Option::Some(v);
-    }
-
-    // optional int32 enable = 4;
-
-    pub fn enable(&self) -> i32 {
-        self.enable.unwrap_or(0)
-    }
-
-    pub fn clear_enable(&mut self) {
-        self.enable = ::std::option::Option::None;
-    }
-
-    pub fn has_enable(&self) -> bool {
-        self.enable.is_some()
-    }
-
-    // Param is passed by value, moved
-    pub fn set_enable(&mut self, v: i32) {
-        self.enable = ::std::option::Option::Some(v);
-    }
-
-    // optional bool checksum = 5;
-
-    pub fn checksum(&self) -> bool {
-        self.checksum.unwrap_or(false)
-    }
-
-    pub fn clear_checksum(&mut self) {
-        self.checksum = ::std::option::Option::None;
-    }
-
-    pub fn has_checksum(&self) -> bool {
-        self.checksum.is_some()
-    }
-
-    // Param is passed by value, moved
-    pub fn set_checksum(&mut self, v: bool) {
-        self.checksum = ::std::option::Option::Some(v);
-    }
-
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(5);
+        let mut fields = ::std::vec::Vec::with_capacity(9);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
             "projectorId",
@@ -172,6 +506,26 @@ impl Header {
             "enable",
             |m: &Header| { &m.enable },
             |m: &mut Header| { &mut m.enable },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+            "configuration_mode",
+            |m: &Header| { &m.configuration_mode },
+            |m: &mut Header| { &mut m.configuration_mode },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+            "draw_boundary",
+            |m: &Header| { &m.draw_boundary },
+            |m: &mut Header| { &mut m.draw_boundary },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+            "oneshot",
+            |m: &Header| { &m.oneshot },
+            |m: &mut Header| { &mut m.oneshot },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+            "speed_profile",
+            |m: &Header| { &m.speed_profile },
+            |m: &mut Header| { &mut m.speed_profile },
         ));
         fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
             "checksum",
@@ -203,12 +557,24 @@ impl ::protobuf::Message for Header {
                     self.pointCount = ::std::option::Option::Some(is.read_int32()?);
                 },
                 24 => {
-                    self.home = ::std::option::Option::Some(is.read_int32()?);
+                    self.home = ::std::option::Option::Some(is.read_bool()?);
                 },
                 32 => {
-                    self.enable = ::std::option::Option::Some(is.read_int32()?);
+                    self.enable = ::std::option::Option::Some(is.read_bool()?);
                 },
                 40 => {
+                    self.configuration_mode = ::std::option::Option::Some(is.read_bool()?);
+                },
+                48 => {
+                    self.draw_boundary = ::std::option::Option::Some(is.read_bool()?);
+                },
+                56 => {
+                    self.oneshot = ::std::option::Option::Some(is.read_bool()?);
+                },
+                64 => {
+                    self.speed_profile = ::std::option::Option::Some(is.read_int32()?);
+                },
+                72 => {
                     self.checksum = ::std::option::Option::Some(is.read_bool()?);
                 },
                 tag => {
@@ -230,10 +596,22 @@ impl ::protobuf::Message for Header {
             my_size += ::protobuf::rt::int32_size(2, v);
         }
         if let Some(v) = self.home {
-            my_size += ::protobuf::rt::int32_size(3, v);
+            my_size += 1 + 1;
         }
         if let Some(v) = self.enable {
-            my_size += ::protobuf::rt::int32_size(4, v);
+            my_size += 1 + 1;
+        }
+        if let Some(v) = self.configuration_mode {
+            my_size += 1 + 1;
+        }
+        if let Some(v) = self.draw_boundary {
+            my_size += 1 + 1;
+        }
+        if let Some(v) = self.oneshot {
+            my_size += 1 + 1;
+        }
+        if let Some(v) = self.speed_profile {
+            my_size += ::protobuf::rt::int32_size(8, v);
         }
         if let Some(v) = self.checksum {
             my_size += 1 + 1;
@@ -251,13 +629,25 @@ impl ::protobuf::Message for Header {
             os.write_int32(2, v)?;
         }
         if let Some(v) = self.home {
-            os.write_int32(3, v)?;
+            os.write_bool(3, v)?;
         }
         if let Some(v) = self.enable {
-            os.write_int32(4, v)?;
+            os.write_bool(4, v)?;
+        }
+        if let Some(v) = self.configuration_mode {
+            os.write_bool(5, v)?;
+        }
+        if let Some(v) = self.draw_boundary {
+            os.write_bool(6, v)?;
+        }
+        if let Some(v) = self.oneshot {
+            os.write_bool(7, v)?;
+        }
+        if let Some(v) = self.speed_profile {
+            os.write_int32(8, v)?;
         }
         if let Some(v) = self.checksum {
-            os.write_bool(5, v)?;
+            os.write_bool(9, v)?;
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -280,6 +670,10 @@ impl ::protobuf::Message for Header {
         self.pointCount = ::std::option::Option::None;
         self.home = ::std::option::Option::None;
         self.enable = ::std::option::Option::None;
+        self.configuration_mode = ::std::option::Option::None;
+        self.draw_boundary = ::std::option::Option::None;
+        self.oneshot = ::std::option::Option::None;
+        self.speed_profile = ::std::option::Option::None;
         self.checksum = ::std::option::Option::None;
         self.special_fields.clear();
     }
@@ -290,6 +684,10 @@ impl ::protobuf::Message for Header {
             pointCount: ::std::option::Option::None,
             home: ::std::option::Option::None,
             enable: ::std::option::Option::None,
+            configuration_mode: ::std::option::Option::None,
+            draw_boundary: ::std::option::Option::None,
+            oneshot: ::std::option::Option::None,
+            speed_profile: ::std::option::Option::None,
             checksum: ::std::option::Option::None,
             special_fields: ::protobuf::SpecialFields::new(),
         };
@@ -315,149 +713,35 @@ impl ::protobuf::reflect::ProtobufValue for Header {
 }
 
 #[derive(PartialEq,Clone,Default,Debug)]
-// @@protoc_insertion_point(message:Pixel)
-pub struct Pixel {
+// @@protoc_insertion_point(message:DrawInstruction)
+pub struct DrawInstruction {
     // message fields
-    // @@protoc_insertion_point(field:Pixel.xCoOrd)
+    // @@protoc_insertion_point(field:DrawInstruction.xCoOrd)
     pub xCoOrd: ::std::option::Option<i32>,
-    // @@protoc_insertion_point(field:Pixel.yCoOrd)
+    // @@protoc_insertion_point(field:DrawInstruction.yCoOrd)
     pub yCoOrd: ::std::option::Option<i32>,
-    // @@protoc_insertion_point(field:Pixel.red)
+    // @@protoc_insertion_point(field:DrawInstruction.red)
     pub red: ::std::option::Option<i32>,
-    // @@protoc_insertion_point(field:Pixel.green)
+    // @@protoc_insertion_point(field:DrawInstruction.green)
     pub green: ::std::option::Option<i32>,
-    // @@protoc_insertion_point(field:Pixel.blue)
+    // @@protoc_insertion_point(field:DrawInstruction.blue)
     pub blue: ::std::option::Option<i32>,
-    // @@protoc_insertion_point(field:Pixel.checksum)
+    // @@protoc_insertion_point(field:DrawInstruction.checksum)
     pub checksum: ::std::option::Option<bool>,
     // special fields
-    // @@protoc_insertion_point(special_field:Pixel.special_fields)
+    // @@protoc_insertion_point(special_field:DrawInstruction.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
 }
 
-impl<'a> ::std::default::Default for &'a Pixel {
-    fn default() -> &'a Pixel {
-        <Pixel as ::protobuf::Message>::default_instance()
+impl<'a> ::std::default::Default for &'a DrawInstruction {
+    fn default() -> &'a DrawInstruction {
+        <DrawInstruction as ::protobuf::Message>::default_instance()
     }
 }
 
-impl Pixel {
-    pub fn new() -> Pixel {
+impl DrawInstruction {
+    pub fn new() -> DrawInstruction {
         ::std::default::Default::default()
-    }
-
-    // optional int32 xCoOrd = 1;
-
-    pub fn xCoOrd(&self) -> i32 {
-        self.xCoOrd.unwrap_or(0)
-    }
-
-    pub fn clear_xCoOrd(&mut self) {
-        self.xCoOrd = ::std::option::Option::None;
-    }
-
-    pub fn has_xCoOrd(&self) -> bool {
-        self.xCoOrd.is_some()
-    }
-
-    // Param is passed by value, moved
-    pub fn set_xCoOrd(&mut self, v: i32) {
-        self.xCoOrd = ::std::option::Option::Some(v);
-    }
-
-    // optional int32 yCoOrd = 2;
-
-    pub fn yCoOrd(&self) -> i32 {
-        self.yCoOrd.unwrap_or(0)
-    }
-
-    pub fn clear_yCoOrd(&mut self) {
-        self.yCoOrd = ::std::option::Option::None;
-    }
-
-    pub fn has_yCoOrd(&self) -> bool {
-        self.yCoOrd.is_some()
-    }
-
-    // Param is passed by value, moved
-    pub fn set_yCoOrd(&mut self, v: i32) {
-        self.yCoOrd = ::std::option::Option::Some(v);
-    }
-
-    // optional int32 red = 3;
-
-    pub fn red(&self) -> i32 {
-        self.red.unwrap_or(0)
-    }
-
-    pub fn clear_red(&mut self) {
-        self.red = ::std::option::Option::None;
-    }
-
-    pub fn has_red(&self) -> bool {
-        self.red.is_some()
-    }
-
-    // Param is passed by value, moved
-    pub fn set_red(&mut self, v: i32) {
-        self.red = ::std::option::Option::Some(v);
-    }
-
-    // optional int32 green = 4;
-
-    pub fn green(&self) -> i32 {
-        self.green.unwrap_or(0)
-    }
-
-    pub fn clear_green(&mut self) {
-        self.green = ::std::option::Option::None;
-    }
-
-    pub fn has_green(&self) -> bool {
-        self.green.is_some()
-    }
-
-    // Param is passed by value, moved
-    pub fn set_green(&mut self, v: i32) {
-        self.green = ::std::option::Option::Some(v);
-    }
-
-    // optional int32 blue = 5;
-
-    pub fn blue(&self) -> i32 {
-        self.blue.unwrap_or(0)
-    }
-
-    pub fn clear_blue(&mut self) {
-        self.blue = ::std::option::Option::None;
-    }
-
-    pub fn has_blue(&self) -> bool {
-        self.blue.is_some()
-    }
-
-    // Param is passed by value, moved
-    pub fn set_blue(&mut self, v: i32) {
-        self.blue = ::std::option::Option::Some(v);
-    }
-
-    // optional bool checksum = 6;
-
-    pub fn checksum(&self) -> bool {
-        self.checksum.unwrap_or(false)
-    }
-
-    pub fn clear_checksum(&mut self) {
-        self.checksum = ::std::option::Option::None;
-    }
-
-    pub fn has_checksum(&self) -> bool {
-        self.checksum.is_some()
-    }
-
-    // Param is passed by value, moved
-    pub fn set_checksum(&mut self, v: bool) {
-        self.checksum = ::std::option::Option::Some(v);
     }
 
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
@@ -465,44 +749,44 @@ impl Pixel {
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
             "xCoOrd",
-            |m: &Pixel| { &m.xCoOrd },
-            |m: &mut Pixel| { &mut m.xCoOrd },
+            |m: &DrawInstruction| { &m.xCoOrd },
+            |m: &mut DrawInstruction| { &mut m.xCoOrd },
         ));
         fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
             "yCoOrd",
-            |m: &Pixel| { &m.yCoOrd },
-            |m: &mut Pixel| { &mut m.yCoOrd },
+            |m: &DrawInstruction| { &m.yCoOrd },
+            |m: &mut DrawInstruction| { &mut m.yCoOrd },
         ));
         fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
             "red",
-            |m: &Pixel| { &m.red },
-            |m: &mut Pixel| { &mut m.red },
+            |m: &DrawInstruction| { &m.red },
+            |m: &mut DrawInstruction| { &mut m.red },
         ));
         fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
             "green",
-            |m: &Pixel| { &m.green },
-            |m: &mut Pixel| { &mut m.green },
+            |m: &DrawInstruction| { &m.green },
+            |m: &mut DrawInstruction| { &mut m.green },
         ));
         fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
             "blue",
-            |m: &Pixel| { &m.blue },
-            |m: &mut Pixel| { &mut m.blue },
+            |m: &DrawInstruction| { &m.blue },
+            |m: &mut DrawInstruction| { &mut m.blue },
         ));
         fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
             "checksum",
-            |m: &Pixel| { &m.checksum },
-            |m: &mut Pixel| { &mut m.checksum },
+            |m: &DrawInstruction| { &m.checksum },
+            |m: &mut DrawInstruction| { &mut m.checksum },
         ));
-        ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<Pixel>(
-            "Pixel",
+        ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<DrawInstruction>(
+            "DrawInstruction",
             fields,
             oneofs,
         )
     }
 }
 
-impl ::protobuf::Message for Pixel {
-    const NAME: &'static str = "Pixel";
+impl ::protobuf::Message for DrawInstruction {
+    const NAME: &'static str = "DrawInstruction";
 
     fn is_initialized(&self) -> bool {
         true
@@ -595,8 +879,8 @@ impl ::protobuf::Message for Pixel {
         &mut self.special_fields
     }
 
-    fn new() -> Pixel {
-        Pixel::new()
+    fn new() -> DrawInstruction {
+        DrawInstruction::new()
     }
 
     fn clear(&mut self) {
@@ -609,8 +893,8 @@ impl ::protobuf::Message for Pixel {
         self.special_fields.clear();
     }
 
-    fn default_instance() -> &'static Pixel {
-        static instance: Pixel = Pixel {
+    fn default_instance() -> &'static DrawInstruction {
+        static instance: DrawInstruction = DrawInstruction {
             xCoOrd: ::std::option::Option::None,
             yCoOrd: ::std::option::Option::None,
             red: ::std::option::Option::None,
@@ -623,231 +907,70 @@ impl ::protobuf::Message for Pixel {
     }
 }
 
-impl ::protobuf::MessageFull for Pixel {
+impl ::protobuf::MessageFull for DrawInstruction {
     fn descriptor() -> ::protobuf::reflect::MessageDescriptor {
         static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::Lazy::new();
-        descriptor.get(|| file_descriptor().message_by_package_relative_name("Pixel").unwrap()).clone()
+        descriptor.get(|| file_descriptor().message_by_package_relative_name("DrawInstruction").unwrap()).clone()
     }
 }
 
-impl ::std::fmt::Display for Pixel {
+impl ::std::fmt::Display for DrawInstruction {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         ::protobuf::text_format::fmt(self, f)
     }
 }
 
-impl ::protobuf::reflect::ProtobufValue for Pixel {
+impl ::protobuf::reflect::ProtobufValue for DrawInstruction {
     type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
 }
 
 #[derive(PartialEq,Clone,Default,Debug)]
-// @@protoc_insertion_point(message:DrawInstructions)
-pub struct DrawInstructions {
+// @@protoc_insertion_point(message:Light)
+pub struct Light {
     // message fields
-    // @@protoc_insertion_point(field:DrawInstructions.head)
-    pub head: ::protobuf::MessageField<Header>,
-    // @@protoc_insertion_point(field:DrawInstructions.pixel)
-    pub pixel: ::std::vec::Vec<Pixel>,
+    // @@protoc_insertion_point(field:Light.projectorId)
+    pub projectorId: ::std::option::Option<i32>,
+    // @@protoc_insertion_point(field:Light.enable)
+    pub enable: ::std::option::Option<bool>,
     // special fields
-    // @@protoc_insertion_point(special_field:DrawInstructions.special_fields)
+    // @@protoc_insertion_point(special_field:Light.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
 }
 
-impl<'a> ::std::default::Default for &'a DrawInstructions {
-    fn default() -> &'a DrawInstructions {
-        <DrawInstructions as ::protobuf::Message>::default_instance()
+impl<'a> ::std::default::Default for &'a Light {
+    fn default() -> &'a Light {
+        <Light as ::protobuf::Message>::default_instance()
     }
 }
 
-impl DrawInstructions {
-    pub fn new() -> DrawInstructions {
+impl Light {
+    pub fn new() -> Light {
         ::std::default::Default::default()
-    }
-
-    fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(2);
-        let mut oneofs = ::std::vec::Vec::with_capacity(0);
-        fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, Header>(
-            "head",
-            |m: &DrawInstructions| { &m.head },
-            |m: &mut DrawInstructions| { &mut m.head },
-        ));
-        fields.push(::protobuf::reflect::rt::v2::make_vec_simpler_accessor::<_, _>(
-            "pixel",
-            |m: &DrawInstructions| { &m.pixel },
-            |m: &mut DrawInstructions| { &mut m.pixel },
-        ));
-        ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<DrawInstructions>(
-            "DrawInstructions",
-            fields,
-            oneofs,
-        )
-    }
-}
-
-impl ::protobuf::Message for DrawInstructions {
-    const NAME: &'static str = "DrawInstructions";
-
-    fn is_initialized(&self) -> bool {
-        true
-    }
-
-    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
-        while let Some(tag) = is.read_raw_tag_or_eof()? {
-            match tag {
-                10 => {
-                    ::protobuf::rt::read_singular_message_into_field(is, &mut self.head)?;
-                },
-                18 => {
-                    self.pixel.push(is.read_message()?);
-                },
-                tag => {
-                    ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
-                },
-            };
-        }
-        ::std::result::Result::Ok(())
-    }
-
-    // Compute sizes of nested messages
-    #[allow(unused_variables)]
-    fn compute_size(&self) -> u64 {
-        let mut my_size = 0;
-        if let Some(v) = self.head.as_ref() {
-            let len = v.compute_size();
-            my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
-        }
-        for value in &self.pixel {
-            let len = value.compute_size();
-            my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
-        };
-        my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
-        self.special_fields.cached_size().set(my_size as u32);
-        my_size
-    }
-
-    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
-        if let Some(v) = self.head.as_ref() {
-            ::protobuf::rt::write_message_field_with_cached_size(1, v, os)?;
-        }
-        for v in &self.pixel {
-            ::protobuf::rt::write_message_field_with_cached_size(2, v, os)?;
-        };
-        os.write_unknown_fields(self.special_fields.unknown_fields())?;
-        ::std::result::Result::Ok(())
-    }
-
-    fn special_fields(&self) -> &::protobuf::SpecialFields {
-        &self.special_fields
-    }
-
-    fn mut_special_fields(&mut self) -> &mut ::protobuf::SpecialFields {
-        &mut self.special_fields
-    }
-
-    fn new() -> DrawInstructions {
-        DrawInstructions::new()
-    }
-
-    fn clear(&mut self) {
-        self.head.clear();
-        self.pixel.clear();
-        self.special_fields.clear();
-    }
-
-    fn default_instance() -> &'static DrawInstructions {
-        static instance: DrawInstructions = DrawInstructions {
-            head: ::protobuf::MessageField::none(),
-            pixel: ::std::vec::Vec::new(),
-            special_fields: ::protobuf::SpecialFields::new(),
-        };
-        &instance
-    }
-}
-
-impl ::protobuf::MessageFull for DrawInstructions {
-    fn descriptor() -> ::protobuf::reflect::MessageDescriptor {
-        static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::Lazy::new();
-        descriptor.get(|| file_descriptor().message_by_package_relative_name("DrawInstructions").unwrap()).clone()
-    }
-}
-
-impl ::std::fmt::Display for DrawInstructions {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-        ::protobuf::text_format::fmt(self, f)
-    }
-}
-
-impl ::protobuf::reflect::ProtobufValue for DrawInstructions {
-    type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
-}
-
-#[derive(PartialEq,Clone,Default,Debug)]
-// @@protoc_insertion_point(message:picoMessage)
-pub struct PicoMessage {
-    // message fields
-    // @@protoc_insertion_point(field:picoMessage.InterfaceVersion)
-    pub InterfaceVersion: ::std::option::Option<i32>,
-    // @@protoc_insertion_point(field:picoMessage.instructions)
-    pub instructions: ::protobuf::MessageField<DrawInstructions>,
-    // special fields
-    // @@protoc_insertion_point(special_field:picoMessage.special_fields)
-    pub special_fields: ::protobuf::SpecialFields,
-}
-
-impl<'a> ::std::default::Default for &'a PicoMessage {
-    fn default() -> &'a PicoMessage {
-        <PicoMessage as ::protobuf::Message>::default_instance()
-    }
-}
-
-impl PicoMessage {
-    pub fn new() -> PicoMessage {
-        ::std::default::Default::default()
-    }
-
-    // optional int32 InterfaceVersion = 1;
-
-    pub fn InterfaceVersion(&self) -> i32 {
-        self.InterfaceVersion.unwrap_or(1i32)
-    }
-
-    pub fn clear_InterfaceVersion(&mut self) {
-        self.InterfaceVersion = ::std::option::Option::None;
-    }
-
-    pub fn has_InterfaceVersion(&self) -> bool {
-        self.InterfaceVersion.is_some()
-    }
-
-    // Param is passed by value, moved
-    pub fn set_InterfaceVersion(&mut self, v: i32) {
-        self.InterfaceVersion = ::std::option::Option::Some(v);
     }
 
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
         let mut fields = ::std::vec::Vec::with_capacity(2);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
-            "InterfaceVersion",
-            |m: &PicoMessage| { &m.InterfaceVersion },
-            |m: &mut PicoMessage| { &mut m.InterfaceVersion },
+            "projectorId",
+            |m: &Light| { &m.projectorId },
+            |m: &mut Light| { &mut m.projectorId },
         ));
-        fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, DrawInstructions>(
-            "instructions",
-            |m: &PicoMessage| { &m.instructions },
-            |m: &mut PicoMessage| { &mut m.instructions },
+        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+            "enable",
+            |m: &Light| { &m.enable },
+            |m: &mut Light| { &mut m.enable },
         ));
-        ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<PicoMessage>(
-            "picoMessage",
+        ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<Light>(
+            "Light",
             fields,
             oneofs,
         )
     }
 }
 
-impl ::protobuf::Message for PicoMessage {
-    const NAME: &'static str = "picoMessage";
+impl ::protobuf::Message for Light {
+    const NAME: &'static str = "Light";
 
     fn is_initialized(&self) -> bool {
         true
@@ -857,10 +980,10 @@ impl ::protobuf::Message for PicoMessage {
         while let Some(tag) = is.read_raw_tag_or_eof()? {
             match tag {
                 8 => {
-                    self.InterfaceVersion = ::std::option::Option::Some(is.read_int32()?);
+                    self.projectorId = ::std::option::Option::Some(is.read_int32()?);
                 },
-                18 => {
-                    ::protobuf::rt::read_singular_message_into_field(is, &mut self.instructions)?;
+                16 => {
+                    self.enable = ::std::option::Option::Some(is.read_bool()?);
                 },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
@@ -874,12 +997,11 @@ impl ::protobuf::Message for PicoMessage {
     #[allow(unused_variables)]
     fn compute_size(&self) -> u64 {
         let mut my_size = 0;
-        if let Some(v) = self.InterfaceVersion {
+        if let Some(v) = self.projectorId {
             my_size += ::protobuf::rt::int32_size(1, v);
         }
-        if let Some(v) = self.instructions.as_ref() {
-            let len = v.compute_size();
-            my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+        if let Some(v) = self.enable {
+            my_size += 1 + 1;
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
         self.special_fields.cached_size().set(my_size as u32);
@@ -887,11 +1009,11 @@ impl ::protobuf::Message for PicoMessage {
     }
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
-        if let Some(v) = self.InterfaceVersion {
+        if let Some(v) = self.projectorId {
             os.write_int32(1, v)?;
         }
-        if let Some(v) = self.instructions.as_ref() {
-            ::protobuf::rt::write_message_field_with_cached_size(2, v, os)?;
+        if let Some(v) = self.enable {
+            os.write_bool(2, v)?;
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -905,121 +1027,151 @@ impl ::protobuf::Message for PicoMessage {
         &mut self.special_fields
     }
 
-    fn new() -> PicoMessage {
-        PicoMessage::new()
+    fn new() -> Light {
+        Light::new()
     }
 
     fn clear(&mut self) {
-        self.InterfaceVersion = ::std::option::Option::None;
-        self.instructions.clear();
+        self.projectorId = ::std::option::Option::None;
+        self.enable = ::std::option::Option::None;
         self.special_fields.clear();
     }
 
-    fn default_instance() -> &'static PicoMessage {
-        static instance: PicoMessage = PicoMessage {
-            InterfaceVersion: ::std::option::Option::None,
-            instructions: ::protobuf::MessageField::none(),
+    fn default_instance() -> &'static Light {
+        static instance: Light = Light {
+            projectorId: ::std::option::Option::None,
+            enable: ::std::option::Option::None,
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
     }
 }
 
-impl ::protobuf::MessageFull for PicoMessage {
+impl ::protobuf::MessageFull for Light {
     fn descriptor() -> ::protobuf::reflect::MessageDescriptor {
         static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::Lazy::new();
-        descriptor.get(|| file_descriptor().message_by_package_relative_name("picoMessage").unwrap()).clone()
+        descriptor.get(|| file_descriptor().message_by_package_relative_name("Light").unwrap()).clone()
     }
 }
 
-impl ::std::fmt::Display for PicoMessage {
+impl ::std::fmt::Display for Light {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         ::protobuf::text_format::fmt(self, f)
     }
 }
 
-impl ::protobuf::reflect::ProtobufValue for PicoMessage {
+impl ::protobuf::reflect::ProtobufValue for Light {
     type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
 }
 
 static file_descriptor_proto_data: &'static [u8] = b"\
-    \n\x0cschema.proto\"\x92\x01\n\x06Header\x12\x20\n\x0bprojectorId\x18\
-    \x01\x20\x01(\x05R\x0bprojectorId\x12\x1e\n\npointCount\x18\x02\x20\x01(\
-    \x05R\npointCount\x12\x12\n\x04home\x18\x03\x20\x01(\x05R\x04home\x12\
-    \x16\n\x06enable\x18\x04\x20\x01(\x05R\x06enable\x12\x1a\n\x08checksum\
-    \x18\x05\x20\x01(\x08R\x08checksum\"\x8f\x01\n\x05Pixel\x12\x16\n\x06xCo\
-    Ord\x18\x01\x20\x01(\x05R\x06xCoOrd\x12\x16\n\x06yCoOrd\x18\x02\x20\x01(\
-    \x05R\x06yCoOrd\x12\x10\n\x03red\x18\x03\x20\x01(\x05R\x03red\x12\x14\n\
-    \x05green\x18\x04\x20\x01(\x05R\x05green\x12\x12\n\x04blue\x18\x05\x20\
-    \x01(\x05R\x04blue\x12\x1a\n\x08checksum\x18\x06\x20\x01(\x08R\x08checks\
-    um\"M\n\x10DrawInstructions\x12\x1b\n\x04head\x18\x01\x20\x01(\x0b2\x07.\
-    HeaderR\x04head\x12\x1c\n\x05pixel\x18\x02\x20\x03(\x0b2\x06.PixelR\x05p\
-    ixel\"s\n\x0bpicoMessage\x12-\n\x10InterfaceVersion\x18\x01\x20\x01(\x05\
-    :\x011R\x10InterfaceVersion\x125\n\x0cinstructions\x18\x02\x20\x01(\x0b2\
-    \x11.DrawInstructionsR\x0cinstructionsJ\xe6\n\n\x06\x12\x04\0\0\x1b\x01\
-    \n\x08\n\x01\x0c\x12\x03\0\0\x12\n\n\n\x02\x04\0\x12\x04\x02\0\x08\x01\n\
-    \n\n\x03\x04\0\x01\x12\x03\x02\x08\x0e\n\x0b\n\x04\x04\0\x02\0\x12\x03\
-    \x03\x02!\n\x0c\n\x05\x04\0\x02\0\x04\x12\x03\x03\x02\n\n\x0c\n\x05\x04\
-    \0\x02\0\x05\x12\x03\x03\x0b\x10\n\x0c\n\x05\x04\0\x02\0\x01\x12\x03\x03\
-    \x11\x1c\n\x0c\n\x05\x04\0\x02\0\x03\x12\x03\x03\x1f\x20\n\x0b\n\x04\x04\
-    \0\x02\x01\x12\x03\x04\x02\x20\n\x0c\n\x05\x04\0\x02\x01\x04\x12\x03\x04\
-    \x02\n\n\x0c\n\x05\x04\0\x02\x01\x05\x12\x03\x04\x0b\x10\n\x0c\n\x05\x04\
-    \0\x02\x01\x01\x12\x03\x04\x11\x1b\n\x0c\n\x05\x04\0\x02\x01\x03\x12\x03\
-    \x04\x1e\x1f\n\x0b\n\x04\x04\0\x02\x02\x12\x03\x05\x02\x1a\n\x0c\n\x05\
-    \x04\0\x02\x02\x04\x12\x03\x05\x02\n\n\x0c\n\x05\x04\0\x02\x02\x05\x12\
-    \x03\x05\x0b\x10\n\x0c\n\x05\x04\0\x02\x02\x01\x12\x03\x05\x11\x15\n\x0c\
-    \n\x05\x04\0\x02\x02\x03\x12\x03\x05\x18\x19\n\x0b\n\x04\x04\0\x02\x03\
-    \x12\x03\x06\x02\x1c\n\x0c\n\x05\x04\0\x02\x03\x04\x12\x03\x06\x02\n\n\
-    \x0c\n\x05\x04\0\x02\x03\x05\x12\x03\x06\x0b\x10\n\x0c\n\x05\x04\0\x02\
-    \x03\x01\x12\x03\x06\x11\x17\n\x0c\n\x05\x04\0\x02\x03\x03\x12\x03\x06\
-    \x1a\x1b\n\x0b\n\x04\x04\0\x02\x04\x12\x03\x07\x02\x1e\n\x0c\n\x05\x04\0\
-    \x02\x04\x04\x12\x03\x07\x02\n\n\x0c\n\x05\x04\0\x02\x04\x05\x12\x03\x07\
-    \x0b\x0f\n\x0c\n\x05\x04\0\x02\x04\x01\x12\x03\x07\x11\x19\n\x0c\n\x05\
-    \x04\0\x02\x04\x03\x12\x03\x07\x1c\x1d\n\x14\n\x02\x04\x01\x12\x04\n\0\
-    \x11\x01\"\x08\x20point?\n\n\n\n\x03\x04\x01\x01\x12\x03\n\x08\r\n\x0b\n\
-    \x04\x04\x01\x02\0\x12\x03\x0b\x02\x1c\n\x0c\n\x05\x04\x01\x02\0\x04\x12\
-    \x03\x0b\x02\n\n\x0c\n\x05\x04\x01\x02\0\x05\x12\x03\x0b\x0b\x10\n\x0c\n\
-    \x05\x04\x01\x02\0\x01\x12\x03\x0b\x11\x17\n\x0c\n\x05\x04\x01\x02\0\x03\
-    \x12\x03\x0b\x1a\x1b\n\x0b\n\x04\x04\x01\x02\x01\x12\x03\x0c\x02\x1c\n\
-    \x0c\n\x05\x04\x01\x02\x01\x04\x12\x03\x0c\x02\n\n\x0c\n\x05\x04\x01\x02\
-    \x01\x05\x12\x03\x0c\x0b\x10\n\x0c\n\x05\x04\x01\x02\x01\x01\x12\x03\x0c\
-    \x11\x17\n\x0c\n\x05\x04\x01\x02\x01\x03\x12\x03\x0c\x1a\x1b\n\x0b\n\x04\
-    \x04\x01\x02\x02\x12\x03\r\x02\x19\n\x0c\n\x05\x04\x01\x02\x02\x04\x12\
-    \x03\r\x02\n\n\x0c\n\x05\x04\x01\x02\x02\x05\x12\x03\r\x0b\x10\n\x0c\n\
-    \x05\x04\x01\x02\x02\x01\x12\x03\r\x11\x14\n\x0c\n\x05\x04\x01\x02\x02\
-    \x03\x12\x03\r\x17\x18\n\x0b\n\x04\x04\x01\x02\x03\x12\x03\x0e\x02\x1b\n\
-    \x0c\n\x05\x04\x01\x02\x03\x04\x12\x03\x0e\x02\n\n\x0c\n\x05\x04\x01\x02\
-    \x03\x05\x12\x03\x0e\x0b\x10\n\x0c\n\x05\x04\x01\x02\x03\x01\x12\x03\x0e\
-    \x11\x16\n\x0c\n\x05\x04\x01\x02\x03\x03\x12\x03\x0e\x19\x1a\n\x0b\n\x04\
-    \x04\x01\x02\x04\x12\x03\x0f\x02\x1a\n\x0c\n\x05\x04\x01\x02\x04\x04\x12\
-    \x03\x0f\x02\n\n\x0c\n\x05\x04\x01\x02\x04\x05\x12\x03\x0f\x0b\x10\n\x0c\
-    \n\x05\x04\x01\x02\x04\x01\x12\x03\x0f\x11\x15\n\x0c\n\x05\x04\x01\x02\
-    \x04\x03\x12\x03\x0f\x18\x19\n\x0b\n\x04\x04\x01\x02\x05\x12\x03\x10\x02\
-    \x1e\n\x0c\n\x05\x04\x01\x02\x05\x04\x12\x03\x10\x02\n\n\x0c\n\x05\x04\
-    \x01\x02\x05\x05\x12\x03\x10\x0b\x0f\n\x0c\n\x05\x04\x01\x02\x05\x01\x12\
-    \x03\x10\x11\x19\n\x0c\n\x05\x04\x01\x02\x05\x03\x12\x03\x10\x1c\x1d\n\n\
-    \n\x02\x04\x02\x12\x04\x13\0\x16\x01\n\n\n\x03\x04\x02\x01\x12\x03\x13\
-    \x08\x18\n\x0b\n\x04\x04\x02\x02\0\x12\x03\x14\x02\x1c\n\x0c\n\x05\x04\
-    \x02\x02\0\x04\x12\x03\x14\x02\n\n\x0c\n\x05\x04\x02\x02\0\x06\x12\x03\
-    \x14\x0b\x11\n\x0c\n\x05\x04\x02\x02\0\x01\x12\x03\x14\x12\x16\n\x0c\n\
-    \x05\x04\x02\x02\0\x03\x12\x03\x14\x1a\x1b\n\x0b\n\x04\x04\x02\x02\x01\
-    \x12\x03\x15\x02\x1c\n\x0c\n\x05\x04\x02\x02\x01\x04\x12\x03\x15\x02\n\n\
-    \x0c\n\x05\x04\x02\x02\x01\x06\x12\x03\x15\x0b\x10\n\x0c\n\x05\x04\x02\
-    \x02\x01\x01\x12\x03\x15\x12\x17\n\x0c\n\x05\x04\x02\x02\x01\x03\x12\x03\
-    \x15\x1a\x1b\n2\n\x02\x04\x03\x12\x04\x18\0\x1b\x01\"&\x20this\x20is\x20\
-    what\x20you\x20actually\x20listen\x20for\n\n\n\n\x03\x04\x03\x01\x12\x03\
-    \x18\x08\x13\n\xa5\x01\n\x04\x04\x03\x02\0\x12\x03\x19\x02<\"\x97\x01\
-    \x20backwards\x20compat\x20and\x20API\x20deprication\x20support.\x20Ther\
-    e's\x20no\x20reason\x20to\x20set\x20this\x20field\x20as\x20the\x20defaul\
-    t\x20will\x20be\x20compiled\x20in\x20(which\x20is\x20exactly\x20what\x20\
-    you\x20want)\n\n\x0c\n\x05\x04\x03\x02\0\x04\x12\x03\x19\x02\n\n\x0c\n\
-    \x05\x04\x03\x02\0\x05\x12\x03\x19\x0b\x10\n\x0c\n\x05\x04\x03\x02\0\x01\
-    \x12\x03\x19\x1b+\n\x0c\n\x05\x04\x03\x02\0\x03\x12\x03\x19./\n\x0c\n\
-    \x05\x04\x03\x02\0\x08\x12\x03\x190;\n\x0c\n\x05\x04\x03\x02\0\x07\x12\
-    \x03\x199:\n\x0b\n\x04\x04\x03\x02\x01\x12\x03\x1a\x02-\n\x0c\n\x05\x04\
-    \x03\x02\x01\x04\x12\x03\x1a\x02\n\n\x0c\n\x05\x04\x03\x02\x01\x06\x12\
-    \x03\x1a\x0b\x1b\n\x0c\n\x05\x04\x03\x02\x01\x01\x12\x03\x1a\x1c(\n\x0c\
-    \n\x05\x04\x03\x02\x01\x03\x12\x03\x1a+,\
+    \n\x0cschema.proto\"d\n\x0bpicoMessage\x12*\n\tprojector\x18\x01\x20\x01\
+    (\x0b2\n.ProjectorH\0R\tprojector\x12\x1e\n\x05light\x18\x02\x20\x01(\
+    \x0b2\x06.LightH\0R\x05lightB\t\n\x07payload\"j\n\tProjector\x12\x1f\n\
+    \x06header\x18\x01\x20\x01(\x0b2\x07.HeaderR\x06header\x12<\n\x10drawIns\
+    tructions\x18\x02\x20\x03(\x0b2\x10.DrawInstructionR\x10drawInstructions\
+    \"\xd9\x03\n\x06Header\x12%\n\x0bprojectorId\x18\x01\x20\x01(\x05H\0R\
+    \x0bprojectorId\x88\x01\x01\x12#\n\npointCount\x18\x02\x20\x01(\x05H\x01\
+    R\npointCount\x88\x01\x01\x12\x17\n\x04home\x18\x03\x20\x01(\x08H\x02R\
+    \x04home\x88\x01\x01\x12\x1b\n\x06enable\x18\x04\x20\x01(\x08H\x03R\x06e\
+    nable\x88\x01\x01\x122\n\x12configuration_mode\x18\x05\x20\x01(\x08H\x04\
+    R\x11configurationMode\x88\x01\x01\x12(\n\rdraw_boundary\x18\x06\x20\x01\
+    (\x08H\x05R\x0cdrawBoundary\x88\x01\x01\x12\x1d\n\x07oneshot\x18\x07\x20\
+    \x01(\x08H\x06R\x07oneshot\x88\x01\x01\x12(\n\rspeed_profile\x18\x08\x20\
+    \x01(\x05H\x07R\x0cspeedProfile\x88\x01\x01\x12\x1f\n\x08checksum\x18\t\
+    \x20\x01(\x08H\x08R\x08checksum\x88\x01\x01B\x0e\n\x0c_projectorIdB\r\n\
+    \x0b_pointCountB\x07\n\x05_homeB\t\n\x07_enableB\x15\n\x13_configuration\
+    _modeB\x10\n\x0e_draw_boundaryB\n\n\x08_oneshotB\x10\n\x0e_speed_profile\
+    B\x0b\n\t_checksum\"\xf5\x01\n\x0fDrawInstruction\x12\x1b\n\x06xCoOrd\
+    \x18\x01\x20\x01(\x05H\0R\x06xCoOrd\x88\x01\x01\x12\x1b\n\x06yCoOrd\x18\
+    \x02\x20\x01(\x05H\x01R\x06yCoOrd\x88\x01\x01\x12\x15\n\x03red\x18\x03\
+    \x20\x01(\x05H\x02R\x03red\x88\x01\x01\x12\x19\n\x05green\x18\x04\x20\
+    \x01(\x05H\x03R\x05green\x88\x01\x01\x12\x17\n\x04blue\x18\x05\x20\x01(\
+    \x05H\x04R\x04blue\x88\x01\x01\x12\x1f\n\x08checksum\x18\x06\x20\x01(\
+    \x08H\x05R\x08checksum\x88\x01\x01B\t\n\x07_xCoOrdB\t\n\x07_yCoOrdB\x06\
+    \n\x04_redB\x08\n\x06_greenB\x07\n\x05_blueB\x0b\n\t_checksum\"f\n\x05Li\
+    ght\x12%\n\x0bprojectorId\x18\x01\x20\x01(\x05H\0R\x0bprojectorId\x88\
+    \x01\x01\x12\x1b\n\x06enable\x18\x02\x20\x01(\x08H\x01R\x06enable\x88\
+    \x01\x01B\x0e\n\x0c_projectorIdB\t\n\x07_enableJ\xa5\x0c\n\x06\x12\x04\0\
+    \0&\x01\n\x08\n\x01\x0c\x12\x03\0\0\x12\n\n\n\x02\x04\0\x12\x04\x02\0\
+    \x07\x01\n\n\n\x03\x04\0\x01\x12\x03\x02\x08\x13\n\x0c\n\x04\x04\0\x08\0\
+    \x12\x04\x03\x04\x06\x05\n\x0c\n\x05\x04\0\x08\0\x01\x12\x03\x03\n\x11\n\
+    \x0b\n\x04\x04\0\x02\0\x12\x03\x04\x08\x20\n\x0c\n\x05\x04\0\x02\0\x06\
+    \x12\x03\x04\x08\x11\n\x0c\n\x05\x04\0\x02\0\x01\x12\x03\x04\x12\x1b\n\
+    \x0c\n\x05\x04\0\x02\0\x03\x12\x03\x04\x1e\x1f\n\x0b\n\x04\x04\0\x02\x01\
+    \x12\x03\x05\x08\x18\n\x0c\n\x05\x04\0\x02\x01\x06\x12\x03\x05\x08\r\n\
+    \x0c\n\x05\x04\0\x02\x01\x01\x12\x03\x05\x0e\x13\n\x0c\n\x05\x04\0\x02\
+    \x01\x03\x12\x03\x05\x16\x17\n\n\n\x02\x04\x01\x12\x04\t\0\x0c\x01\n\n\n\
+    \x03\x04\x01\x01\x12\x03\t\x08\x11\n\x0b\n\x04\x04\x01\x02\0\x12\x03\n\
+    \x04\x16\n\x0c\n\x05\x04\x01\x02\0\x06\x12\x03\n\x04\n\n\x0c\n\x05\x04\
+    \x01\x02\0\x01\x12\x03\n\x0b\x11\n\x0c\n\x05\x04\x01\x02\0\x03\x12\x03\n\
+    \x14\x15\n\x0b\n\x04\x04\x01\x02\x01\x12\x03\x0b\x042\n\x0c\n\x05\x04\
+    \x01\x02\x01\x04\x12\x03\x0b\x04\x0c\n\x0c\n\x05\x04\x01\x02\x01\x06\x12\
+    \x03\x0b\r\x1c\n\x0c\n\x05\x04\x01\x02\x01\x01\x12\x03\x0b\x1d-\n\x0c\n\
+    \x05\x04\x01\x02\x01\x03\x12\x03\x0b01\n\n\n\x02\x04\x02\x12\x04\x0e\0\
+    \x18\x01\n\n\n\x03\x04\x02\x01\x12\x03\x0e\x08\x0e\n\x0b\n\x04\x04\x02\
+    \x02\0\x12\x03\x0f\x02!\n\x0c\n\x05\x04\x02\x02\0\x04\x12\x03\x0f\x02\n\
+    \n\x0c\n\x05\x04\x02\x02\0\x05\x12\x03\x0f\x0b\x10\n\x0c\n\x05\x04\x02\
+    \x02\0\x01\x12\x03\x0f\x11\x1c\n\x0c\n\x05\x04\x02\x02\0\x03\x12\x03\x0f\
+    \x1f\x20\n\x0b\n\x04\x04\x02\x02\x01\x12\x03\x10\x02\x20\n\x0c\n\x05\x04\
+    \x02\x02\x01\x04\x12\x03\x10\x02\n\n\x0c\n\x05\x04\x02\x02\x01\x05\x12\
+    \x03\x10\x0b\x10\n\x0c\n\x05\x04\x02\x02\x01\x01\x12\x03\x10\x11\x1b\n\
+    \x0c\n\x05\x04\x02\x02\x01\x03\x12\x03\x10\x1e\x1f\n\x0b\n\x04\x04\x02\
+    \x02\x02\x12\x03\x11\x02\x19\n\x0c\n\x05\x04\x02\x02\x02\x04\x12\x03\x11\
+    \x02\n\n\x0c\n\x05\x04\x02\x02\x02\x05\x12\x03\x11\x0b\x0f\n\x0c\n\x05\
+    \x04\x02\x02\x02\x01\x12\x03\x11\x10\x14\n\x0c\n\x05\x04\x02\x02\x02\x03\
+    \x12\x03\x11\x17\x18\n\x0b\n\x04\x04\x02\x02\x03\x12\x03\x12\x02\x1b\n\
+    \x0c\n\x05\x04\x02\x02\x03\x04\x12\x03\x12\x02\n\n\x0c\n\x05\x04\x02\x02\
+    \x03\x05\x12\x03\x12\x0b\x0f\n\x0c\n\x05\x04\x02\x02\x03\x01\x12\x03\x12\
+    \x10\x16\n\x0c\n\x05\x04\x02\x02\x03\x03\x12\x03\x12\x19\x1a\n\x0b\n\x04\
+    \x04\x02\x02\x04\x12\x03\x13\x02'\n\x0c\n\x05\x04\x02\x02\x04\x04\x12\
+    \x03\x13\x02\n\n\x0c\n\x05\x04\x02\x02\x04\x05\x12\x03\x13\x0b\x0f\n\x0c\
+    \n\x05\x04\x02\x02\x04\x01\x12\x03\x13\x10\"\n\x0c\n\x05\x04\x02\x02\x04\
+    \x03\x12\x03\x13%&\n\x0b\n\x04\x04\x02\x02\x05\x12\x03\x14\x02\"\n\x0c\n\
+    \x05\x04\x02\x02\x05\x04\x12\x03\x14\x02\n\n\x0c\n\x05\x04\x02\x02\x05\
+    \x05\x12\x03\x14\x0b\x0f\n\x0c\n\x05\x04\x02\x02\x05\x01\x12\x03\x14\x10\
+    \x1d\n\x0c\n\x05\x04\x02\x02\x05\x03\x12\x03\x14\x20!\n\x0b\n\x04\x04\
+    \x02\x02\x06\x12\x03\x15\x02\x1c\n\x0c\n\x05\x04\x02\x02\x06\x04\x12\x03\
+    \x15\x02\n\n\x0c\n\x05\x04\x02\x02\x06\x05\x12\x03\x15\x0b\x0f\n\x0c\n\
+    \x05\x04\x02\x02\x06\x01\x12\x03\x15\x10\x17\n\x0c\n\x05\x04\x02\x02\x06\
+    \x03\x12\x03\x15\x1a\x1b\n\x0b\n\x04\x04\x02\x02\x07\x12\x03\x16\x02#\n\
+    \x0c\n\x05\x04\x02\x02\x07\x04\x12\x03\x16\x02\n\n\x0c\n\x05\x04\x02\x02\
+    \x07\x05\x12\x03\x16\x0b\x10\n\x0c\n\x05\x04\x02\x02\x07\x01\x12\x03\x16\
+    \x11\x1e\n\x0c\n\x05\x04\x02\x02\x07\x03\x12\x03\x16!\"\n\x0b\n\x04\x04\
+    \x02\x02\x08\x12\x03\x17\x02\x1d\n\x0c\n\x05\x04\x02\x02\x08\x04\x12\x03\
+    \x17\x02\n\n\x0c\n\x05\x04\x02\x02\x08\x05\x12\x03\x17\x0b\x0f\n\x0c\n\
+    \x05\x04\x02\x02\x08\x01\x12\x03\x17\x10\x18\n\x0c\n\x05\x04\x02\x02\x08\
+    \x03\x12\x03\x17\x1b\x1c\n\n\n\x02\x04\x03\x12\x04\x1a\0!\x01\n\n\n\x03\
+    \x04\x03\x01\x12\x03\x1a\x08\x17\n\x0b\n\x04\x04\x03\x02\0\x12\x03\x1b\
+    \x02\x1c\n\x0c\n\x05\x04\x03\x02\0\x04\x12\x03\x1b\x02\n\n\x0c\n\x05\x04\
+    \x03\x02\0\x05\x12\x03\x1b\x0b\x10\n\x0c\n\x05\x04\x03\x02\0\x01\x12\x03\
+    \x1b\x11\x17\n\x0c\n\x05\x04\x03\x02\0\x03\x12\x03\x1b\x1a\x1b\n\x0b\n\
+    \x04\x04\x03\x02\x01\x12\x03\x1c\x02\x1c\n\x0c\n\x05\x04\x03\x02\x01\x04\
+    \x12\x03\x1c\x02\n\n\x0c\n\x05\x04\x03\x02\x01\x05\x12\x03\x1c\x0b\x10\n\
+    \x0c\n\x05\x04\x03\x02\x01\x01\x12\x03\x1c\x11\x17\n\x0c\n\x05\x04\x03\
+    \x02\x01\x03\x12\x03\x1c\x1a\x1b\n\x0b\n\x04\x04\x03\x02\x02\x12\x03\x1d\
+    \x02\x19\n\x0c\n\x05\x04\x03\x02\x02\x04\x12\x03\x1d\x02\n\n\x0c\n\x05\
+    \x04\x03\x02\x02\x05\x12\x03\x1d\x0b\x10\n\x0c\n\x05\x04\x03\x02\x02\x01\
+    \x12\x03\x1d\x11\x14\n\x0c\n\x05\x04\x03\x02\x02\x03\x12\x03\x1d\x17\x18\
+    \n\x0b\n\x04\x04\x03\x02\x03\x12\x03\x1e\x02\x1b\n\x0c\n\x05\x04\x03\x02\
+    \x03\x04\x12\x03\x1e\x02\n\n\x0c\n\x05\x04\x03\x02\x03\x05\x12\x03\x1e\
+    \x0b\x10\n\x0c\n\x05\x04\x03\x02\x03\x01\x12\x03\x1e\x11\x16\n\x0c\n\x05\
+    \x04\x03\x02\x03\x03\x12\x03\x1e\x19\x1a\n\x0b\n\x04\x04\x03\x02\x04\x12\
+    \x03\x1f\x02\x1a\n\x0c\n\x05\x04\x03\x02\x04\x04\x12\x03\x1f\x02\n\n\x0c\
+    \n\x05\x04\x03\x02\x04\x05\x12\x03\x1f\x0b\x10\n\x0c\n\x05\x04\x03\x02\
+    \x04\x01\x12\x03\x1f\x11\x15\n\x0c\n\x05\x04\x03\x02\x04\x03\x12\x03\x1f\
+    \x18\x19\n\x0b\n\x04\x04\x03\x02\x05\x12\x03\x20\x02\x1e\n\x0c\n\x05\x04\
+    \x03\x02\x05\x04\x12\x03\x20\x02\n\n\x0c\n\x05\x04\x03\x02\x05\x05\x12\
+    \x03\x20\x0b\x0f\n\x0c\n\x05\x04\x03\x02\x05\x01\x12\x03\x20\x11\x19\n\
+    \x0c\n\x05\x04\x03\x02\x05\x03\x12\x03\x20\x1c\x1d\n\n\n\x02\x04\x04\x12\
+    \x04#\0&\x01\n\n\n\x03\x04\x04\x01\x12\x03#\x08\r\n\x0b\n\x04\x04\x04\
+    \x02\0\x12\x03$\x04#\n\x0c\n\x05\x04\x04\x02\0\x04\x12\x03$\x04\x0c\n\
+    \x0c\n\x05\x04\x04\x02\0\x05\x12\x03$\r\x12\n\x0c\n\x05\x04\x04\x02\0\
+    \x01\x12\x03$\x13\x1e\n\x0c\n\x05\x04\x04\x02\0\x03\x12\x03$!\"\n\x0b\n\
+    \x04\x04\x04\x02\x01\x12\x03%\x04\x1d\n\x0c\n\x05\x04\x04\x02\x01\x04\
+    \x12\x03%\x04\x0c\n\x0c\n\x05\x04\x04\x02\x01\x05\x12\x03%\r\x11\n\x0c\n\
+    \x05\x04\x04\x02\x01\x01\x12\x03%\x12\x18\n\x0c\n\x05\x04\x04\x02\x01\
+    \x03\x12\x03%\x1b\x1cb\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
@@ -1037,11 +1189,12 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
     file_descriptor.get(|| {
         let generated_file_descriptor = generated_file_descriptor_lazy.get(|| {
             let mut deps = ::std::vec::Vec::with_capacity(0);
-            let mut messages = ::std::vec::Vec::with_capacity(4);
-            messages.push(Header::generated_message_descriptor_data());
-            messages.push(Pixel::generated_message_descriptor_data());
-            messages.push(DrawInstructions::generated_message_descriptor_data());
+            let mut messages = ::std::vec::Vec::with_capacity(5);
             messages.push(PicoMessage::generated_message_descriptor_data());
+            messages.push(Projector::generated_message_descriptor_data());
+            messages.push(Header::generated_message_descriptor_data());
+            messages.push(DrawInstruction::generated_message_descriptor_data());
+            messages.push(Light::generated_message_descriptor_data());
             let mut enums = ::std::vec::Vec::with_capacity(0);
             ::protobuf::reflect::GeneratedFileDescriptor::new_generated(
                 file_descriptor_proto(),

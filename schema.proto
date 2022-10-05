@@ -1,14 +1,30 @@
-syntax = "proto2";
+syntax = "proto3";
+
+message picoMessage {
+    oneof payload {
+        Projector projector = 1;
+        Light light = 2;
+    }
+}
+
+message Projector {
+    Header header = 1;
+    repeated DrawInstruction drawInstructions = 2;
+}
 
 message Header {
   optional int32 projectorId = 1;
   optional int32 pointCount = 2;
-  optional int32 home = 3;
-  optional int32 enable = 4;
-  optional bool  checksum = 5;
+  optional bool home = 3;
+  optional bool enable = 4;
+  optional bool configuration_mode = 5;
+  optional bool draw_boundary = 6;
+  optional bool oneshot = 7;
+  optional int32 speed_profile = 8;
+  optional bool checksum = 9;
 }
 
-message Pixel { // point?
+message DrawInstruction {
   optional int32 xCoOrd = 1;
   optional int32 yCoOrd = 2;
   optional int32 red = 3;
@@ -17,12 +33,7 @@ message Pixel { // point?
   optional bool  checksum = 6;
 }
 
-message DrawInstructions {
-  optional Header head  = 1;
-  repeated Pixel  pixel = 2;
-}
-
-message picoMessage { // this is what you actually listen for
-  optional int32           InterfaceVersion = 1 [default=1]; // backwards compat and API deprication support. There's no reason to set this field as the default will be compiled in (which is exactly what you want)
-  optional DrawInstructions instructions = 2;
+message Light {
+    optional int32 projectorId = 1;
+    optional bool enable = 2;
 }

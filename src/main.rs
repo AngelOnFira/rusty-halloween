@@ -2,6 +2,7 @@ use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
 use std::io::{self, prelude::*, BufReader, Error};
 
 mod proto_schema;
+mod projector;
 
 fn handle_error(conn: io::Result<LocalSocketStream>) -> Option<LocalSocketStream> {
     match conn {
@@ -17,11 +18,17 @@ fn main() -> Result<(), Error> {
     let listener = LocalSocketListener::bind("/tmp/example.sock")?;
 
     for mut conn in listener.incoming().filter_map(handle_error) {
-        conn.write_all(b"Hello from server!\n")?;
+        // Recieve the data
         let mut conn = BufReader::new(conn);
         let mut buffer = String::new();
         conn.read_line(&mut buffer)?;
-        println!("Client answered: {}", buffer);
+
+        // Try to decode it as protobuf
+        let proto = proto_schema::schema::proto::Proto::decode(buffer.as_bytes())?;
+
+        // Translate it to the projector protocol
+
+
     }
 
     Ok(())
