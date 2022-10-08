@@ -24,7 +24,7 @@ fn main() -> Result<(), Error> {
         conn.read_line(&mut buffer)?;
 
         // Try to decode it as protobuf
-        let proto = proto_schema::schema::proto::Proto::decode(buffer.as_bytes())?;
+        // let proto = proto_schema::schema::proto::Proto::decode(buffer.as_bytes())?;
 
         // Translate it to the projector protocol
 
