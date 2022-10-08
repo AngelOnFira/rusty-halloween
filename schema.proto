@@ -34,6 +34,6 @@ message DrawInstruction {
 }
 
 message Light {
-    optional int32 projectorId = 1;
+    optional int32 lightId = 1;
     optional bool enable = 2;
 }

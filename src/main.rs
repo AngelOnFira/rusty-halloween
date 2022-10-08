@@ -1,8 +1,11 @@
 use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
+use proto_schema::schema::PicoMessage;
+use protobuf::Message;
 use std::io::{self, prelude::*, BufReader, Error};
 
-mod proto_schema;
+mod pico;
 mod projector;
+mod proto_schema;
 
 fn handle_error(conn: io::Result<LocalSocketStream>) -> Option<LocalSocketStream> {
     match conn {
@@ -15,20 +18,24 @@ fn handle_error(conn: io::Result<LocalSocketStream>) -> Option<LocalSocketStream
 }
 
 fn main() -> Result<(), Error> {
-    let listener = LocalSocketListener::bind("/tmp/example.sock")?;
+    // Make sure the socket is removed if the program exits
+    std::fs::remove_file("/tmp/pico.sock").ok();
+
+    let listener = LocalSocketListener::bind("/tmp/pico.sock")?;
 
     for mut conn in listener.incoming().filter_map(handle_error) {
         // Recieve the data
-        let mut conn = BufReader::new(conn);
-        let mut buffer = String::new();
-        conn.read_line(&mut buffer)?;
+        // let mut conn = BufReader::new(conn);
+        // let mut buffer = String::new();
+        // conn.read_line(&mut buffer)?;
 
         // Try to decode it as protobuf
-        // let proto = proto_schema::schema::proto::Proto::decode(buffer.as_bytes())?;
+        let proto = PicoMessage::parse_from_reader(&mut conn).unwrap();
+
+        // Print the message
+        println!("{:#?}", proto);
 
         // Translate it to the projector protocol
-
-
     }
 
     Ok(())
