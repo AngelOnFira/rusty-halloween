@@ -29,5 +29,3 @@ jobs:
         with:
           name: pi-binary
           path: target/armv7-unknown-linux-gnueabihf/release/rusty-halloween
-
-  cross_image:
