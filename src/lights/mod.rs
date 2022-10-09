@@ -1,1 +1,1 @@
-struct Lights {}
+struct _Lights {}

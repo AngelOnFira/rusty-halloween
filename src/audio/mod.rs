@@ -11,11 +11,7 @@ use rust_embed::RustEmbed;
 
 pub struct Audio {
     manager: AudioManager<CpalBackend>,
-    sound_data: HashMap<String, StaticSoundData>,
-}
-
-pub enum AudioError {
-    FromFil,
+    _sound_data: HashMap<String, StaticSoundData>,
 }
 
 #[derive(RustEmbed)]
@@ -28,12 +24,12 @@ impl Audio {
         let sound_data = HashMap::new();
         Self {
             manager,
-            sound_data,
+            _sound_data: sound_data,
         }
     }
 
     pub fn get_sound(&mut self, name: &str) -> Result<StaticSoundData, FromFileError> {
-        let sound_path = format!("src/audio/assets/{}", name);
+        let _sound_path = format!("src/audio/assets/{}", name);
 
         let sound_data = Asset::get(&name).unwrap();
         StaticSoundData::from_cursor(Cursor::new(sound_data.data), StaticSoundSettings::default())

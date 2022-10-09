@@ -2,7 +2,7 @@ use audio::Audio;
 use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
 use proto_schema::schema::PicoMessage;
 use protobuf::Message;
-use std::io::{self, prelude::*, BufReader, Error};
+use std::io::{self, Error};
 
 mod audio;
 mod lights;
@@ -27,7 +27,7 @@ fn main() -> Result<(), Error> {
     let listener = LocalSocketListener::bind("/tmp/pico.sock")?;
 
     let mut audio_manager = Audio::new();
-    audio_manager.play_sound("song1.mp3");
+    audio_manager.play_sound("song1.mp3").unwrap();
 
     for mut conn in listener.incoming().filter_map(handle_error) {
         // Recieve the data
@@ -45,7 +45,7 @@ fn main() -> Result<(), Error> {
         // Handle the message
         match proto.payload {
             Some(proto_schema::schema::pico_message::Payload::Audio(audio)) => {
-                audio_manager.play_sound(&audio.audioFile);
+                let _ = audio_manager.play_sound(&audio.audioFile);
             }
             Some(proto_schema::schema::pico_message::Payload::Light(lights)) => {
                 println!("Lights: {:#?}", lights);
