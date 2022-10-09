@@ -27,6 +27,7 @@ fn main() -> Result<(), Error> {
     let listener = LocalSocketListener::bind("/tmp/pico.sock")?;
 
     let mut audio_manager = Audio::new();
+    audio_manager.play_sound("song1.mp3");
 
     for mut conn in listener.incoming().filter_map(handle_error) {
         // Recieve the data

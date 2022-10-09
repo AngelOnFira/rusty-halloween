@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, io::Cursor};
 
 use kira::{
     manager::{backend::cpal::CpalBackend, AudioManager, AudioManagerSettings},
@@ -7,6 +7,7 @@ use kira::{
         FromFileError,
     },
 };
+use rust_embed::RustEmbed;
 
 pub struct Audio {
     manager: AudioManager<CpalBackend>,
@@ -16,6 +17,10 @@ pub struct Audio {
 pub enum AudioError {
     FromFil,
 }
+
+#[derive(RustEmbed)]
+#[folder = "src/audio/assets"]
+struct Asset;
 
 impl Audio {
     pub fn new() -> Self {
@@ -30,12 +35,15 @@ impl Audio {
     pub fn get_sound(&mut self, name: &str) -> Result<StaticSoundData, FromFileError> {
         let sound_path = format!("src/audio/assets/{}", name);
 
-        if !self.sound_data.contains_key(name) {
-            let sound = StaticSoundData::from_file(sound_path, StaticSoundSettings::default())?;
-            self.sound_data.insert(name.to_string(), sound);
-        }
+        let sound_data = Asset::get(&name).unwrap();
+        StaticSoundData::from_cursor(Cursor::new(sound_data.data), StaticSoundSettings::default())
 
-        Ok(self.sound_data[name].clone())
+        // if !self.sound_data.contains_key(name) {
+        //     let sound = StaticSoundData::from_file(sound_path, StaticSoundSettings::default())?;
+        //     self.sound_data.insert(name.to_string(), sound);
+        // }
+
+        // Ok(self.sound_data[name].clone())
     }
 
     pub fn play_sound(&mut self, name: &str) -> Result<(), Box<dyn std::error::Error>> {

@@ -11,3 +11,4 @@ interprocess = "1.1.1"
 kira = "0.7.0"
 packed_struct = "0.10.0"
 protobuf = "3.2.0"
+rust-embed = { version = "6.4.1", features = ["debug-embed"] }
