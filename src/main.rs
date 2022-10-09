@@ -3,6 +3,8 @@ use proto_schema::schema::PicoMessage;
 use protobuf::Message;
 use std::io::{self, prelude::*, BufReader, Error};
 
+mod audio;
+mod lights;
 mod pico;
 mod projector;
 mod proto_schema;
@@ -30,6 +32,7 @@ fn main() -> Result<(), Error> {
         // conn.read_line(&mut buffer)?;
 
         // Try to decode it as protobuf
+        // TODO: Reply with an error if this fails
         let proto = PicoMessage::parse_from_reader(&mut conn).unwrap();
 
         // Print the message
