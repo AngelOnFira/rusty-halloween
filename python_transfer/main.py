@@ -18,8 +18,7 @@ except socket.error as msg:
 
 # Make a new pico message
 pico = schema.picoMessage()
-pico.light.lightId = 1
-pico.light.enable = True
+pico.audio.audioFile = "song3.mp3"
 
 
 try:

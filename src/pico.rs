@@ -57,9 +57,9 @@ const DIR_X: u32 = 21;
 const STEP_Y: u32 = 19;
 const STEP_X: u32 = 20;
 
-pub struct pico {}
+pub struct Pico {}
 
-impl pico {
+impl Pico {
     // fn init_steppers() {}
     // fn init_gpio() {}
     // fn home_steppers() {}

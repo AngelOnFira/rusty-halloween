@@ -1,15 +1,16 @@
 syntax = "proto3";
 
 message picoMessage {
-    oneof payload {
-        Projector projector = 1;
-        Light light = 2;
-    }
+  oneof payload {
+    Projector projector = 1;
+    Light light = 2;
+    Audio audio = 3;
+  }
 }
 
 message Projector {
-    Header header = 1;
-    repeated DrawInstruction drawInstructions = 2;
+  Header header = 1;
+  repeated DrawInstruction drawInstructions = 2;
 }
 
 message Header {
@@ -30,10 +31,12 @@ message DrawInstruction {
   optional int32 red = 3;
   optional int32 green = 4;
   optional int32 blue = 5;
-  optional bool  checksum = 6;
+  optional bool checksum = 6;
 }
 
 message Light {
-    optional int32 lightId = 1;
-    optional bool enable = 2;
+  optional int32 lightId = 1;
+  optional bool enable = 2;
 }
+
+message Audio { string audioFile = 1; }

@@ -170,7 +170,7 @@ mod tests {
             blue: 0.into(),
             ..DrawPack::default()
         };
-        
+
         assert_eq!([0x3d, 0x17, 0x38, 0x00, 0x00], draw1.pack()?);
 
         Ok(())

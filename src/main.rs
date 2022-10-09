@@ -1,3 +1,4 @@
+use audio::Audio;
 use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
 use proto_schema::schema::PicoMessage;
 use protobuf::Message;
@@ -25,6 +26,8 @@ fn main() -> Result<(), Error> {
 
     let listener = LocalSocketListener::bind("/tmp/pico.sock")?;
 
+    let mut audio_manager = Audio::new();
+
     for mut conn in listener.incoming().filter_map(handle_error) {
         // Recieve the data
         // let mut conn = BufReader::new(conn);
@@ -36,7 +39,21 @@ fn main() -> Result<(), Error> {
         let proto = PicoMessage::parse_from_reader(&mut conn).unwrap();
 
         // Print the message
-        println!("{:#?}", proto);
+        // println!("{:#?}", proto);
+
+        // Handle the message
+        match proto.payload {
+            Some(proto_schema::schema::pico_message::Payload::Audio(audio)) => {
+                audio_manager.play_sound(&audio.audioFile);
+            }
+            Some(proto_schema::schema::pico_message::Payload::Light(lights)) => {
+                println!("Lights: {:#?}", lights);
+            }
+            Some(proto_schema::schema::pico_message::Payload::Projector(projector)) => {
+                println!("Projector: {:#?}", projector);
+            }
+            None => {}
+        }
 
         // Translate it to the projector protocol
     }

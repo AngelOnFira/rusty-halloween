@@ -1,3 +1,1 @@
-struct lights {
-    
-}
+struct Lights {}
