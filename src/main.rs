@@ -6,6 +6,7 @@ use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
 use log::{debug, error};
 use proto_schema::schema::PicoMessage;
 use protobuf::Message;
+use rillrate::prime::{Pulse, PulseOpts};
 use std::io::{self};
 use tokio::sync::mpsc;
 
@@ -55,7 +56,17 @@ async fn main() -> Result<(), Error> {
     // audio_manager.play_sound("song1.mp3").unwrap();
 
     tokio::spawn(async move {
+        // Start a new pulse for the dashboard
+        let pulse = Pulse::new(
+            "messages.dashboard.all.pulse",
+            Default::default(),
+            PulseOpts::default().min(0).max(10),
+        );
+
         while let Some(message) = rx.recv().await {
+            // Update the pulse
+            pulse.push(1);
+            
             // Handle the message
             match message.payload {
                 Some(proto_schema::schema::pico_message::Payload::Audio(audio_command)) => {

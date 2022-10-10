@@ -28,18 +28,23 @@ impl Audio {
         }
     }
 
-    pub fn get_sound(&mut self, name: &str) -> Result<StaticSoundData, FromFileError> {
+    pub fn get_sound(&mut self, name: &str) -> Result<StaticSoundData, Box<dyn std::error::Error>> {
         let _sound_path = format!("src/audio/assets/{}", name);
 
-        let sound_data = Asset::get(&name).unwrap();
-        StaticSoundData::from_cursor(Cursor::new(sound_data.data), StaticSoundSettings::default())
+        if let Some(sound_data) = Asset::get(&name) {
+            let sound_player = StaticSoundData::from_cursor(
+                Cursor::new(sound_data.data),
+                StaticSoundSettings::default(),
+            )?;
 
-        // if !self.sound_data.contains_key(name) {
-        //     let sound = StaticSoundData::from_file(sound_path, StaticSoundSettings::default())?;
-        //     self.sound_data.insert(name.to_string(), sound);
-        // }
+            return Ok(sound_player);
+        }
 
-        // Ok(self.sound_data[name].clone())
+        // Return "Sound not found" error
+        Err(Box::new(FromFileError::IoError(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "Sound not found",
+        ))))
     }
 
     pub fn play_sound(&mut self, name: &str) -> Result<(), Box<dyn std::error::Error>> {

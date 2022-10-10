@@ -34,3 +34,4 @@ anyhow = "1.0.65"
 ron = "0.8.0"
 serde = { version = "1.0.145", features = ["derive"] }
 pi-pinout = {path = "../pinout"}
+rill-protocol = "0.41.0"
