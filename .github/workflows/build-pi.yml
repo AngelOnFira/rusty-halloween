@@ -19,7 +19,7 @@ jobs:
         with:
           use-cross: true
           command: build
-          args: --target armv7-unknown-linux-gnueabihf --release
+          args: --target armv7-unknown-linux-gnueabihf --release --features pi
 
       - name: Archive code coverage results
         uses: actions/upload-artifact@v2

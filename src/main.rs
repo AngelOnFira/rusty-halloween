@@ -3,7 +3,6 @@ use audio::Audio;
 use config::Config;
 use dashboard::Dashboard;
 use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
-use lights::Lights;
 use log::{debug, error};
 use proto_schema::schema::PicoMessage;
 use protobuf::Message;
@@ -12,10 +11,14 @@ use std::io::{self};
 mod audio;
 mod config;
 mod dashboard;
-mod lights;
 mod pico;
 mod projector;
 mod proto_schema;
+
+#[cfg(feature = "pi")]
+use lights::Lights;
+#[cfg(feature = "pi")]
+mod lights;
 
 fn handle_error(conn: io::Result<LocalSocketStream>) -> Option<LocalSocketStream> {
     match conn {
@@ -37,10 +40,14 @@ async fn main() -> Result<(), Error> {
 
     let listener = LocalSocketListener::bind("/tmp/pico.sock")?;
 
+    // Message queue
+    
+
     // Start the dashboard
     Dashboard::init().await?;
 
     // Initialize the lights
+    #[cfg(feature = "pi")]
     let mut lights = Lights::init(&config)?;
 
     let mut audio_manager = Audio::new();
@@ -59,18 +66,27 @@ async fn main() -> Result<(), Error> {
         // Debug the message
         debug!("{:#?}", proto);
 
+        // Add the message to the queue
+
         // Handle the message
         match proto.payload {
             Some(proto_schema::schema::pico_message::Payload::Audio(audio_command)) => {
                 let _ = audio_manager.play_sound(&audio_command.audioFile);
             }
             Some(proto_schema::schema::pico_message::Payload::Light(light_command)) => {
-                // If the light ID is out of range of a u8, print an
-                // error
-                if light_command.lightId >= 256 {
-                    error!("Light ID {} is out of range", light_command.lightId);
+                if cfg!(feature = "pi") {
+                    #[cfg(feature = "pi")]
+                    {
+                        // If the light ID is out of range of a u8, print an
+                        // error
+                        if light_command.lightId >= 256 {
+                            error!("Light ID {} is out of range", light_command.lightId);
+                        } else {
+                            lights.set_pin(light_command.lightId as u8, light_command.enable);
+                        }
+                    }
                 } else {
-                    lights.set_pin(light_command.lightId as u8, light_command.enable);
+                    error!("Lights are not supported on this platform");
                 }
             }
             Some(proto_schema::schema::pico_message::Payload::Projector(projector_command)) => {
