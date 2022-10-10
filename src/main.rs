@@ -6,7 +6,7 @@ use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
 use log::{debug, error};
 use proto_schema::schema::PicoMessage;
 use protobuf::Message;
-use rillrate::prime::{Pulse, PulseOpts, LiveTail, LiveTailOpts};
+use rillrate::prime::{LiveTail, LiveTailOpts, Pulse, PulseOpts};
 use std::io::{self};
 use tokio::sync::mpsc;
 
@@ -17,9 +17,7 @@ mod pico;
 mod projector;
 mod proto_schema;
 
-#[cfg(feature = "pi")]
 use lights::Lights;
-#[cfg(feature = "pi")]
 mod lights;
 
 fn handle_error(conn: io::Result<LocalSocketStream>) -> Option<LocalSocketStream> {
@@ -49,16 +47,15 @@ async fn main() -> Result<(), Error> {
     Dashboard::init(tx.clone()).await?;
 
     // Initialize the lights
-    #[cfg(feature = "pi")]
-    let mut lights = Lights::init(&config)?;
+    let tx_clone = tx.clone();
+    let mut lights = Lights::init(&config, tx_clone).await?;
 
     let mut audio_manager = Audio::new();
-    // audio_manager.play_sound("song1.mp3").unwrap();
 
     tokio::spawn(async move {
         // Start a new pulse for the dashboard
         let pulse = Pulse::new(
-            "messages.dashboard.all.pulse",
+            "app.dashboard.all.pulse",
             Default::default(),
             PulseOpts::default().min(0).max(10),
         );

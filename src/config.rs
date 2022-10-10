@@ -38,10 +38,25 @@ mod tests {
             r#"(
     lights: [
         Light(
-            pin: Physical(PhysicalPin(2)),
+            pin: Physical(PhysicalPin(8)),
         ),
         Light(
-            pin: Gpio(GpioPin(5)),
+            pin: Physical(PhysicalPin(10)),
+        ),
+        Light(
+            pin: Physical(PhysicalPin(16)),
+        ),
+        Light(
+            pin: Physical(PhysicalPin(18)),
+        ),
+        Light(
+            pin: Physical(PhysicalPin(22)),
+        ),
+        Light(
+            pin: Physical(PhysicalPin(24)),
+        ),
+        Light(
+            pin: Physical(PhysicalPin(26)),
         ),
     ],
 )"#,
@@ -54,10 +69,25 @@ mod tests {
             Config {
                 lights: vec![
                     Light {
-                        pin: Pin::Physical(pi_pinout::PhysicalPin(2))
+                        pin: Pin::Physical(pi_pinout::PhysicalPin(8))
                     },
                     Light {
-                        pin: Pin::Gpio(pi_pinout::GpioPin(5))
+                        pin: Pin::Physical(pi_pinout::PhysicalPin(10))
+                    },
+                    Light {
+                        pin: Pin::Physical(pi_pinout::PhysicalPin(16))
+                    },
+                    Light {
+                        pin: Pin::Physical(pi_pinout::PhysicalPin(18))
+                    },
+                    Light {
+                        pin: Pin::Physical(pi_pinout::PhysicalPin(22))
+                    },
+                    Light {
+                        pin: Pin::Physical(pi_pinout::PhysicalPin(24))
+                    },
+                    Light {
+                        pin: Pin::Physical(pi_pinout::PhysicalPin(26))
                     },
                 ]
             }

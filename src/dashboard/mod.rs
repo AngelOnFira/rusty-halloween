@@ -20,8 +20,6 @@ impl Dashboard {
         rillrate::install("demo")?;
         layout::add();
 
-
-
         Ok(())
     }
 }

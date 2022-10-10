@@ -1,16 +1,26 @@
 use anyhow::Error;
 use log::info;
+use rillrate::prime::{Click, ClickOpts, Switch, SwitchOpts};
 use rppal::gpio::{Gpio, OutputPin};
+use tokio::sync::mpsc;
 
-use crate::config::{Config, Pin};
+use crate::{
+    config::{Config, Pin},
+    proto_schema::schema::{pico_message::Payload, Light, PicoMessage},
+};
 
 pub struct Lights {
     pins: Vec<OutputPin>,
+    switches: Vec<Switch>,
 }
 
 impl Lights {
-    pub fn init(config: &Config) -> Result<Self, Error> {
+    pub async fn init(
+        config: &Config,
+        message_queue: mpsc::Sender<PicoMessage>,
+    ) -> Result<Self, Error> {
         let mut pins = Vec::new();
+        let mut switches = Vec::new();
 
         for (i, light) in config.lights.iter().enumerate() {
             // Turn this pin into a physical pin
@@ -22,11 +32,40 @@ impl Lights {
 
             info!("Light {}: initializing on pin {}", i, pin.0);
 
-            let pin = Gpio::new()?.get(pin.0).unwrap().into_output();
-            pins.push(pin);
+            // Only initialize GPIO if the Pi feature is enabled
+            if cfg!(feature = "pi") {
+                let pin = Gpio::new()?.get(pin.0).unwrap().into_output();
+                pins.push(pin);
+            }
+
+            // Set up a dashboard button to enable this light
+            let switch = Switch::new(
+                format!("app.dashboard.Lights.Light-{} (pin {})", i + 1, pin.0),
+                SwitchOpts::default().label("Click Me!"),
+            );
+            let this = switch.clone();
+
+            let message_queue_clone = message_queue.clone();
+            switch.sync_callback(move |envelope| {
+                if let Some(action) = envelope.action {
+                    let mut light_message = PicoMessage::new();
+                    light_message.payload = Some(Payload::Light(Light {
+                        lightId: i as i32,
+                        enable: action,
+                        ..Default::default()
+                    }));
+
+                    message_queue_clone.blocking_send(light_message)?;
+
+                    this.apply(action);
+                }
+                return Ok(());
+            });
+
+            switches.push(switch);
         }
 
-        Ok(Self { pins })
+        Ok(Self { pins, switches })
     }
 
     pub fn set_pin(&mut self, pin: u8, value: bool) {
