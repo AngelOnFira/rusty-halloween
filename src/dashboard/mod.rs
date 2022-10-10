@@ -17,7 +17,7 @@ pub struct Dashboard {}
 impl Dashboard {
     pub async fn init(sender: mpsc::Sender<PicoMessage>) -> Result<(), Error> {
         env_logger::try_init()?;
-        rillrate::install("demo")?;
+        rillrate::install("rusty-halloween")?;
         layout::add();
 
         Ok(())
