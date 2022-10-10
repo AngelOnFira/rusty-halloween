@@ -1,10 +1,12 @@
 use audio::Audio;
+use dashboard::Dashboard;
 use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
 use proto_schema::schema::PicoMessage;
 use protobuf::Message;
 use std::io::{self, Error};
 
 mod audio;
+mod dashboard;
 mod lights;
 mod pico;
 mod projector;
@@ -20,11 +22,15 @@ fn handle_error(conn: io::Result<LocalSocketStream>) -> Option<LocalSocketStream
     }
 }
 
-fn main() -> Result<(), Error> {
+#[tokio::main]
+async fn main() -> Result<(), Error> {
     // Make sure the socket is removed if the program exits
     std::fs::remove_file("/tmp/pico.sock").ok();
 
     let listener = LocalSocketListener::bind("/tmp/pico.sock")?;
+
+    // Start the dashboard
+    Dashboard::init();
 
     let mut audio_manager = Audio::new();
     audio_manager.play_sound("song1.mp3").unwrap();
