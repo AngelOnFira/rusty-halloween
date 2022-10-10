@@ -7,6 +7,7 @@ use log::{debug, error};
 use proto_schema::schema::PicoMessage;
 use protobuf::Message;
 use std::io::{self};
+use tokio::sync::mpsc;
 
 mod audio;
 mod config;
@@ -41,10 +42,10 @@ async fn main() -> Result<(), Error> {
     let listener = LocalSocketListener::bind("/tmp/pico.sock")?;
 
     // Message queue
-    
+    let (tx, mut rx) = mpsc::channel(32);
 
     // Start the dashboard
-    Dashboard::init().await?;
+    Dashboard::init(tx.clone()).await?;
 
     // Initialize the lights
     #[cfg(feature = "pi")]
@@ -53,6 +54,38 @@ async fn main() -> Result<(), Error> {
     let mut audio_manager = Audio::new();
     // audio_manager.play_sound("song1.mp3").unwrap();
 
+    tokio::spawn(async move {
+        while let Some(message) = rx.recv().await {
+            // Handle the message
+            match message.payload {
+                Some(proto_schema::schema::pico_message::Payload::Audio(audio_command)) => {
+                    let _ = audio_manager.play_sound(&audio_command.audioFile);
+                }
+                Some(proto_schema::schema::pico_message::Payload::Light(light_command)) => {
+                    if cfg!(feature = "pi") {
+                        #[cfg(feature = "pi")]
+                        {
+                            // If the light ID is out of range of a u8, print an
+                            // error
+                            if light_command.lightId >= 256 {
+                                error!("Light ID {} is out of range", light_command.lightId);
+                            } else {
+                                lights.set_pin(light_command.lightId as u8, light_command.enable);
+                            }
+                        }
+                    } else {
+                        error!("Lights are not supported on this platform");
+                    }
+                }
+                Some(proto_schema::schema::pico_message::Payload::Projector(projector_command)) => {
+                    println!("Projector: {:#?}", projector_command);
+                }
+                None => {}
+            }
+        }
+    });
+
+    let tx_clone = tx.clone();
     for mut conn in listener.incoming().filter_map(handle_error) {
         // Recieve the data
         // let mut conn = BufReader::new(conn);
@@ -67,33 +100,7 @@ async fn main() -> Result<(), Error> {
         debug!("{:#?}", proto);
 
         // Add the message to the queue
-
-        // Handle the message
-        match proto.payload {
-            Some(proto_schema::schema::pico_message::Payload::Audio(audio_command)) => {
-                let _ = audio_manager.play_sound(&audio_command.audioFile);
-            }
-            Some(proto_schema::schema::pico_message::Payload::Light(light_command)) => {
-                if cfg!(feature = "pi") {
-                    #[cfg(feature = "pi")]
-                    {
-                        // If the light ID is out of range of a u8, print an
-                        // error
-                        if light_command.lightId >= 256 {
-                            error!("Light ID {} is out of range", light_command.lightId);
-                        } else {
-                            lights.set_pin(light_command.lightId as u8, light_command.enable);
-                        }
-                    }
-                } else {
-                    error!("Lights are not supported on this platform");
-                }
-            }
-            Some(proto_schema::schema::pico_message::Payload::Projector(projector_command)) => {
-                println!("Projector: {:#?}", projector_command);
-            }
-            None => {}
-        }
+        tx_clone.send(proto).await.unwrap();
 
         // Translate it to the projector protocol
     }
