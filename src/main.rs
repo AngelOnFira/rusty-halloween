@@ -6,7 +6,7 @@ use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
 use log::{debug, error};
 use proto_schema::schema::PicoMessage;
 use protobuf::Message;
-use rillrate::prime::{Pulse, PulseOpts};
+use rillrate::prime::{Pulse, PulseOpts, LiveTail, LiveTailOpts};
 use std::io::{self};
 use tokio::sync::mpsc;
 
@@ -63,16 +63,25 @@ async fn main() -> Result<(), Error> {
             PulseOpts::default().min(0).max(10),
         );
 
+        // Start a new log list for the dashboard
+        let live_tail = LiveTail::new(
+            "app.dashboard.Data.Messages",
+            Default::default(),
+            LiveTailOpts::default(),
+        );
+
         while let Some(message) = rx.recv().await {
             // Update the pulse
             pulse.push(1);
-            
+
             // Handle the message
             match message.payload {
                 Some(proto_schema::schema::pico_message::Payload::Audio(audio_command)) => {
+                    live_tail.log_now(module_path!(), "INFO", "Audio command received");
                     let _ = audio_manager.play_sound(&audio_command.audioFile);
                 }
                 Some(proto_schema::schema::pico_message::Payload::Light(light_command)) => {
+                    live_tail.log_now(module_path!(), "INFO", "Light command received");
                     if cfg!(feature = "pi") {
                         #[cfg(feature = "pi")]
                         {
@@ -89,6 +98,7 @@ async fn main() -> Result<(), Error> {
                     }
                 }
                 Some(proto_schema::schema::pico_message::Payload::Projector(projector_command)) => {
+                    live_tail.log_now(module_path!(), "INFO", "Projector command received");
                     println!("Projector: {:#?}", projector_command);
                 }
                 None => {}
