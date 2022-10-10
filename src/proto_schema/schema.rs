@@ -520,23 +520,23 @@ impl ::protobuf::reflect::ProtobufValue for Projector {
 pub struct Header {
     // message fields
     // @@protoc_insertion_point(field:Header.projectorId)
-    pub projectorId: ::std::option::Option<i32>,
+    pub projectorId: i32,
     // @@protoc_insertion_point(field:Header.pointCount)
-    pub pointCount: ::std::option::Option<i32>,
+    pub pointCount: i32,
     // @@protoc_insertion_point(field:Header.home)
-    pub home: ::std::option::Option<bool>,
+    pub home: bool,
     // @@protoc_insertion_point(field:Header.enable)
-    pub enable: ::std::option::Option<bool>,
+    pub enable: bool,
     // @@protoc_insertion_point(field:Header.configuration_mode)
-    pub configuration_mode: ::std::option::Option<bool>,
+    pub configuration_mode: bool,
     // @@protoc_insertion_point(field:Header.draw_boundary)
-    pub draw_boundary: ::std::option::Option<bool>,
+    pub draw_boundary: bool,
     // @@protoc_insertion_point(field:Header.oneshot)
-    pub oneshot: ::std::option::Option<bool>,
+    pub oneshot: bool,
     // @@protoc_insertion_point(field:Header.speed_profile)
-    pub speed_profile: ::std::option::Option<i32>,
+    pub speed_profile: i32,
     // @@protoc_insertion_point(field:Header.checksum)
-    pub checksum: ::std::option::Option<bool>,
+    pub checksum: bool,
     // special fields
     // @@protoc_insertion_point(special_field:Header.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -556,47 +556,47 @@ impl Header {
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
         let mut fields = ::std::vec::Vec::with_capacity(9);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
-        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "projectorId",
             |m: &Header| { &m.projectorId },
             |m: &mut Header| { &mut m.projectorId },
         ));
-        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "pointCount",
             |m: &Header| { &m.pointCount },
             |m: &mut Header| { &mut m.pointCount },
         ));
-        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "home",
             |m: &Header| { &m.home },
             |m: &mut Header| { &mut m.home },
         ));
-        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "enable",
             |m: &Header| { &m.enable },
             |m: &mut Header| { &mut m.enable },
         ));
-        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "configuration_mode",
             |m: &Header| { &m.configuration_mode },
             |m: &mut Header| { &mut m.configuration_mode },
         ));
-        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "draw_boundary",
             |m: &Header| { &m.draw_boundary },
             |m: &mut Header| { &mut m.draw_boundary },
         ));
-        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "oneshot",
             |m: &Header| { &m.oneshot },
             |m: &mut Header| { &mut m.oneshot },
         ));
-        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "speed_profile",
             |m: &Header| { &m.speed_profile },
             |m: &mut Header| { &mut m.speed_profile },
         ));
-        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "checksum",
             |m: &Header| { &m.checksum },
             |m: &mut Header| { &mut m.checksum },
@@ -620,31 +620,31 @@ impl ::protobuf::Message for Header {
         while let Some(tag) = is.read_raw_tag_or_eof()? {
             match tag {
                 8 => {
-                    self.projectorId = ::std::option::Option::Some(is.read_int32()?);
+                    self.projectorId = is.read_int32()?;
                 },
                 16 => {
-                    self.pointCount = ::std::option::Option::Some(is.read_int32()?);
+                    self.pointCount = is.read_int32()?;
                 },
                 24 => {
-                    self.home = ::std::option::Option::Some(is.read_bool()?);
+                    self.home = is.read_bool()?;
                 },
                 32 => {
-                    self.enable = ::std::option::Option::Some(is.read_bool()?);
+                    self.enable = is.read_bool()?;
                 },
                 40 => {
-                    self.configuration_mode = ::std::option::Option::Some(is.read_bool()?);
+                    self.configuration_mode = is.read_bool()?;
                 },
                 48 => {
-                    self.draw_boundary = ::std::option::Option::Some(is.read_bool()?);
+                    self.draw_boundary = is.read_bool()?;
                 },
                 56 => {
-                    self.oneshot = ::std::option::Option::Some(is.read_bool()?);
+                    self.oneshot = is.read_bool()?;
                 },
                 64 => {
-                    self.speed_profile = ::std::option::Option::Some(is.read_int32()?);
+                    self.speed_profile = is.read_int32()?;
                 },
                 72 => {
-                    self.checksum = ::std::option::Option::Some(is.read_bool()?);
+                    self.checksum = is.read_bool()?;
                 },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
@@ -658,31 +658,31 @@ impl ::protobuf::Message for Header {
     #[allow(unused_variables)]
     fn compute_size(&self) -> u64 {
         let mut my_size = 0;
-        if let Some(v) = self.projectorId {
-            my_size += ::protobuf::rt::int32_size(1, v);
+        if self.projectorId != 0 {
+            my_size += ::protobuf::rt::int32_size(1, self.projectorId);
         }
-        if let Some(v) = self.pointCount {
-            my_size += ::protobuf::rt::int32_size(2, v);
+        if self.pointCount != 0 {
+            my_size += ::protobuf::rt::int32_size(2, self.pointCount);
         }
-        if let Some(v) = self.home {
+        if self.home != false {
             my_size += 1 + 1;
         }
-        if let Some(v) = self.enable {
+        if self.enable != false {
             my_size += 1 + 1;
         }
-        if let Some(v) = self.configuration_mode {
+        if self.configuration_mode != false {
             my_size += 1 + 1;
         }
-        if let Some(v) = self.draw_boundary {
+        if self.draw_boundary != false {
             my_size += 1 + 1;
         }
-        if let Some(v) = self.oneshot {
+        if self.oneshot != false {
             my_size += 1 + 1;
         }
-        if let Some(v) = self.speed_profile {
-            my_size += ::protobuf::rt::int32_size(8, v);
+        if self.speed_profile != 0 {
+            my_size += ::protobuf::rt::int32_size(8, self.speed_profile);
         }
-        if let Some(v) = self.checksum {
+        if self.checksum != false {
             my_size += 1 + 1;
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
@@ -691,32 +691,32 @@ impl ::protobuf::Message for Header {
     }
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
-        if let Some(v) = self.projectorId {
-            os.write_int32(1, v)?;
+        if self.projectorId != 0 {
+            os.write_int32(1, self.projectorId)?;
         }
-        if let Some(v) = self.pointCount {
-            os.write_int32(2, v)?;
+        if self.pointCount != 0 {
+            os.write_int32(2, self.pointCount)?;
         }
-        if let Some(v) = self.home {
-            os.write_bool(3, v)?;
+        if self.home != false {
+            os.write_bool(3, self.home)?;
         }
-        if let Some(v) = self.enable {
-            os.write_bool(4, v)?;
+        if self.enable != false {
+            os.write_bool(4, self.enable)?;
         }
-        if let Some(v) = self.configuration_mode {
-            os.write_bool(5, v)?;
+        if self.configuration_mode != false {
+            os.write_bool(5, self.configuration_mode)?;
         }
-        if let Some(v) = self.draw_boundary {
-            os.write_bool(6, v)?;
+        if self.draw_boundary != false {
+            os.write_bool(6, self.draw_boundary)?;
         }
-        if let Some(v) = self.oneshot {
-            os.write_bool(7, v)?;
+        if self.oneshot != false {
+            os.write_bool(7, self.oneshot)?;
         }
-        if let Some(v) = self.speed_profile {
-            os.write_int32(8, v)?;
+        if self.speed_profile != 0 {
+            os.write_int32(8, self.speed_profile)?;
         }
-        if let Some(v) = self.checksum {
-            os.write_bool(9, v)?;
+        if self.checksum != false {
+            os.write_bool(9, self.checksum)?;
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -735,29 +735,29 @@ impl ::protobuf::Message for Header {
     }
 
     fn clear(&mut self) {
-        self.projectorId = ::std::option::Option::None;
-        self.pointCount = ::std::option::Option::None;
-        self.home = ::std::option::Option::None;
-        self.enable = ::std::option::Option::None;
-        self.configuration_mode = ::std::option::Option::None;
-        self.draw_boundary = ::std::option::Option::None;
-        self.oneshot = ::std::option::Option::None;
-        self.speed_profile = ::std::option::Option::None;
-        self.checksum = ::std::option::Option::None;
+        self.projectorId = 0;
+        self.pointCount = 0;
+        self.home = false;
+        self.enable = false;
+        self.configuration_mode = false;
+        self.draw_boundary = false;
+        self.oneshot = false;
+        self.speed_profile = 0;
+        self.checksum = false;
         self.special_fields.clear();
     }
 
     fn default_instance() -> &'static Header {
         static instance: Header = Header {
-            projectorId: ::std::option::Option::None,
-            pointCount: ::std::option::Option::None,
-            home: ::std::option::Option::None,
-            enable: ::std::option::Option::None,
-            configuration_mode: ::std::option::Option::None,
-            draw_boundary: ::std::option::Option::None,
-            oneshot: ::std::option::Option::None,
-            speed_profile: ::std::option::Option::None,
-            checksum: ::std::option::Option::None,
+            projectorId: 0,
+            pointCount: 0,
+            home: false,
+            enable: false,
+            configuration_mode: false,
+            draw_boundary: false,
+            oneshot: false,
+            speed_profile: 0,
+            checksum: false,
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -786,17 +786,17 @@ impl ::protobuf::reflect::ProtobufValue for Header {
 pub struct DrawInstruction {
     // message fields
     // @@protoc_insertion_point(field:DrawInstruction.xCoOrd)
-    pub xCoOrd: ::std::option::Option<i32>,
+    pub xCoOrd: i32,
     // @@protoc_insertion_point(field:DrawInstruction.yCoOrd)
-    pub yCoOrd: ::std::option::Option<i32>,
+    pub yCoOrd: i32,
     // @@protoc_insertion_point(field:DrawInstruction.red)
-    pub red: ::std::option::Option<i32>,
+    pub red: i32,
     // @@protoc_insertion_point(field:DrawInstruction.green)
-    pub green: ::std::option::Option<i32>,
+    pub green: i32,
     // @@protoc_insertion_point(field:DrawInstruction.blue)
-    pub blue: ::std::option::Option<i32>,
+    pub blue: i32,
     // @@protoc_insertion_point(field:DrawInstruction.checksum)
-    pub checksum: ::std::option::Option<bool>,
+    pub checksum: bool,
     // special fields
     // @@protoc_insertion_point(special_field:DrawInstruction.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -816,32 +816,32 @@ impl DrawInstruction {
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
         let mut fields = ::std::vec::Vec::with_capacity(6);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
-        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "xCoOrd",
             |m: &DrawInstruction| { &m.xCoOrd },
             |m: &mut DrawInstruction| { &mut m.xCoOrd },
         ));
-        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "yCoOrd",
             |m: &DrawInstruction| { &m.yCoOrd },
             |m: &mut DrawInstruction| { &mut m.yCoOrd },
         ));
-        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "red",
             |m: &DrawInstruction| { &m.red },
             |m: &mut DrawInstruction| { &mut m.red },
         ));
-        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "green",
             |m: &DrawInstruction| { &m.green },
             |m: &mut DrawInstruction| { &mut m.green },
         ));
-        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "blue",
             |m: &DrawInstruction| { &m.blue },
             |m: &mut DrawInstruction| { &mut m.blue },
         ));
-        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "checksum",
             |m: &DrawInstruction| { &m.checksum },
             |m: &mut DrawInstruction| { &mut m.checksum },
@@ -865,22 +865,22 @@ impl ::protobuf::Message for DrawInstruction {
         while let Some(tag) = is.read_raw_tag_or_eof()? {
             match tag {
                 8 => {
-                    self.xCoOrd = ::std::option::Option::Some(is.read_int32()?);
+                    self.xCoOrd = is.read_int32()?;
                 },
                 16 => {
-                    self.yCoOrd = ::std::option::Option::Some(is.read_int32()?);
+                    self.yCoOrd = is.read_int32()?;
                 },
                 24 => {
-                    self.red = ::std::option::Option::Some(is.read_int32()?);
+                    self.red = is.read_int32()?;
                 },
                 32 => {
-                    self.green = ::std::option::Option::Some(is.read_int32()?);
+                    self.green = is.read_int32()?;
                 },
                 40 => {
-                    self.blue = ::std::option::Option::Some(is.read_int32()?);
+                    self.blue = is.read_int32()?;
                 },
                 48 => {
-                    self.checksum = ::std::option::Option::Some(is.read_bool()?);
+                    self.checksum = is.read_bool()?;
                 },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
@@ -894,22 +894,22 @@ impl ::protobuf::Message for DrawInstruction {
     #[allow(unused_variables)]
     fn compute_size(&self) -> u64 {
         let mut my_size = 0;
-        if let Some(v) = self.xCoOrd {
-            my_size += ::protobuf::rt::int32_size(1, v);
+        if self.xCoOrd != 0 {
+            my_size += ::protobuf::rt::int32_size(1, self.xCoOrd);
         }
-        if let Some(v) = self.yCoOrd {
-            my_size += ::protobuf::rt::int32_size(2, v);
+        if self.yCoOrd != 0 {
+            my_size += ::protobuf::rt::int32_size(2, self.yCoOrd);
         }
-        if let Some(v) = self.red {
-            my_size += ::protobuf::rt::int32_size(3, v);
+        if self.red != 0 {
+            my_size += ::protobuf::rt::int32_size(3, self.red);
         }
-        if let Some(v) = self.green {
-            my_size += ::protobuf::rt::int32_size(4, v);
+        if self.green != 0 {
+            my_size += ::protobuf::rt::int32_size(4, self.green);
         }
-        if let Some(v) = self.blue {
-            my_size += ::protobuf::rt::int32_size(5, v);
+        if self.blue != 0 {
+            my_size += ::protobuf::rt::int32_size(5, self.blue);
         }
-        if let Some(v) = self.checksum {
+        if self.checksum != false {
             my_size += 1 + 1;
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
@@ -918,23 +918,23 @@ impl ::protobuf::Message for DrawInstruction {
     }
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
-        if let Some(v) = self.xCoOrd {
-            os.write_int32(1, v)?;
+        if self.xCoOrd != 0 {
+            os.write_int32(1, self.xCoOrd)?;
         }
-        if let Some(v) = self.yCoOrd {
-            os.write_int32(2, v)?;
+        if self.yCoOrd != 0 {
+            os.write_int32(2, self.yCoOrd)?;
         }
-        if let Some(v) = self.red {
-            os.write_int32(3, v)?;
+        if self.red != 0 {
+            os.write_int32(3, self.red)?;
         }
-        if let Some(v) = self.green {
-            os.write_int32(4, v)?;
+        if self.green != 0 {
+            os.write_int32(4, self.green)?;
         }
-        if let Some(v) = self.blue {
-            os.write_int32(5, v)?;
+        if self.blue != 0 {
+            os.write_int32(5, self.blue)?;
         }
-        if let Some(v) = self.checksum {
-            os.write_bool(6, v)?;
+        if self.checksum != false {
+            os.write_bool(6, self.checksum)?;
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -953,23 +953,23 @@ impl ::protobuf::Message for DrawInstruction {
     }
 
     fn clear(&mut self) {
-        self.xCoOrd = ::std::option::Option::None;
-        self.yCoOrd = ::std::option::Option::None;
-        self.red = ::std::option::Option::None;
-        self.green = ::std::option::Option::None;
-        self.blue = ::std::option::Option::None;
-        self.checksum = ::std::option::Option::None;
+        self.xCoOrd = 0;
+        self.yCoOrd = 0;
+        self.red = 0;
+        self.green = 0;
+        self.blue = 0;
+        self.checksum = false;
         self.special_fields.clear();
     }
 
     fn default_instance() -> &'static DrawInstruction {
         static instance: DrawInstruction = DrawInstruction {
-            xCoOrd: ::std::option::Option::None,
-            yCoOrd: ::std::option::Option::None,
-            red: ::std::option::Option::None,
-            green: ::std::option::Option::None,
-            blue: ::std::option::Option::None,
-            checksum: ::std::option::Option::None,
+            xCoOrd: 0,
+            yCoOrd: 0,
+            red: 0,
+            green: 0,
+            blue: 0,
+            checksum: false,
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -998,9 +998,9 @@ impl ::protobuf::reflect::ProtobufValue for DrawInstruction {
 pub struct Light {
     // message fields
     // @@protoc_insertion_point(field:Light.lightId)
-    pub lightId: ::std::option::Option<i32>,
+    pub lightId: i32,
     // @@protoc_insertion_point(field:Light.enable)
-    pub enable: ::std::option::Option<bool>,
+    pub enable: bool,
     // special fields
     // @@protoc_insertion_point(special_field:Light.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -1020,12 +1020,12 @@ impl Light {
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
         let mut fields = ::std::vec::Vec::with_capacity(2);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
-        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "lightId",
             |m: &Light| { &m.lightId },
             |m: &mut Light| { &mut m.lightId },
         ));
-        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "enable",
             |m: &Light| { &m.enable },
             |m: &mut Light| { &mut m.enable },
@@ -1049,10 +1049,10 @@ impl ::protobuf::Message for Light {
         while let Some(tag) = is.read_raw_tag_or_eof()? {
             match tag {
                 8 => {
-                    self.lightId = ::std::option::Option::Some(is.read_int32()?);
+                    self.lightId = is.read_int32()?;
                 },
                 16 => {
-                    self.enable = ::std::option::Option::Some(is.read_bool()?);
+                    self.enable = is.read_bool()?;
                 },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
@@ -1066,10 +1066,10 @@ impl ::protobuf::Message for Light {
     #[allow(unused_variables)]
     fn compute_size(&self) -> u64 {
         let mut my_size = 0;
-        if let Some(v) = self.lightId {
-            my_size += ::protobuf::rt::int32_size(1, v);
+        if self.lightId != 0 {
+            my_size += ::protobuf::rt::int32_size(1, self.lightId);
         }
-        if let Some(v) = self.enable {
+        if self.enable != false {
             my_size += 1 + 1;
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
@@ -1078,11 +1078,11 @@ impl ::protobuf::Message for Light {
     }
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
-        if let Some(v) = self.lightId {
-            os.write_int32(1, v)?;
+        if self.lightId != 0 {
+            os.write_int32(1, self.lightId)?;
         }
-        if let Some(v) = self.enable {
-            os.write_bool(2, v)?;
+        if self.enable != false {
+            os.write_bool(2, self.enable)?;
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -1101,15 +1101,15 @@ impl ::protobuf::Message for Light {
     }
 
     fn clear(&mut self) {
-        self.lightId = ::std::option::Option::None;
-        self.enable = ::std::option::Option::None;
+        self.lightId = 0;
+        self.enable = false;
         self.special_fields.clear();
     }
 
     fn default_instance() -> &'static Light {
         static instance: Light = Light {
-            lightId: ::std::option::Option::None,
-            enable: ::std::option::Option::None,
+            lightId: 0,
+            enable: false,
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -1262,115 +1262,95 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x0b2\x06.AudioH\0R\x05audioB\t\n\x07payload\"j\n\tProjector\x12\x1f\n\
     \x06header\x18\x01\x20\x01(\x0b2\x07.HeaderR\x06header\x12<\n\x10drawIns\
     tructions\x18\x02\x20\x03(\x0b2\x10.DrawInstructionR\x10drawInstructions\
-    \"\xd9\x03\n\x06Header\x12%\n\x0bprojectorId\x18\x01\x20\x01(\x05H\0R\
-    \x0bprojectorId\x88\x01\x01\x12#\n\npointCount\x18\x02\x20\x01(\x05H\x01\
-    R\npointCount\x88\x01\x01\x12\x17\n\x04home\x18\x03\x20\x01(\x08H\x02R\
-    \x04home\x88\x01\x01\x12\x1b\n\x06enable\x18\x04\x20\x01(\x08H\x03R\x06e\
-    nable\x88\x01\x01\x122\n\x12configuration_mode\x18\x05\x20\x01(\x08H\x04\
-    R\x11configurationMode\x88\x01\x01\x12(\n\rdraw_boundary\x18\x06\x20\x01\
-    (\x08H\x05R\x0cdrawBoundary\x88\x01\x01\x12\x1d\n\x07oneshot\x18\x07\x20\
-    \x01(\x08H\x06R\x07oneshot\x88\x01\x01\x12(\n\rspeed_profile\x18\x08\x20\
-    \x01(\x05H\x07R\x0cspeedProfile\x88\x01\x01\x12\x1f\n\x08checksum\x18\t\
-    \x20\x01(\x08H\x08R\x08checksum\x88\x01\x01B\x0e\n\x0c_projectorIdB\r\n\
-    \x0b_pointCountB\x07\n\x05_homeB\t\n\x07_enableB\x15\n\x13_configuration\
-    _modeB\x10\n\x0e_draw_boundaryB\n\n\x08_oneshotB\x10\n\x0e_speed_profile\
-    B\x0b\n\t_checksum\"\xf5\x01\n\x0fDrawInstruction\x12\x1b\n\x06xCoOrd\
-    \x18\x01\x20\x01(\x05H\0R\x06xCoOrd\x88\x01\x01\x12\x1b\n\x06yCoOrd\x18\
-    \x02\x20\x01(\x05H\x01R\x06yCoOrd\x88\x01\x01\x12\x15\n\x03red\x18\x03\
-    \x20\x01(\x05H\x02R\x03red\x88\x01\x01\x12\x19\n\x05green\x18\x04\x20\
-    \x01(\x05H\x03R\x05green\x88\x01\x01\x12\x17\n\x04blue\x18\x05\x20\x01(\
-    \x05H\x04R\x04blue\x88\x01\x01\x12\x1f\n\x08checksum\x18\x06\x20\x01(\
-    \x08H\x05R\x08checksum\x88\x01\x01B\t\n\x07_xCoOrdB\t\n\x07_yCoOrdB\x06\
-    \n\x04_redB\x08\n\x06_greenB\x07\n\x05_blueB\x0b\n\t_checksum\"Z\n\x05Li\
-    ght\x12\x1d\n\x07lightId\x18\x01\x20\x01(\x05H\0R\x07lightId\x88\x01\x01\
-    \x12\x1b\n\x06enable\x18\x02\x20\x01(\x08H\x01R\x06enable\x88\x01\x01B\n\
-    \n\x08_lightIdB\t\n\x07_enable\"%\n\x05Audio\x12\x1c\n\taudioFile\x18\
-    \x01\x20\x01(\tR\taudioFileJ\xaa\r\n\x06\x12\x04\0\0)'\n\x08\n\x01\x0c\
-    \x12\x03\0\0\x12\n\n\n\x02\x04\0\x12\x04\x02\0\x08\x01\n\n\n\x03\x04\0\
-    \x01\x12\x03\x02\x08\x13\n\x0c\n\x04\x04\0\x08\0\x12\x04\x03\x02\x07\x03\
-    \n\x0c\n\x05\x04\0\x08\0\x01\x12\x03\x03\x08\x0f\n\x0b\n\x04\x04\0\x02\0\
-    \x12\x03\x04\x04\x1c\n\x0c\n\x05\x04\0\x02\0\x06\x12\x03\x04\x04\r\n\x0c\
-    \n\x05\x04\0\x02\0\x01\x12\x03\x04\x0e\x17\n\x0c\n\x05\x04\0\x02\0\x03\
-    \x12\x03\x04\x1a\x1b\n\x0b\n\x04\x04\0\x02\x01\x12\x03\x05\x04\x14\n\x0c\
-    \n\x05\x04\0\x02\x01\x06\x12\x03\x05\x04\t\n\x0c\n\x05\x04\0\x02\x01\x01\
-    \x12\x03\x05\n\x0f\n\x0c\n\x05\x04\0\x02\x01\x03\x12\x03\x05\x12\x13\n\
-    \x0b\n\x04\x04\0\x02\x02\x12\x03\x06\x04\x14\n\x0c\n\x05\x04\0\x02\x02\
-    \x06\x12\x03\x06\x04\t\n\x0c\n\x05\x04\0\x02\x02\x01\x12\x03\x06\n\x0f\n\
-    \x0c\n\x05\x04\0\x02\x02\x03\x12\x03\x06\x12\x13\n\n\n\x02\x04\x01\x12\
-    \x04\n\0\r\x01\n\n\n\x03\x04\x01\x01\x12\x03\n\x08\x11\n\x0b\n\x04\x04\
-    \x01\x02\0\x12\x03\x0b\x02\x14\n\x0c\n\x05\x04\x01\x02\0\x06\x12\x03\x0b\
-    \x02\x08\n\x0c\n\x05\x04\x01\x02\0\x01\x12\x03\x0b\t\x0f\n\x0c\n\x05\x04\
-    \x01\x02\0\x03\x12\x03\x0b\x12\x13\n\x0b\n\x04\x04\x01\x02\x01\x12\x03\
-    \x0c\x020\n\x0c\n\x05\x04\x01\x02\x01\x04\x12\x03\x0c\x02\n\n\x0c\n\x05\
-    \x04\x01\x02\x01\x06\x12\x03\x0c\x0b\x1a\n\x0c\n\x05\x04\x01\x02\x01\x01\
-    \x12\x03\x0c\x1b+\n\x0c\n\x05\x04\x01\x02\x01\x03\x12\x03\x0c./\n\n\n\
-    \x02\x04\x02\x12\x04\x0f\0\x19\x01\n\n\n\x03\x04\x02\x01\x12\x03\x0f\x08\
-    \x0e\n\x0b\n\x04\x04\x02\x02\0\x12\x03\x10\x02!\n\x0c\n\x05\x04\x02\x02\
-    \0\x04\x12\x03\x10\x02\n\n\x0c\n\x05\x04\x02\x02\0\x05\x12\x03\x10\x0b\
-    \x10\n\x0c\n\x05\x04\x02\x02\0\x01\x12\x03\x10\x11\x1c\n\x0c\n\x05\x04\
-    \x02\x02\0\x03\x12\x03\x10\x1f\x20\n\x0b\n\x04\x04\x02\x02\x01\x12\x03\
-    \x11\x02\x20\n\x0c\n\x05\x04\x02\x02\x01\x04\x12\x03\x11\x02\n\n\x0c\n\
-    \x05\x04\x02\x02\x01\x05\x12\x03\x11\x0b\x10\n\x0c\n\x05\x04\x02\x02\x01\
-    \x01\x12\x03\x11\x11\x1b\n\x0c\n\x05\x04\x02\x02\x01\x03\x12\x03\x11\x1e\
-    \x1f\n\x0b\n\x04\x04\x02\x02\x02\x12\x03\x12\x02\x19\n\x0c\n\x05\x04\x02\
-    \x02\x02\x04\x12\x03\x12\x02\n\n\x0c\n\x05\x04\x02\x02\x02\x05\x12\x03\
-    \x12\x0b\x0f\n\x0c\n\x05\x04\x02\x02\x02\x01\x12\x03\x12\x10\x14\n\x0c\n\
-    \x05\x04\x02\x02\x02\x03\x12\x03\x12\x17\x18\n\x0b\n\x04\x04\x02\x02\x03\
-    \x12\x03\x13\x02\x1b\n\x0c\n\x05\x04\x02\x02\x03\x04\x12\x03\x13\x02\n\n\
-    \x0c\n\x05\x04\x02\x02\x03\x05\x12\x03\x13\x0b\x0f\n\x0c\n\x05\x04\x02\
-    \x02\x03\x01\x12\x03\x13\x10\x16\n\x0c\n\x05\x04\x02\x02\x03\x03\x12\x03\
-    \x13\x19\x1a\n\x0b\n\x04\x04\x02\x02\x04\x12\x03\x14\x02'\n\x0c\n\x05\
-    \x04\x02\x02\x04\x04\x12\x03\x14\x02\n\n\x0c\n\x05\x04\x02\x02\x04\x05\
-    \x12\x03\x14\x0b\x0f\n\x0c\n\x05\x04\x02\x02\x04\x01\x12\x03\x14\x10\"\n\
-    \x0c\n\x05\x04\x02\x02\x04\x03\x12\x03\x14%&\n\x0b\n\x04\x04\x02\x02\x05\
-    \x12\x03\x15\x02\"\n\x0c\n\x05\x04\x02\x02\x05\x04\x12\x03\x15\x02\n\n\
-    \x0c\n\x05\x04\x02\x02\x05\x05\x12\x03\x15\x0b\x0f\n\x0c\n\x05\x04\x02\
-    \x02\x05\x01\x12\x03\x15\x10\x1d\n\x0c\n\x05\x04\x02\x02\x05\x03\x12\x03\
-    \x15\x20!\n\x0b\n\x04\x04\x02\x02\x06\x12\x03\x16\x02\x1c\n\x0c\n\x05\
-    \x04\x02\x02\x06\x04\x12\x03\x16\x02\n\n\x0c\n\x05\x04\x02\x02\x06\x05\
-    \x12\x03\x16\x0b\x0f\n\x0c\n\x05\x04\x02\x02\x06\x01\x12\x03\x16\x10\x17\
-    \n\x0c\n\x05\x04\x02\x02\x06\x03\x12\x03\x16\x1a\x1b\n\x0b\n\x04\x04\x02\
-    \x02\x07\x12\x03\x17\x02#\n\x0c\n\x05\x04\x02\x02\x07\x04\x12\x03\x17\
-    \x02\n\n\x0c\n\x05\x04\x02\x02\x07\x05\x12\x03\x17\x0b\x10\n\x0c\n\x05\
-    \x04\x02\x02\x07\x01\x12\x03\x17\x11\x1e\n\x0c\n\x05\x04\x02\x02\x07\x03\
-    \x12\x03\x17!\"\n\x0b\n\x04\x04\x02\x02\x08\x12\x03\x18\x02\x1d\n\x0c\n\
-    \x05\x04\x02\x02\x08\x04\x12\x03\x18\x02\n\n\x0c\n\x05\x04\x02\x02\x08\
-    \x05\x12\x03\x18\x0b\x0f\n\x0c\n\x05\x04\x02\x02\x08\x01\x12\x03\x18\x10\
-    \x18\n\x0c\n\x05\x04\x02\x02\x08\x03\x12\x03\x18\x1b\x1c\n\n\n\x02\x04\
-    \x03\x12\x04\x1b\0\"\x01\n\n\n\x03\x04\x03\x01\x12\x03\x1b\x08\x17\n\x0b\
-    \n\x04\x04\x03\x02\0\x12\x03\x1c\x02\x1c\n\x0c\n\x05\x04\x03\x02\0\x04\
-    \x12\x03\x1c\x02\n\n\x0c\n\x05\x04\x03\x02\0\x05\x12\x03\x1c\x0b\x10\n\
-    \x0c\n\x05\x04\x03\x02\0\x01\x12\x03\x1c\x11\x17\n\x0c\n\x05\x04\x03\x02\
-    \0\x03\x12\x03\x1c\x1a\x1b\n\x0b\n\x04\x04\x03\x02\x01\x12\x03\x1d\x02\
-    \x1c\n\x0c\n\x05\x04\x03\x02\x01\x04\x12\x03\x1d\x02\n\n\x0c\n\x05\x04\
-    \x03\x02\x01\x05\x12\x03\x1d\x0b\x10\n\x0c\n\x05\x04\x03\x02\x01\x01\x12\
-    \x03\x1d\x11\x17\n\x0c\n\x05\x04\x03\x02\x01\x03\x12\x03\x1d\x1a\x1b\n\
-    \x0b\n\x04\x04\x03\x02\x02\x12\x03\x1e\x02\x19\n\x0c\n\x05\x04\x03\x02\
-    \x02\x04\x12\x03\x1e\x02\n\n\x0c\n\x05\x04\x03\x02\x02\x05\x12\x03\x1e\
-    \x0b\x10\n\x0c\n\x05\x04\x03\x02\x02\x01\x12\x03\x1e\x11\x14\n\x0c\n\x05\
-    \x04\x03\x02\x02\x03\x12\x03\x1e\x17\x18\n\x0b\n\x04\x04\x03\x02\x03\x12\
-    \x03\x1f\x02\x1b\n\x0c\n\x05\x04\x03\x02\x03\x04\x12\x03\x1f\x02\n\n\x0c\
-    \n\x05\x04\x03\x02\x03\x05\x12\x03\x1f\x0b\x10\n\x0c\n\x05\x04\x03\x02\
-    \x03\x01\x12\x03\x1f\x11\x16\n\x0c\n\x05\x04\x03\x02\x03\x03\x12\x03\x1f\
-    \x19\x1a\n\x0b\n\x04\x04\x03\x02\x04\x12\x03\x20\x02\x1a\n\x0c\n\x05\x04\
-    \x03\x02\x04\x04\x12\x03\x20\x02\n\n\x0c\n\x05\x04\x03\x02\x04\x05\x12\
-    \x03\x20\x0b\x10\n\x0c\n\x05\x04\x03\x02\x04\x01\x12\x03\x20\x11\x15\n\
-    \x0c\n\x05\x04\x03\x02\x04\x03\x12\x03\x20\x18\x19\n\x0b\n\x04\x04\x03\
-    \x02\x05\x12\x03!\x02\x1d\n\x0c\n\x05\x04\x03\x02\x05\x04\x12\x03!\x02\n\
-    \n\x0c\n\x05\x04\x03\x02\x05\x05\x12\x03!\x0b\x0f\n\x0c\n\x05\x04\x03\
-    \x02\x05\x01\x12\x03!\x10\x18\n\x0c\n\x05\x04\x03\x02\x05\x03\x12\x03!\
-    \x1b\x1c\n\n\n\x02\x04\x04\x12\x04$\0'\x01\n\n\n\x03\x04\x04\x01\x12\x03\
-    $\x08\r\n\x0b\n\x04\x04\x04\x02\0\x12\x03%\x02\x1d\n\x0c\n\x05\x04\x04\
-    \x02\0\x04\x12\x03%\x02\n\n\x0c\n\x05\x04\x04\x02\0\x05\x12\x03%\x0b\x10\
-    \n\x0c\n\x05\x04\x04\x02\0\x01\x12\x03%\x11\x18\n\x0c\n\x05\x04\x04\x02\
-    \0\x03\x12\x03%\x1b\x1c\n\x0b\n\x04\x04\x04\x02\x01\x12\x03&\x02\x1b\n\
-    \x0c\n\x05\x04\x04\x02\x01\x04\x12\x03&\x02\n\n\x0c\n\x05\x04\x04\x02\
-    \x01\x05\x12\x03&\x0b\x0f\n\x0c\n\x05\x04\x04\x02\x01\x01\x12\x03&\x10\
-    \x16\n\x0c\n\x05\x04\x04\x02\x01\x03\x12\x03&\x19\x1a\n\t\n\x02\x04\x05\
-    \x12\x03)\0'\n\n\n\x03\x04\x05\x01\x12\x03)\x08\r\n\x0b\n\x04\x04\x05\
-    \x02\0\x12\x03)\x10%\n\x0c\n\x05\x04\x05\x02\0\x05\x12\x03)\x10\x16\n\
-    \x0c\n\x05\x04\x05\x02\0\x01\x12\x03)\x17\x20\n\x0c\n\x05\x04\x05\x02\0\
-    \x03\x12\x03)#$b\x06proto3\
+    \"\xa5\x02\n\x06Header\x12\x20\n\x0bprojectorId\x18\x01\x20\x01(\x05R\
+    \x0bprojectorId\x12\x1e\n\npointCount\x18\x02\x20\x01(\x05R\npointCount\
+    \x12\x12\n\x04home\x18\x03\x20\x01(\x08R\x04home\x12\x16\n\x06enable\x18\
+    \x04\x20\x01(\x08R\x06enable\x12-\n\x12configuration_mode\x18\x05\x20\
+    \x01(\x08R\x11configurationMode\x12#\n\rdraw_boundary\x18\x06\x20\x01(\
+    \x08R\x0cdrawBoundary\x12\x18\n\x07oneshot\x18\x07\x20\x01(\x08R\x07ones\
+    hot\x12#\n\rspeed_profile\x18\x08\x20\x01(\x05R\x0cspeedProfile\x12\x1a\
+    \n\x08checksum\x18\t\x20\x01(\x08R\x08checksum\"\x99\x01\n\x0fDrawInstru\
+    ction\x12\x16\n\x06xCoOrd\x18\x01\x20\x01(\x05R\x06xCoOrd\x12\x16\n\x06y\
+    CoOrd\x18\x02\x20\x01(\x05R\x06yCoOrd\x12\x10\n\x03red\x18\x03\x20\x01(\
+    \x05R\x03red\x12\x14\n\x05green\x18\x04\x20\x01(\x05R\x05green\x12\x12\n\
+    \x04blue\x18\x05\x20\x01(\x05R\x04blue\x12\x1a\n\x08checksum\x18\x06\x20\
+    \x01(\x08R\x08checksum\"9\n\x05Light\x12\x18\n\x07lightId\x18\x01\x20\
+    \x01(\x05R\x07lightId\x12\x16\n\x06enable\x18\x02\x20\x01(\x08R\x06enabl\
+    e\"%\n\x05Audio\x12\x1c\n\taudioFile\x18\x01\x20\x01(\tR\taudioFileJ\xbc\
+    \x0b\n\x06\x12\x04\0\0)'\n\x08\n\x01\x0c\x12\x03\0\0\x12\n\n\n\x02\x04\0\
+    \x12\x04\x02\0\x08\x01\n\n\n\x03\x04\0\x01\x12\x03\x02\x08\x13\n\x0c\n\
+    \x04\x04\0\x08\0\x12\x04\x03\x02\x07\x03\n\x0c\n\x05\x04\0\x08\0\x01\x12\
+    \x03\x03\x08\x0f\n\x0b\n\x04\x04\0\x02\0\x12\x03\x04\x04\x1c\n\x0c\n\x05\
+    \x04\0\x02\0\x06\x12\x03\x04\x04\r\n\x0c\n\x05\x04\0\x02\0\x01\x12\x03\
+    \x04\x0e\x17\n\x0c\n\x05\x04\0\x02\0\x03\x12\x03\x04\x1a\x1b\n\x0b\n\x04\
+    \x04\0\x02\x01\x12\x03\x05\x04\x14\n\x0c\n\x05\x04\0\x02\x01\x06\x12\x03\
+    \x05\x04\t\n\x0c\n\x05\x04\0\x02\x01\x01\x12\x03\x05\n\x0f\n\x0c\n\x05\
+    \x04\0\x02\x01\x03\x12\x03\x05\x12\x13\n\x0b\n\x04\x04\0\x02\x02\x12\x03\
+    \x06\x04\x14\n\x0c\n\x05\x04\0\x02\x02\x06\x12\x03\x06\x04\t\n\x0c\n\x05\
+    \x04\0\x02\x02\x01\x12\x03\x06\n\x0f\n\x0c\n\x05\x04\0\x02\x02\x03\x12\
+    \x03\x06\x12\x13\n\n\n\x02\x04\x01\x12\x04\n\0\r\x01\n\n\n\x03\x04\x01\
+    \x01\x12\x03\n\x08\x11\n\x0b\n\x04\x04\x01\x02\0\x12\x03\x0b\x02\x14\n\
+    \x0c\n\x05\x04\x01\x02\0\x06\x12\x03\x0b\x02\x08\n\x0c\n\x05\x04\x01\x02\
+    \0\x01\x12\x03\x0b\t\x0f\n\x0c\n\x05\x04\x01\x02\0\x03\x12\x03\x0b\x12\
+    \x13\n\x0b\n\x04\x04\x01\x02\x01\x12\x03\x0c\x020\n\x0c\n\x05\x04\x01\
+    \x02\x01\x04\x12\x03\x0c\x02\n\n\x0c\n\x05\x04\x01\x02\x01\x06\x12\x03\
+    \x0c\x0b\x1a\n\x0c\n\x05\x04\x01\x02\x01\x01\x12\x03\x0c\x1b+\n\x0c\n\
+    \x05\x04\x01\x02\x01\x03\x12\x03\x0c./\n\n\n\x02\x04\x02\x12\x04\x0f\0\
+    \x19\x01\n\n\n\x03\x04\x02\x01\x12\x03\x0f\x08\x0e\n\x0b\n\x04\x04\x02\
+    \x02\0\x12\x03\x10\x02\x18\n\x0c\n\x05\x04\x02\x02\0\x05\x12\x03\x10\x02\
+    \x07\n\x0c\n\x05\x04\x02\x02\0\x01\x12\x03\x10\x08\x13\n\x0c\n\x05\x04\
+    \x02\x02\0\x03\x12\x03\x10\x16\x17\n\x0b\n\x04\x04\x02\x02\x01\x12\x03\
+    \x11\x02\x17\n\x0c\n\x05\x04\x02\x02\x01\x05\x12\x03\x11\x02\x07\n\x0c\n\
+    \x05\x04\x02\x02\x01\x01\x12\x03\x11\x08\x12\n\x0c\n\x05\x04\x02\x02\x01\
+    \x03\x12\x03\x11\x15\x16\n\x0b\n\x04\x04\x02\x02\x02\x12\x03\x12\x02\x10\
+    \n\x0c\n\x05\x04\x02\x02\x02\x05\x12\x03\x12\x02\x06\n\x0c\n\x05\x04\x02\
+    \x02\x02\x01\x12\x03\x12\x07\x0b\n\x0c\n\x05\x04\x02\x02\x02\x03\x12\x03\
+    \x12\x0e\x0f\n\x0b\n\x04\x04\x02\x02\x03\x12\x03\x13\x02\x12\n\x0c\n\x05\
+    \x04\x02\x02\x03\x05\x12\x03\x13\x02\x06\n\x0c\n\x05\x04\x02\x02\x03\x01\
+    \x12\x03\x13\x07\r\n\x0c\n\x05\x04\x02\x02\x03\x03\x12\x03\x13\x10\x11\n\
+    \x0b\n\x04\x04\x02\x02\x04\x12\x03\x14\x02\x1e\n\x0c\n\x05\x04\x02\x02\
+    \x04\x05\x12\x03\x14\x02\x06\n\x0c\n\x05\x04\x02\x02\x04\x01\x12\x03\x14\
+    \x07\x19\n\x0c\n\x05\x04\x02\x02\x04\x03\x12\x03\x14\x1c\x1d\n\x0b\n\x04\
+    \x04\x02\x02\x05\x12\x03\x15\x02\x19\n\x0c\n\x05\x04\x02\x02\x05\x05\x12\
+    \x03\x15\x02\x06\n\x0c\n\x05\x04\x02\x02\x05\x01\x12\x03\x15\x07\x14\n\
+    \x0c\n\x05\x04\x02\x02\x05\x03\x12\x03\x15\x17\x18\n\x0b\n\x04\x04\x02\
+    \x02\x06\x12\x03\x16\x02\x13\n\x0c\n\x05\x04\x02\x02\x06\x05\x12\x03\x16\
+    \x02\x06\n\x0c\n\x05\x04\x02\x02\x06\x01\x12\x03\x16\x07\x0e\n\x0c\n\x05\
+    \x04\x02\x02\x06\x03\x12\x03\x16\x11\x12\n\x0b\n\x04\x04\x02\x02\x07\x12\
+    \x03\x17\x02\x1a\n\x0c\n\x05\x04\x02\x02\x07\x05\x12\x03\x17\x02\x07\n\
+    \x0c\n\x05\x04\x02\x02\x07\x01\x12\x03\x17\x08\x15\n\x0c\n\x05\x04\x02\
+    \x02\x07\x03\x12\x03\x17\x18\x19\n\x0b\n\x04\x04\x02\x02\x08\x12\x03\x18\
+    \x02\x14\n\x0c\n\x05\x04\x02\x02\x08\x05\x12\x03\x18\x02\x06\n\x0c\n\x05\
+    \x04\x02\x02\x08\x01\x12\x03\x18\x07\x0f\n\x0c\n\x05\x04\x02\x02\x08\x03\
+    \x12\x03\x18\x12\x13\n\n\n\x02\x04\x03\x12\x04\x1b\0\"\x01\n\n\n\x03\x04\
+    \x03\x01\x12\x03\x1b\x08\x17\n\x0b\n\x04\x04\x03\x02\0\x12\x03\x1c\x02\
+    \x13\n\x0c\n\x05\x04\x03\x02\0\x05\x12\x03\x1c\x02\x07\n\x0c\n\x05\x04\
+    \x03\x02\0\x01\x12\x03\x1c\x08\x0e\n\x0c\n\x05\x04\x03\x02\0\x03\x12\x03\
+    \x1c\x11\x12\n\x0b\n\x04\x04\x03\x02\x01\x12\x03\x1d\x02\x13\n\x0c\n\x05\
+    \x04\x03\x02\x01\x05\x12\x03\x1d\x02\x07\n\x0c\n\x05\x04\x03\x02\x01\x01\
+    \x12\x03\x1d\x08\x0e\n\x0c\n\x05\x04\x03\x02\x01\x03\x12\x03\x1d\x11\x12\
+    \n\x0b\n\x04\x04\x03\x02\x02\x12\x03\x1e\x02\x10\n\x0c\n\x05\x04\x03\x02\
+    \x02\x05\x12\x03\x1e\x02\x07\n\x0c\n\x05\x04\x03\x02\x02\x01\x12\x03\x1e\
+    \x08\x0b\n\x0c\n\x05\x04\x03\x02\x02\x03\x12\x03\x1e\x0e\x0f\n\x0b\n\x04\
+    \x04\x03\x02\x03\x12\x03\x1f\x02\x12\n\x0c\n\x05\x04\x03\x02\x03\x05\x12\
+    \x03\x1f\x02\x07\n\x0c\n\x05\x04\x03\x02\x03\x01\x12\x03\x1f\x08\r\n\x0c\
+    \n\x05\x04\x03\x02\x03\x03\x12\x03\x1f\x10\x11\n\x0b\n\x04\x04\x03\x02\
+    \x04\x12\x03\x20\x02\x11\n\x0c\n\x05\x04\x03\x02\x04\x05\x12\x03\x20\x02\
+    \x07\n\x0c\n\x05\x04\x03\x02\x04\x01\x12\x03\x20\x08\x0c\n\x0c\n\x05\x04\
+    \x03\x02\x04\x03\x12\x03\x20\x0f\x10\n\x0b\n\x04\x04\x03\x02\x05\x12\x03\
+    !\x02\x14\n\x0c\n\x05\x04\x03\x02\x05\x05\x12\x03!\x02\x06\n\x0c\n\x05\
+    \x04\x03\x02\x05\x01\x12\x03!\x07\x0f\n\x0c\n\x05\x04\x03\x02\x05\x03\
+    \x12\x03!\x12\x13\n\n\n\x02\x04\x04\x12\x04$\0'\x01\n\n\n\x03\x04\x04\
+    \x01\x12\x03$\x08\r\n\x0b\n\x04\x04\x04\x02\0\x12\x03%\x02\x14\n\x0c\n\
+    \x05\x04\x04\x02\0\x05\x12\x03%\x02\x07\n\x0c\n\x05\x04\x04\x02\0\x01\
+    \x12\x03%\x08\x0f\n\x0c\n\x05\x04\x04\x02\0\x03\x12\x03%\x12\x13\n\x0b\n\
+    \x04\x04\x04\x02\x01\x12\x03&\x02\x12\n\x0c\n\x05\x04\x04\x02\x01\x05\
+    \x12\x03&\x02\x06\n\x0c\n\x05\x04\x04\x02\x01\x01\x12\x03&\x07\r\n\x0c\n\
+    \x05\x04\x04\x02\x01\x03\x12\x03&\x10\x11\n\t\n\x02\x04\x05\x12\x03)\0'\
+    \n\n\n\x03\x04\x05\x01\x12\x03)\x08\r\n\x0b\n\x04\x04\x05\x02\0\x12\x03)\
+    \x10%\n\x0c\n\x05\x04\x05\x02\0\x05\x12\x03)\x10\x16\n\x0c\n\x05\x04\x05\
+    \x02\0\x01\x12\x03)\x17\x20\n\x0c\n\x05\x04\x05\x02\0\x03\x12\x03)#$b\
+    \x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file

@@ -1565,6 +1565,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "478c572c3d73181ff3c2539045f6eb99e5491218eae919370993b890cdbdd98e"
 
 [[package]]
+name = "pi-pinout"
+version = "0.1.2"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "pin-project"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1929,6 +1936,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ron"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "300a51053b1cb55c80b7a9fde4120726ddf25ca241a1cbb926626f62fb136bff"
+dependencies = [
+ "base64",
+ "bitflags",
+ "serde",
+]
+
+[[package]]
 name = "rppal"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2053,10 +2071,13 @@ dependencies = [
  "log",
  "notify",
  "packed_struct",
+ "pi-pinout",
  "protobuf",
  "rillrate",
+ "ron",
  "rppal",
  "rust-embed",
+ "serde",
  "tokio",
 ]
 

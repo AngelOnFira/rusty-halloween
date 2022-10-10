@@ -1,0 +1,10 @@
+(
+    lights: [
+        Light(
+            pin: Physical(PhysicalPin(2)),
+        ),
+        Light(
+            pin: Gpio(GpioPin(5)),
+        ),
+    ],
+)

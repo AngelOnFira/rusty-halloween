@@ -14,29 +14,29 @@ message Projector {
 }
 
 message Header {
-  optional int32 projectorId = 1;
-  optional int32 pointCount = 2;
-  optional bool home = 3;
-  optional bool enable = 4;
-  optional bool configuration_mode = 5;
-  optional bool draw_boundary = 6;
-  optional bool oneshot = 7;
-  optional int32 speed_profile = 8;
-  optional bool checksum = 9;
+  int32 projectorId = 1;
+  int32 pointCount = 2;
+  bool home = 3;
+  bool enable = 4;
+  bool configuration_mode = 5;
+  bool draw_boundary = 6;
+  bool oneshot = 7;
+  int32 speed_profile = 8;
+  bool checksum = 9;
 }
 
 message DrawInstruction {
-  optional int32 xCoOrd = 1;
-  optional int32 yCoOrd = 2;
-  optional int32 red = 3;
-  optional int32 green = 4;
-  optional int32 blue = 5;
-  optional bool checksum = 6;
+  int32 xCoOrd = 1;
+  int32 yCoOrd = 2;
+  int32 red = 3;
+  int32 green = 4;
+  int32 blue = 5;
+  bool checksum = 6;
 }
 
 message Light {
-  optional int32 lightId = 1;
-  optional bool enable = 2;
+  int32 lightId = 1;
+  bool enable = 2;
 }
 
 message Audio { string audioFile = 1; }
