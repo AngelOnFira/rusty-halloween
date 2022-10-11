@@ -58,9 +58,7 @@ impl LightController {
                     let mut light_message = PicoMessage::new();
                     light_message.payload = Some(Payload::Light(Light {
                         light_id: i as i32,
-                        // Note; light values are inverted since the physical
-                        // lights are inverted
-                        enable: !action,
+                        enable: action,
                         ..Default::default()
                     }));
 
