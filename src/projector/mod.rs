@@ -2,7 +2,6 @@ use self::pack::{DrawPack, HeaderPack};
 use crate::proto_schema::schema::Projector;
 use packed_struct::PackedStruct;
 use rppal::spi::{Bus, SlaveSelect, Spi};
-use std::error::Error;
 
 mod pack;
 
@@ -11,7 +10,7 @@ pub struct ProjectorController {
 }
 
 impl ProjectorController {
-    pub fn init() -> Result<Self, Box<dyn Error>> {
+    pub fn init() -> Result<Self, anyhow::Error> {
         // Set up SPI
         let spi = Spi::new(
             Bus::Spi0,
@@ -23,41 +22,45 @@ impl ProjectorController {
         Ok(ProjectorController { spi })
     }
 
-    pub fn send(&mut self, projector_command: Projector) -> Result<(), Box<dyn Error>> {
+    pub fn send(&mut self, projector_command: Projector) -> Result<(), anyhow::Error> {
         // Create the header from the message
         let header_command = projector_command.header;
-        // let header = HeaderPack {
-        //     projector_id: (header_command.projector_id as u8).into(),
-        //     point_count: (header_command.point_count as u8).into(),
-        //     home: header_command.home,
-        //     enable: header_command.enable,
-        //     configuration_mode: header_command.configuration_mode,
-        //     draw_boundary: header_command.draw_boundary,
-        //     oneshot: header_command.oneshot,
-        //     speed_profile: (header_command.speed_profile as u8).into(),
-        //     checksum: header_command.checksum,
-        //     ..HeaderPack::default()
-        // }
-        // .pack()?;
+        let header = HeaderPack {
+            projector_id: (header_command.projector_id as u8).into(),
+            point_count: (header_command.point_count as u8).into(),
+            home: header_command.home,
+            enable: header_command.enable,
+            configuration_mode: header_command.configuration_mode,
+            draw_boundary: header_command.draw_boundary,
+            oneshot: header_command.oneshot,
+            speed_profile: (header_command.speed_profile as u8).into(),
+            checksum: header_command.checksum,
+            ..HeaderPack::default()
+        }
+        .pack()?;
 
-        // let draw_instructions = projector_command
-        //     .draw_instructions
-        //     .iter()
-        //     .map(|draw_command| {
-        //         DrawPack {
-        //             x: (draw_command.xCoOrd as u16).into(),
-        //             y: (draw_command.yCoOrd as u16).into(),
-        //             red: (draw_command.red as u8).into(),
-        //             green: (draw_command.green as u8).into(),
-        //             blue: (draw_command.blue as u8).into(),
-        //             checksum: draw_command.checksum,
-        //             ..DrawPack::default()
-        //         }.pack()?;
-        //     })
-        //     .collect::<Vec<Result<[u8; 5], Box<dyn Error>>>>();
+        let mut draw_instructions = Vec::new();
+        for draw_command in projector_command.draw_instructions {
+            let draw_pack = DrawPack {
+                x: (draw_command.xCoOrd as u16).into(),
+                y: (draw_command.yCoOrd as u16).into(),
+                red: (draw_command.red as u8).into(),
+                green: (draw_command.green as u8).into(),
+                blue: (draw_command.blue as u8).into(),
+                checksum: draw_command.checksum,
+                ..DrawPack::default()
+            }
+            .pack()?;
+            draw_instructions.push(draw_pack);
+        }
 
         // Send the header
-        // self.spi.write(&header.pack()?)?;
+        self.spi.write(&header.pack()?)?;
+
+        // Send each draw instruction
+        for draw_pack in draw_instructions {
+            self.spi.write(&draw_pack.pack()?)?;
+        }
 
         Ok(())
     }

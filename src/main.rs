@@ -4,6 +4,7 @@ use config::Config;
 use dashboard::Dashboard;
 use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
 use log::{debug, error};
+use projector::ProjectorController;
 use proto_schema::schema::PicoMessage;
 use protobuf::Message;
 use rillrate::prime::{LiveTail, LiveTailOpts, Pulse, PulseOpts};
@@ -48,10 +49,12 @@ async fn main() -> Result<(), Error> {
 
     // Initialize the lights
     let tx_clone = tx.clone();
+    let mut light_controller = LightController::init(&config, tx_clone).await?;
 
-    #[allow(dead_code)]
-    let _lights = LightController::init(&config, tx_clone).await?;
+    // Initialize the projector
+    let mut projector_controller = ProjectorController::init()?;
 
+    // Initialize the audio
     let mut audio_manager = Audio::new();
 
     tokio::spawn(async move {
@@ -70,6 +73,8 @@ async fn main() -> Result<(), Error> {
         );
 
         while let Some(message) = rx.recv().await {
+            // TODO: Catch errors to not crash the thread
+
             // Update the pulse
             pulse.push(1);
 
@@ -89,7 +94,8 @@ async fn main() -> Result<(), Error> {
                             if light_command.light_id >= 256 {
                                 error!("Light ID {} is out of range", light_command.light_id);
                             } else {
-                                lights.set_pin(light_command.light_id as u8, light_command.enable);
+                                light_controller
+                                    .set_pin(light_command.light_id as u8, light_command.enable);
                             }
                         }
                     } else {
@@ -98,7 +104,16 @@ async fn main() -> Result<(), Error> {
                 }
                 Some(proto_schema::schema::pico_message::Payload::Projector(projector_command)) => {
                     live_tail.log_now(module_path!(), "INFO", "Projector command received");
-                    println!("Projector: {:#?}", projector_command);
+                    if cfg!(feature = "pi") {
+                        #[cfg(feature = "pi")]
+                        {
+                            if let Err(e) = projector_controller.send(projector_command) {
+                                error!("Failed to send projector command: {}", e);
+                            }
+                        }
+                    } else {
+                        error!("Projectors are not supported on this platform");
+                    }
                 }
                 None => {}
             }

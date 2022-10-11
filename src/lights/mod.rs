@@ -26,8 +26,8 @@ impl LightController {
         for (i, light) in config.lights.iter().enumerate() {
             // Turn this pin into a physical pin
             let pin = match light.pin {
-                Pin::Physical(pin) => pin,
-                Pin::Gpio(pin) => pin.into(),
+                Pin::Physical(pin) => pin.into(),
+                Pin::Gpio(pin) => pin,
                 Pin::WiringPi(pin) => pin.into(),
             };
 

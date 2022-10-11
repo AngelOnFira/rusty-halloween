@@ -15,25 +15,25 @@ use packed_struct::{prelude::*, types::bits::Bits};
 #[packed_struct(bit_numbering = "msb0")]
 pub struct HeaderPack {
     #[packed_field(bits = "0..=3")]
-    projector_id: Integer<u8, Bits<4>>,
+    pub projector_id: Integer<u8, Bits<4>>,
     #[packed_field(bits = "4..=11")]
-    point_count: Integer<u8, Bits<8>>,
+    pub point_count: Integer<u8, Bits<8>>,
     #[packed_field(bits = "12")]
-    home: bool,
+    pub home: bool,
     #[packed_field(bits = "13")]
-    enable: bool,
+    pub enable: bool,
     #[packed_field(bits = "14")]
-    configuration_mode: bool,
+    pub configuration_mode: bool,
     #[packed_field(bits = "15")]
-    draw_boundary: bool,
+    pub draw_boundary: bool,
     #[packed_field(bits = "16")]
-    oneshot: bool,
+    pub oneshot: bool,
     #[packed_field(bits = "17..=19")]
-    speed_profile: Integer<u8, Bits<3>>,
+    pub speed_profile: Integer<u8, Bits<3>>,
     #[packed_field(bits = "20..=31")]
-    _reserved: ReservedZero<packed_bits::Bits<11>>,
+    pub _reserved: ReservedZero<packed_bits::Bits<11>>,
     #[packed_field(bits = "32")]
-    checksum: bool,
+    pub checksum: bool,
 }
 
 // frame # | Bits & Definition
@@ -48,19 +48,19 @@ pub struct HeaderPack {
 #[packed_struct(bit_numbering = "msb0")]
 pub struct DrawPack {
     #[packed_field(bits = "0..=8", endian = "msb")]
-    x: Integer<u16, Bits<9>>,
+    pub x: Integer<u16, Bits<9>>,
     #[packed_field(bits = "9..=17", endian = "msb")]
-    y: Integer<u16, Bits<9>>,
+    pub y: Integer<u16, Bits<9>>,
     #[packed_field(bits = "18..=20")]
-    red: Integer<u8, Bits<3>>,
+    pub red: Integer<u8, Bits<3>>,
     #[packed_field(bits = "21..=23")]
-    green: Integer<u8, Bits<3>>,
+    pub green: Integer<u8, Bits<3>>,
     #[packed_field(bits = "24..=26")]
-    blue: Integer<u8, Bits<3>>,
+    pub blue: Integer<u8, Bits<3>>,
     #[packed_field(bits = "27..=31")]
-    _reserved: ReservedZero<packed_bits::Bits<5>>,
+    pub _reserved: ReservedZero<packed_bits::Bits<5>>,
     #[packed_field(bits = "32")]
-    checksum: bool,
+    pub checksum: bool,
 }
 
 // frame # | Bits & Definition
