@@ -1,5 +1,27 @@
 use packed_struct::{prelude::*, types::bits::Bits};
 
+/// Trait to calculate checksum before packing the struct
+pub trait CheckSum {
+    fn calculate_checksum(&self, message: [u8; 4]) -> bool {
+        let message = message
+            .iter()
+            .rev()
+            .enumerate()
+            .map(|(i, b)| (*b as u32) << (i * 8))
+            .sum::<u32>();
+
+        let mut sum = message ^ (message >> 1);
+        sum = sum ^ (sum >> 2);
+        sum = sum ^ (sum >> 4);
+        sum = sum ^ (sum >> 8);
+        sum = sum ^ (sum >> 16);
+
+        (sum & 1) == 1
+    }
+
+    fn checksum_pack(&mut self) -> [u8; 4];
+}
+
 // frame # | Bits & Definition
 // Header Mode:
 // 0       | 0xF0000000 = Projector ID
@@ -30,10 +52,17 @@ pub struct HeaderPack {
     pub oneshot: bool,
     #[packed_field(bits = "17..=19")]
     pub speed_profile: Integer<u8, Bits<3>>,
-    #[packed_field(bits = "20..=31")]
-    pub _reserved: ReservedZero<packed_bits::Bits<11>>,
-    #[packed_field(bits = "32")]
+    #[packed_field(bits = "20..=30")]
+    pub _reserved: ReservedZero<packed_bits::Bits<10>>,
+    #[packed_field(bits = "31")]
     pub checksum: bool,
+}
+
+impl CheckSum for HeaderPack {
+    fn checksum_pack(&mut self) -> [u8; 4] {
+        self.checksum = self.calculate_checksum(self.pack().unwrap());
+        self.pack().unwrap()
+    }
 }
 
 // frame # | Bits & Definition
@@ -57,10 +86,17 @@ pub struct DrawPack {
     pub green: Integer<u8, Bits<3>>,
     #[packed_field(bits = "24..=26")]
     pub blue: Integer<u8, Bits<3>>,
-    #[packed_field(bits = "27..=31")]
-    pub _reserved: ReservedZero<packed_bits::Bits<5>>,
-    #[packed_field(bits = "32")]
+    #[packed_field(bits = "27..=30")]
+    pub _reserved: ReservedZero<packed_bits::Bits<4>>,
+    #[packed_field(bits = "31")]
     pub checksum: bool,
+}
+
+impl CheckSum for DrawPack {
+    fn checksum_pack(&mut self) -> [u8; 4] {
+        self.checksum = self.calculate_checksum(self.pack().unwrap());
+        self.pack().unwrap()
+    }
 }
 
 // frame # | Bits & Definition
@@ -85,12 +121,12 @@ mod tests {
     #[test]
     fn test_header_pack_empty() -> Result<(), PackingError> {
         assert_eq!(
-            [0x00, 0x00, 0x00, 0x00, 0x00],
-            HeaderPack::default().pack()?
+            [0x00, 0x00, 0x00, 0x00],
+            HeaderPack::default().checksum_pack()
         );
 
         assert_eq!(
-            [0x00, 0x00, 0x00, 0x00, 0x00],
+            [0x00, 0x00, 0x00, 0x00],
             HeaderPack {
                 projector_id: 0.into(),
                 point_count: 0.into(),
@@ -103,7 +139,7 @@ mod tests {
                 checksum: false,
                 ..Default::default()
             }
-            .pack()?
+            .checksum_pack()
         );
 
         Ok(())
@@ -111,39 +147,109 @@ mod tests {
 
     #[test]
     fn test_header_pack() -> Result<(), PackingError> {
-        let header1 = HeaderPack {
-            projector_id: 1.into(),
-            point_count: 32.into(),
-            home: true,
-            enable: true,
-            ..HeaderPack::default()
-        };
+        assert_eq!(
+            [0x12, 0x0c, 0x00, 0x00],
+            HeaderPack {
+                projector_id: 1.into(),
+                point_count: 32.into(),
+                home: true,
+                enable: true,
+                ..HeaderPack::default()
+            }
+            .checksum_pack()
+        );
 
-        assert_eq!([0x12, 0x0c, 0x00, 0x00, 0x00], header1.pack()?);
+        assert_eq!(
+            [0x12, 0x0f, 0xF0, 0x00],
+            HeaderPack {
+                projector_id: 1.into(),
+                point_count: 32.into(),
+                home: true,
+                enable: true,
+                configuration_mode: true,
+                draw_boundary: true,
+                oneshot: true,
+                speed_profile: 7.into(),
+                ..HeaderPack::default()
+            }
+            .checksum_pack()
+        );
 
-        let header2 = HeaderPack {
-            projector_id: 1.into(),
-            point_count: 32.into(),
-            home: true,
-            enable: true,
-            configuration_mode: true,
-            draw_boundary: true,
-            oneshot: true,
-            speed_profile: 7.into(),
-            ..HeaderPack::default()
-        };
+        Ok(())
+    }
 
-        assert_eq!([0x12, 0x0f, 0xF0, 0x00, 0x00], header2.pack()?);
+    #[test]
+    fn test_header_pack_full_config() -> Result<(), PackingError> {
+        assert_eq!(
+            [0xf0, 0x00, 0x10, 0x01],
+            HeaderPack {
+                projector_id: 0xF.into(),
+                speed_profile: 1.into(),
+                ..HeaderPack::default()
+            }
+            .checksum_pack()
+        );
+
+        assert_eq!(
+            [81, 143, 144, 0],
+            HeaderPack {
+                projector_id: 5.into(),
+                point_count: 24.into(),
+                home: true,
+                enable: true,
+                configuration_mode: true,
+                draw_boundary: true,
+                oneshot: true,
+                speed_profile: 1.into(),
+                ..HeaderPack::default()
+            }
+            .checksum_pack()
+        );
+
+        assert_eq!(
+            [0x20, 0xd6, 0x10, 0x01],
+            HeaderPack {
+                projector_id: 2.into(),
+                point_count: 13.into(),
+                home: false,
+                enable: true,
+                configuration_mode: true,
+                draw_boundary: false,
+                oneshot: false,
+                speed_profile: 1.into(),
+                ..HeaderPack::default()
+            }
+            .checksum_pack()
+        );
+
+        assert_eq!(
+            [0x22, 0xb6, 0x10, 0x00],
+            HeaderPack {
+                projector_id: 2.into(),
+                point_count: 43.into(),
+                home: false,
+                enable: true,
+                configuration_mode: true,
+                draw_boundary: false,
+                oneshot: false,
+                speed_profile: 1.into(),
+                ..HeaderPack::default()
+            }
+            .checksum_pack()
+        );
 
         Ok(())
     }
 
     #[test]
     fn test_draw_pack_empty() -> Result<(), PackingError> {
-        assert_eq!([0x00, 0x00, 0x00, 0x00, 0x00], DrawPack::default().pack()?);
+        assert_eq!(
+            [0x00, 0x00, 0x00, 0x00],
+            DrawPack::default().checksum_pack()
+        );
 
         assert_eq!(
-            [0x00, 0x00, 0x00, 0x00, 0x00],
+            [0x00, 0x00, 0x00, 0x00],
             DrawPack {
                 x: 0.into(),
                 y: 0.into(),
@@ -153,7 +259,7 @@ mod tests {
                 checksum: false,
                 ..Default::default()
             }
-            .pack()?
+            .checksum_pack()
         );
 
         Ok(())
@@ -161,16 +267,18 @@ mod tests {
 
     #[test]
     fn test_draw_pack() -> Result<(), PackingError> {
-        let draw1 = DrawPack {
-            x: 122.into(),
-            y: 92.into(),
-            red: 7.into(),
-            green: 0.into(),
-            blue: 0.into(),
-            ..DrawPack::default()
-        };
-
-        assert_eq!([0x3d, 0x17, 0x38, 0x00, 0x00], draw1.pack()?);
+        assert_eq!(
+            [0x3d, 0x17, 0x38, 0x00],
+            DrawPack {
+                x: 122.into(),
+                y: 92.into(),
+                red: 7.into(),
+                green: 0.into(),
+                blue: 0.into(),
+                ..DrawPack::default()
+            }
+            .checksum_pack()
+        );
 
         Ok(())
     }

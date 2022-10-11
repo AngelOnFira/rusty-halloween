@@ -1,4 +1,5 @@
 use self::pack::{DrawPack, HeaderPack};
+use crate::projector::pack::CheckSum;
 use crate::proto_schema::schema::Projector;
 use packed_struct::PackedStruct;
 use rppal::spi::{Bus, SlaveSelect, Spi};
@@ -37,7 +38,7 @@ impl ProjectorController {
             checksum: header_command.checksum,
             ..HeaderPack::default()
         }
-        .pack()?;
+        .checksum_pack();
 
         let mut draw_instructions = Vec::new();
         for draw_command in projector_command.draw_instructions {
@@ -50,16 +51,16 @@ impl ProjectorController {
                 checksum: draw_command.checksum,
                 ..DrawPack::default()
             }
-            .pack()?;
+            .checksum_pack();
             draw_instructions.push(draw_pack);
         }
 
         // Send the header
-        self.spi.write(&header.pack()?)?;
+        self.spi.write(&header)?;
 
         // Send each draw instruction
         for draw_pack in draw_instructions {
-            self.spi.write(&draw_pack.pack()?)?;
+            self.spi.write(&draw_pack)?;
         }
 
         Ok(())
