@@ -2,17 +2,17 @@ use anyhow::Error;
 use pi_pinout::{GpioPin, PhysicalPin, WiringPiPin};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Config {
     pub lights: Vec<Light>,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Light {
     pub pin: Pin,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub enum Pin {
     Physical(PhysicalPin),
     Gpio(GpioPin),
@@ -27,6 +27,7 @@ impl Config {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
 

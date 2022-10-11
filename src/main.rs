@@ -48,7 +48,7 @@ async fn main() -> Result<(), Error> {
 
     // Initialize the lights
     let tx_clone = tx.clone();
-    let mut lights = Lights::init(&config, tx_clone).await?;
+    let _lights = Lights::init(&config, tx_clone).await?;
 
     let mut audio_manager = Audio::new();
 
@@ -77,7 +77,7 @@ async fn main() -> Result<(), Error> {
                     live_tail.log_now(module_path!(), "INFO", "Audio command received");
                     let _ = audio_manager.play_sound(&audio_command.audioFile);
                 }
-                Some(proto_schema::schema::pico_message::Payload::Light(light_command)) => {
+                Some(proto_schema::schema::pico_message::Payload::Light(_light_command)) => {
                     live_tail.log_now(module_path!(), "INFO", "Light command received");
                     if cfg!(feature = "pi") {
                         #[cfg(feature = "pi")]

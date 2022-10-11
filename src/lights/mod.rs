@@ -1,6 +1,6 @@
 use anyhow::Error;
 use log::info;
-use rillrate::prime::{Click, ClickOpts, Switch, SwitchOpts};
+use rillrate::prime::{Switch, SwitchOpts};
 use rppal::gpio::{Gpio, OutputPin};
 use tokio::sync::mpsc;
 
@@ -9,6 +9,7 @@ use crate::{
     proto_schema::schema::{pico_message::Payload, Light, PicoMessage},
 };
 
+#[allow(dead_code)]
 pub struct Lights {
     pins: Vec<OutputPin>,
     switches: Vec<Switch>,
@@ -59,7 +60,7 @@ impl Lights {
 
                     this.apply(action);
                 }
-                return Ok(());
+                Ok(())
             });
 
             switches.push(switch);
@@ -68,6 +69,7 @@ impl Lights {
         Ok(Self { pins, switches })
     }
 
+    #[allow(dead_code)]
     pub fn set_pin(&mut self, pin: u8, value: bool) {
         match value {
             true => self.pins[pin as usize].set_high(),

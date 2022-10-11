@@ -77,7 +77,6 @@ pub struct DrawPack {
 //         | 0x00000001 = Checksum
 // 4 -> n  | 0x00000000
 
-// Add tests here
 #[cfg(test)]
 mod tests {
     use super::*;

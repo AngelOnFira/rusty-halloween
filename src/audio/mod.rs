@@ -31,7 +31,7 @@ impl Audio {
     pub fn get_sound(&mut self, name: &str) -> Result<StaticSoundData, Box<dyn std::error::Error>> {
         let _sound_path = format!("src/audio/assets/{}", name);
 
-        if let Some(sound_data) = Asset::get(&name) {
+        if let Some(sound_data) = Asset::get(name) {
             let sound_player = StaticSoundData::from_cursor(
                 Cursor::new(sound_data.data),
                 StaticSoundSettings::default(),
@@ -50,7 +50,7 @@ impl Audio {
     pub fn play_sound(&mut self, name: &str) -> Result<(), Box<dyn std::error::Error>> {
         let sound_data = self.get_sound(name)?;
 
-        self.manager.play(sound_data.clone())?;
+        self.manager.play(sound_data)?;
 
         Ok(())
     }
