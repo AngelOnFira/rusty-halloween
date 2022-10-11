@@ -20,7 +20,11 @@ struct Asset;
 
 impl Audio {
     pub fn new() -> Self {
-        let manager = AudioManager::<CpalBackend>::new(AudioManagerSettings::default()).unwrap();
+        // TODO: Gracefully handle audio not being available
+        let manager = AudioManager::<CpalBackend>::new(AudioManagerSettings::default()).expect(
+            "Could not load the audio driver! Likely you need to start the code with sudo.",
+        );
+        
         let sound_data = HashMap::new();
         Self {
             manager,

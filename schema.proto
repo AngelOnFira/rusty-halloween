@@ -10,12 +10,12 @@ message picoMessage {
 
 message Projector {
   Header header = 1;
-  repeated DrawInstruction drawInstructions = 2;
+  repeated DrawInstruction draw_instructions = 2;
 }
 
 message Header {
-  int32 projectorId = 1;
-  int32 pointCount = 2;
+  int32 projector_id = 1;
+  int32 point_count = 2;
   bool home = 3;
   bool enable = 4;
   bool configuration_mode = 5;
@@ -35,8 +35,8 @@ message DrawInstruction {
 }
 
 message Light {
-  int32 lightId = 1;
+  int32 light_id = 1;
   bool enable = 2;
 }
 
-message Audio { string audioFile = 1; }
+message Audio { string audio_file = 1; }

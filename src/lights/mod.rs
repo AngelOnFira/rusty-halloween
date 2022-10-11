@@ -10,12 +10,12 @@ use crate::{
 };
 
 #[allow(dead_code)]
-pub struct Lights {
+pub struct LightController {
     pins: Vec<OutputPin>,
     switches: Vec<Switch>,
 }
 
-impl Lights {
+impl LightController {
     pub async fn init(
         config: &Config,
         message_queue: mpsc::Sender<PicoMessage>,
@@ -35,7 +35,13 @@ impl Lights {
 
             // Only initialize GPIO if the Pi feature is enabled
             if cfg!(feature = "pi") {
-                let pin = Gpio::new()?.get(pin.0).unwrap().into_output();
+                let mut pin = Gpio::new()?.get(pin.0).unwrap().into_output();
+
+                // Turn the light off
+                // Note; light values are inverted since the physical lights are inverted
+                pin.set_high();
+
+                // Add the pin to the list
                 pins.push(pin);
             }
 
@@ -51,8 +57,10 @@ impl Lights {
                 if let Some(action) = envelope.action {
                     let mut light_message = PicoMessage::new();
                     light_message.payload = Some(Payload::Light(Light {
-                        lightId: i as i32,
-                        enable: action,
+                        light_id: i as i32,
+                        // Note; light values are inverted since the physical
+                        // lights are inverted
+                        enable: !action,
                         ..Default::default()
                     }));
 
@@ -71,9 +79,10 @@ impl Lights {
 
     #[allow(dead_code)]
     pub fn set_pin(&mut self, pin: u8, value: bool) {
+        // Note; light values are inverted since the physical lights are inverted
         match value {
-            true => self.pins[pin as usize].set_high(),
-            false => self.pins[pin as usize].set_low(),
+            true => self.pins[pin as usize].set_low(),
+            false => self.pins[pin as usize].set_high(),
         }
     }
 }

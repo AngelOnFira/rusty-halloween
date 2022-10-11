@@ -17,7 +17,7 @@ mod pico;
 mod projector;
 mod proto_schema;
 
-use lights::Lights;
+use lights::LightController;
 mod lights;
 
 fn handle_error(conn: io::Result<LocalSocketStream>) -> Option<LocalSocketStream> {
@@ -48,7 +48,9 @@ async fn main() -> Result<(), Error> {
 
     // Initialize the lights
     let tx_clone = tx.clone();
-    let _lights = Lights::init(&config, tx_clone).await?;
+
+    #[allow(dead_code)]
+    let _lights = LightController::init(&config, tx_clone).await?;
 
     let mut audio_manager = Audio::new();
 
@@ -75,19 +77,19 @@ async fn main() -> Result<(), Error> {
             match message.payload {
                 Some(proto_schema::schema::pico_message::Payload::Audio(audio_command)) => {
                     live_tail.log_now(module_path!(), "INFO", "Audio command received");
-                    let _ = audio_manager.play_sound(&audio_command.audioFile);
+                    let _ = audio_manager.play_sound(&audio_command.audio_file);
                 }
-                Some(proto_schema::schema::pico_message::Payload::Light(_light_command)) => {
+                Some(proto_schema::schema::pico_message::Payload::Light(light_command)) => {
                     live_tail.log_now(module_path!(), "INFO", "Light command received");
                     if cfg!(feature = "pi") {
                         #[cfg(feature = "pi")]
                         {
                             // If the light ID is out of range of a u8, print an
                             // error
-                            if light_command.lightId >= 256 {
-                                error!("Light ID {} is out of range", light_command.lightId);
+                            if light_command.light_id >= 256 {
+                                error!("Light ID {} is out of range", light_command.light_id);
                             } else {
-                                lights.set_pin(light_command.lightId as u8, light_command.enable);
+                                lights.set_pin(light_command.light_id as u8, light_command.enable);
                             }
                         }
                     } else {
