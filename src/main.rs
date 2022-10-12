@@ -14,7 +14,6 @@ use tokio::sync::mpsc;
 mod audio;
 mod config;
 mod dashboard;
-mod pico;
 mod projector;
 mod proto_schema;
 
