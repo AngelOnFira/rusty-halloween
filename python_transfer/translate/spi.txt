@@ -1,0 +1,187 @@
+message[0] = 0x11;
+message[1] = 0xd4;
+message[2] = 0x00;
+message[3] = 0x00;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x0c;
+message[1] = 0x86;
+message[2] = 0x78;
+message[3] = 0x01;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x0c;
+message[1] = 0xb8;
+message[2] = 0x78;
+message[3] = 0x00;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x0c;
+message[1] = 0x9e;
+message[2] = 0x38;
+message[3] = 0x00;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x1b;
+message[1] = 0x97;
+message[2] = 0xf8;
+message[3] = 0x00;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x1b;
+message[1] = 0x86;
+message[2] = 0x78;
+message[3] = 0x01;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x1b;
+message[1] = 0xb7;
+message[2] = 0x38;
+message[3] = 0x01;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x2f;
+message[1] = 0x92;
+message[2] = 0xf8;
+message[3] = 0x01;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x23;
+message[1] = 0x16;
+message[2] = 0xb8;
+message[3] = 0x00;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x23;
+message[1] = 0x32;
+message[2] = 0x38;
+message[3] = 0x01;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x2d;
+message[1] = 0x2e;
+message[2] = 0x78;
+message[3] = 0x00;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x2f;
+message[1] = 0x8d;
+message[2] = 0xf8;
+message[3] = 0x00;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x37;
+message[1] = 0x11;
+message[2] = 0xb8;
+message[3] = 0x01;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x37;
+message[1] = 0x43;
+message[2] = 0xb8;
+message[3] = 0x00;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x37;
+message[1] = 0x2b;
+message[2] = 0xf8;
+message[3] = 0x00;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x41;
+message[1] = 0x25;
+message[2] = 0xb8;
+message[3] = 0x01;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x41;
+message[1] = 0x11;
+message[2] = 0xb8;
+message[3] = 0x00;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x37;
+message[1] = 0x12;
+message[2] = 0xf8;
+message[3] = 0x00;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x48;
+message[1] = 0x8f;
+message[2] = 0x38;
+message[3] = 0x00;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x48;
+message[1] = 0xc1;
+message[2] = 0x38;
+message[3] = 0x00;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x48;
+message[1] = 0xa9;
+message[2] = 0x78;
+message[3] = 0x00;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x55;
+message[1] = 0x24;
+message[2] = 0x78;
+message[3] = 0x00;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x55;
+message[1] = 0x0d;
+message[2] = 0xf8;
+message[3] = 0x00;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x48;
+message[1] = 0x90;
+message[2] = 0x78;
+message[3] = 0x00;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x5c;
+message[1] = 0x8c;
+message[2] = 0xb8;
+message[3] = 0x01;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x5c;
+message[1] = 0xa1;
+message[2] = 0xf8;
+message[3] = 0x00;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x64;
+message[1] = 0x1f;
+message[2] = 0x78;
+message[3] = 0x00;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x64;
+message[1] = 0x0c;
+message[2] = 0xb8;
+message[3] = 0x01;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x64;
+message[1] = 0x33;
+message[2] = 0x78;
+message[3] = 0x01;
+spiXfer(fd, 115200, message, NULL, 4);
+
+message[0] = 0x5f;
+message[1] = 0x39;
+message[2] = 0xb8;
+message[3] = 0x00;
+spiXfer(fd, 115200, message, NULL, 4);
+
+for(int i=0; i<21; i++){
+    message[0] = 0x00;
+    message[1] = 0x00;
+    message[2] = 0x00;
+    message[3] = 0x00;
+    spiXfer(fd, 115200, message, NULL, 4);
+}

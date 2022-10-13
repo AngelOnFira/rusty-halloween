@@ -1,5 +1,6 @@
 use std::{collections::HashMap, io::Cursor};
 
+use anyhow::Error;
 use kira::{
     manager::{backend::cpal::CpalBackend, AudioManager, AudioManagerSettings},
     sound::{
@@ -16,26 +17,24 @@ pub struct Audio {
 
 #[derive(RustEmbed)]
 #[folder = "src/audio/assets"]
-struct Asset;
+struct AudioAsset;
 
 impl Audio {
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self, Error> {
         // TODO: Gracefully handle audio not being available
-        let manager = AudioManager::<CpalBackend>::new(AudioManagerSettings::default()).expect(
-            "Could not load the audio driver! Likely you need to start the code with sudo.",
-        );
+        let manager = AudioManager::<CpalBackend>::new(AudioManagerSettings::default())?;
 
         let sound_data = HashMap::new();
-        Self {
+        Ok(Self {
             manager,
             _sound_data: sound_data,
-        }
+        })
     }
 
     pub fn get_sound(&mut self, name: &str) -> Result<StaticSoundData, Box<dyn std::error::Error>> {
         let _sound_path = format!("src/audio/assets/{}", name);
 
-        if let Some(sound_data) = Asset::get(name) {
+        if let Some(sound_data) = AudioAsset::get(name) {
             let sound_player = StaticSoundData::from_cursor(
                 Cursor::new(sound_data.data),
                 StaticSoundSettings::default(),

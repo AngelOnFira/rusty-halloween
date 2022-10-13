@@ -81,7 +81,14 @@ async fn main() -> Result<(), Error> {
             match message.payload {
                 Some(proto_schema::schema::pico_message::Payload::Audio(audio_command)) => {
                     live_tail.log_now(module_path!(), "INFO", "Audio command received");
-                    let _ = audio_manager.play_sound(&audio_command.audio_file);
+                    match audio_manager {
+                        Ok(ref mut audio_manager) => {
+                            audio_manager.play_sound(&audio_command.audio_file).unwrap();
+                        }
+                        Err(_) => {
+                            live_tail.log_now(module_path!(), "ERROR", "Audio manager not initialized");
+                        }
+                    }
                 }
                 Some(proto_schema::schema::pico_message::Payload::Light(light_command)) => {
                     live_tail.log_now(module_path!(), "INFO", "Light command received");

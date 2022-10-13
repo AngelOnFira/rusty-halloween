@@ -3,12 +3,8 @@ use packed_struct::{prelude::*, types::bits::Bits};
 /// Trait to calculate checksum before packing the struct
 pub trait CheckSum {
     fn calculate_checksum(&self, message: [u8; 4]) -> bool {
-        let message = message
-            .iter()
-            .rev()
-            .enumerate()
-            .map(|(i, b)| (*b as u32) << (i * 8))
-            .sum::<u32>();
+        // TODO: Make sure this is correct, it could be big endien
+        let message = u32::from_le_bytes(message);
 
         let mut sum = message ^ (message >> 1);
         sum = sum ^ (sum >> 2);
