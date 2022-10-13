@@ -30,11 +30,13 @@ fn handle_error(conn: io::Result<LocalSocketStream>) -> Option<LocalSocketStream
     }
 }
 
-enum InternalMessage {
+#[derive(PartialEq, Clone, Debug)]
+pub enum InternalMessage {
     Vision { vision_file: String },
 }
 
-enum MessageKind {
+#[derive(PartialEq, Clone, Debug)]
+pub enum MessageKind {
     ExternalMessage(PicoMessage),
     InternalMessage(InternalMessage),
 }
@@ -44,8 +46,11 @@ async fn main() -> Result<(), Error> {
     // Load the config file
     let config = Config::load()?;
 
-    // Make sure the socket is removed if the program exits
-    std::fs::remove_file("/tmp/pico.sock").ok();
+    // Make sure the socket is removed if the program exits, check if the file
+    // exists first
+    if std::path::Path::new("/tmp/pico.sock").exists() {
+        std::fs::remove_file("/tmp/pico.sock")?;
+    }
 
     let listener = LocalSocketListener::bind("/tmp/pico.sock")?;
 
@@ -179,7 +184,10 @@ async fn main() -> Result<(), Error> {
         debug!("{:#?}", proto);
 
         // Add the message to the queue
-        tx_clone.send(proto).await.unwrap();
+        tx_clone
+            .send(MessageKind::ExternalMessage(proto))
+            .await
+            .unwrap();
 
         // Translate it to the projector protocol
     }
