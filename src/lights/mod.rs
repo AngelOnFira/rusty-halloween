@@ -6,7 +6,7 @@ use tokio::sync::mpsc;
 
 use crate::{
     config::{Config, Pin},
-    proto_schema::schema::{pico_message::Payload, Light, PicoMessage},
+    proto_schema::schema::{pico_message::Payload, Light, PicoMessage}, MessageKind,
 };
 
 #[allow(dead_code)]
@@ -18,7 +18,7 @@ pub struct LightController {
 impl LightController {
     pub async fn init(
         config: &Config,
-        message_queue: mpsc::Sender<PicoMessage>,
+        message_queue: mpsc::Sender<MessageKind>,
     ) -> Result<Self, Error> {
         let mut pins = Vec::new();
         let mut switches = Vec::new();
@@ -62,7 +62,7 @@ impl LightController {
                         ..Default::default()
                     }));
 
-                    message_queue_clone.blocking_send(light_message)?;
+                    message_queue_clone.blocking_send(MessageKind::ExternalMessage(light_message))?;
 
                     this.apply(action);
                 }

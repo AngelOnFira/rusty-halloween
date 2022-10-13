@@ -30,6 +30,15 @@ fn handle_error(conn: io::Result<LocalSocketStream>) -> Option<LocalSocketStream
     }
 }
 
+enum InternalMessage {
+    Vision { vision_file: String },
+}
+
+enum MessageKind {
+    ExternalMessage(PicoMessage),
+    InternalMessage(InternalMessage),
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     // Load the config file
@@ -51,7 +60,8 @@ async fn main() -> Result<(), Error> {
     let mut light_controller = LightController::init(&config, tx_clone).await?;
 
     // Initialize the projector
-    let mut projector_controller = ProjectorController::init()?;
+    let tx_clone = tx.clone();
+    let mut projector_controller = ProjectorController::init(tx_clone)?;
 
     // Initialize the audio
     let mut audio_manager = Audio::new();
@@ -78,50 +88,78 @@ async fn main() -> Result<(), Error> {
             pulse.push(1);
 
             // Handle the message
-            match message.payload {
-                Some(proto_schema::schema::pico_message::Payload::Audio(audio_command)) => {
-                    live_tail.log_now(module_path!(), "INFO", "Audio command received");
-                    match audio_manager {
-                        Ok(ref mut audio_manager) => {
-                            audio_manager.play_sound(&audio_command.audio_file).unwrap();
-                        }
-                        Err(_) => {
-                            live_tail.log_now(module_path!(), "ERROR", "Audio manager not initialized");
+            match message {
+                MessageKind::InternalMessage(internal_message) => match internal_message {
+                    InternalMessage::Vision { vision_file } => {
+                        live_tail.log_now(module_path!(), "INFO", "Vision command received");
+                        if cfg!(feature = "pi") {
+                            #[cfg(feature = "pi")]
+                            {
+                                if let Err(e) = projector_controller.send_file(vision_file) {
+                                    error!("Failed to send projector command: {}", e);
+                                }
+                            }
+                        } else {
+                            error!("Projectors are not supported on this platform");
                         }
                     }
-                }
-                Some(proto_schema::schema::pico_message::Payload::Light(light_command)) => {
-                    live_tail.log_now(module_path!(), "INFO", "Light command received");
-                    if cfg!(feature = "pi") {
-                        #[cfg(feature = "pi")]
-                        {
-                            // If the light ID is out of range of a u8, print an
-                            // error
-                            if light_command.light_id >= 256 {
-                                error!("Light ID {} is out of range", light_command.light_id);
-                            } else {
-                                light_controller
-                                    .set_pin(light_command.light_id as u8, light_command.enable);
+                },
+                MessageKind::ExternalMessage(external_message) => match external_message.payload {
+                    Some(proto_schema::schema::pico_message::Payload::Audio(audio_command)) => {
+                        live_tail.log_now(module_path!(), "INFO", "Audio command received");
+                        match audio_manager {
+                            Ok(ref mut audio_manager) => {
+                                audio_manager.play_sound(&audio_command.audio_file).unwrap();
+                            }
+                            Err(_) => {
+                                live_tail.log_now(
+                                    module_path!(),
+                                    "ERROR",
+                                    "Audio manager not initialized",
+                                );
                             }
                         }
-                    } else {
-                        error!("Lights are not supported on this platform");
                     }
-                }
-                Some(proto_schema::schema::pico_message::Payload::Projector(projector_command)) => {
-                    live_tail.log_now(module_path!(), "INFO", "Projector command received");
-                    if cfg!(feature = "pi") {
-                        #[cfg(feature = "pi")]
-                        {
-                            if let Err(e) = projector_controller.send(projector_command) {
-                                error!("Failed to send projector command: {}", e);
+                    Some(proto_schema::schema::pico_message::Payload::Light(light_command)) => {
+                        live_tail.log_now(module_path!(), "INFO", "Light command received");
+                        if cfg!(feature = "pi") {
+                            #[cfg(feature = "pi")]
+                            {
+                                // If the light ID is out of range of a u8, print an
+                                // error
+                                if light_command.light_id >= 256 {
+                                    error!("Light ID {} is out of range", light_command.light_id);
+                                } else {
+                                    light_controller.set_pin(
+                                        light_command.light_id as u8,
+                                        light_command.enable,
+                                    );
+                                }
                             }
+                        } else {
+                            error!("Lights are not supported on this platform");
                         }
-                    } else {
-                        error!("Projectors are not supported on this platform");
                     }
-                }
-                None => {}
+                    Some(proto_schema::schema::pico_message::Payload::Projector(
+                        projector_command,
+                    )) => {
+                        live_tail.log_now(module_path!(), "INFO", "Projector command received");
+                        if cfg!(feature = "pi") {
+                            #[cfg(feature = "pi")]
+                            {
+                                if let Err(e) =
+                                    projector_controller.projector_to_frames(projector_command)
+                                {
+                                    error!("Failed to send projector command: {}", e);
+                                }
+                            }
+                        } else {
+                            error!("Projectors are not supported on this platform");
+                        }
+                    }
+
+                    None => {}
+                },
             }
         }
     });

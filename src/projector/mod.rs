@@ -1,10 +1,12 @@
 use self::pack::{DrawPack, HeaderPack};
-use crate::projector::pack::CheckSum;
+use crate::proto_schema::schema::pico_message::Payload;
+use crate::{projector::pack::CheckSum, proto_schema::schema::PicoMessage};
 use crate::proto_schema::schema::Projector;
 use packed_struct::PackedStruct;
 use rillrate::prime::{Click, ClickOpts};
 use rppal::spi::{Bus, SlaveSelect, Spi};
 use rust_embed::RustEmbed;
+use tokio::sync::mpsc;
 
 mod pack;
 
@@ -24,7 +26,7 @@ pub struct MessageSendPack {
 struct VisionAsset;
 
 impl ProjectorController {
-    pub fn init() -> Result<Self, anyhow::Error> {
+    pub fn init( message_queue: mpsc::Sender<MessageKind>,) -> Result<Self, anyhow::Error> {
         // Set up SPI
         let spi = Spi::new(
             Bus::Spi0,
@@ -48,9 +50,8 @@ impl ProjectorController {
                     this.apply();
                     
                     let mut light_message = PicoMessage::new();
-                    light_message.payload = Some(Payload::Light(Light {
-                        light_id: i as i32,
-                        enable: action,
+                    light_message.payload = Some(Payload::Light(Vision {
+                        vision
                         ..Default::default()
                     }));
 
