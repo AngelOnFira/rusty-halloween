@@ -62,7 +62,8 @@ async fn main() -> Result<(), Error> {
 
     // Initialize the lights
     let tx_clone = tx.clone();
-    let _light_controller = LightController::init(&config, tx_clone).await?;
+    #[allow(unused_variables)]
+    let light_controller = LightController::init(&config, tx_clone).await?;
 
     // Initialize the projector
     let tx_clone = tx.clone();
@@ -126,7 +127,8 @@ async fn main() -> Result<(), Error> {
                             }
                         }
                     }
-                    Some(proto_schema::schema::pico_message::Payload::Light(_light_command)) => {
+                    #[allow(unused_variables)]
+                    Some(proto_schema::schema::pico_message::Payload::Light(light_command)) => {
                         live_tail.log_now(module_path!(), "INFO", "Light command received");
                         if cfg!(feature = "pi") {
                             #[cfg(feature = "pi")]
@@ -146,15 +148,16 @@ async fn main() -> Result<(), Error> {
                             error!("Lights are not supported on this platform");
                         }
                     }
+                    #[allow(unused_variables)]
                     Some(proto_schema::schema::pico_message::Payload::Projector(
-                        _projector_command,
+                        projector_command,
                     )) => {
                         live_tail.log_now(module_path!(), "INFO", "Projector command received");
                         if cfg!(feature = "pi") {
                             #[cfg(feature = "pi")]
                             {
                                 if let Err(e) =
-                                    projector_controller.projector_to_frames(_projector_command)
+                                    projector_controller.projector_to_frames(projector_command)
                                 {
                                     error!("Failed to send projector command: {}", e);
                                 }
