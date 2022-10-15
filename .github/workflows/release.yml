@@ -26,11 +26,8 @@ jobs:
       - name: Bump version
         id: bump_version
         run: |
-          git status
           cargo install cargo-bump
-          git status
           cargo bump --git-tag
-          git status
           echo "tag=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
 
       - uses: EndBug/add-and-commit@v9
