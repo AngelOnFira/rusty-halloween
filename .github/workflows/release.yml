@@ -24,6 +24,8 @@ jobs:
       - name: Bump version
         id: bump_version
         run: |
+          git config --global user.email "forestkzanderson@gmail.com"
+          git config --global user.name "Forest Anderson"
           cargo install cargo-bump
           cargo bump --git-tag
           echo "tag=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
