@@ -1,0 +1,41 @@
+on: [workflow_dispatch]
+
+name: Release
+
+jobs:
+  linux_arm7:
+    name: Linux ARMv7
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          target: armv7-unknown-linux-gnueabihf
+          override: true
+
+      # - uses: actions-rs/cargo@v1
+      #   with:
+      #     use-cross: true
+      #     command: build
+      #     args: --target armv7-unknown-linux-gnueabihf --release --features pi
+
+      - name: Bump version
+        id: bump_version
+        run: |
+          cargo install cargo-bump
+          cargo bump --git-tag
+          echo "tag=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
+
+      - uses: EndBug/add-and-commit@v9
+        with:
+          default_author: github_actions
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          prerelease: true
+          generate_release_notes: true
+          tag_name: ${{ steps.bump_version.outputs.tag )}}
+          files: target/armv7-unknown-linux-gnueabihf/release/rusty-halloween
