@@ -4,7 +4,7 @@ use anyhow::Error;
 
 use tokio::sync::mpsc::{self};
 
-use crate::{MessageKind};
+use crate::MessageKind;
 
 pub struct Dashboard {}
 
