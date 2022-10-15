@@ -4,7 +4,7 @@ use anyhow::Error;
 
 use tokio::sync::mpsc::{self};
 
-use crate::{proto_schema::schema::PicoMessage, MessageKind};
+use crate::{MessageKind};
 
 pub struct Dashboard {}
 

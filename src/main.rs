@@ -62,11 +62,11 @@ async fn main() -> Result<(), Error> {
 
     // Initialize the lights
     let tx_clone = tx.clone();
-    let mut light_controller = LightController::init(&config, tx_clone).await?;
+    let _light_controller = LightController::init(&config, tx_clone).await?;
 
     // Initialize the projector
     let tx_clone = tx.clone();
-    let mut projector_controller = ProjectorController::init(tx_clone)?;
+    let _projector_controller = ProjectorController::init(tx_clone)?;
 
     // Initialize the audio
     let mut audio_manager = Audio::new();
@@ -95,7 +95,7 @@ async fn main() -> Result<(), Error> {
             // Handle the message
             match message {
                 MessageKind::InternalMessage(internal_message) => match internal_message {
-                    InternalMessage::Vision { vision_file } => {
+                    InternalMessage::Vision { vision_file: _ } => {
                         live_tail.log_now(module_path!(), "INFO", "Vision command received");
                         if cfg!(feature = "pi") {
                             #[cfg(feature = "pi")]
@@ -125,7 +125,7 @@ async fn main() -> Result<(), Error> {
                             }
                         }
                     }
-                    Some(proto_schema::schema::pico_message::Payload::Light(light_command)) => {
+                    Some(proto_schema::schema::pico_message::Payload::Light(_light_command)) => {
                         live_tail.log_now(module_path!(), "INFO", "Light command received");
                         if cfg!(feature = "pi") {
                             #[cfg(feature = "pi")]
@@ -146,7 +146,7 @@ async fn main() -> Result<(), Error> {
                         }
                     }
                     Some(proto_schema::schema::pico_message::Payload::Projector(
-                        projector_command,
+                        _projector_command,
                     )) => {
                         live_tail.log_now(module_path!(), "INFO", "Projector command received");
                         if cfg!(feature = "pi") {

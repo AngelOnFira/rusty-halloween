@@ -30,7 +30,7 @@ impl LightController {
         config: &Config,
         message_queue: mpsc::Sender<MessageKind>,
     ) -> Result<Self, Error> {
-        let mut pins = Vec::new();
+        let pins = Vec::new();
         let mut switches = Vec::new();
 
         for (i, light) in config.lights.iter().enumerate() {
@@ -88,7 +88,7 @@ impl LightController {
     }
 
     #[allow(dead_code)]
-    pub fn set_pin(&mut self, pin: u8, value: bool) {
+    pub fn set_pin(&mut self, _pin: u8, _value: bool) {
         // Note; light values are inverted since the physical lights are inverted
         #[cfg(feature = "pi")]
         match value {

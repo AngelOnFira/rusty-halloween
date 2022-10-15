@@ -112,7 +112,7 @@ impl CheckSum for DrawPack {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use packed_struct::PackedStruct;
+    
 
     #[test]
     fn test_header_pack_empty() -> Result<(), PackingError> {

@@ -1,9 +1,11 @@
+use std::path::Path;
+
 use self::pack::{DrawPack, HeaderPack};
-use crate::proto_schema::schema::pico_message::Payload;
+
+use crate::projector::pack::CheckSum;
 use crate::proto_schema::schema::Projector;
-use crate::{projector::pack::CheckSum, proto_schema::schema::PicoMessage};
 use crate::{InternalMessage, MessageKind};
-use packed_struct::PackedStruct;
+
 use rillrate::prime::{Click, ClickOpts};
 use rust_embed::RustEmbed;
 use tokio::sync::mpsc;
@@ -16,6 +18,7 @@ mod pack;
 pub struct ProjectorController {
     #[cfg(feature = "pi")]
     pub spi: Spi,
+    clicks: Vec<Click>,
 }
 
 type Frame = [u8; 4];
@@ -40,11 +43,20 @@ impl ProjectorController {
             rppal::spi::Mode::Mode0,
         )?;
 
+        let mut clicks = Vec::new();
+
         // Load each vision
         for vision in VisionAsset::iter() {
             let click = Click::new(
-                format!("app.dashboard.Visions.Vision-{}", vision),
-                ClickOpts::default().label("Click Me!"),
+                format!(
+                    "app.dashboard.Visions.{}",
+                    Path::new(&vision.to_string())
+                        .file_stem()
+                        .unwrap()
+                        .to_str()
+                        .unwrap()
+                ),
+                ClickOpts::default().label("Play"),
             );
 
             let this = click.clone();
@@ -63,11 +75,14 @@ impl ProjectorController {
                 }
                 Ok(())
             });
+
+            clicks.push(click);
         }
 
         Ok(ProjectorController {
             #[cfg(feature = "pi")]
             spi,
+            clicks,
         })
     }
 
@@ -119,7 +134,7 @@ impl ProjectorController {
 
     pub fn send_projector(
         &mut self,
-        projector_command: MessageSendPack,
+        _projector_command: MessageSendPack,
     ) -> Result<(), anyhow::Error> {
         #[cfg(feature = "pi")]
         {
@@ -143,7 +158,7 @@ impl ProjectorController {
     pub fn send_file(&mut self, file_path: &str) -> Result<(), anyhow::Error> {
         let file_string = std::fs::read_to_string(file_path)?;
 
-        let frames = file_string
+        let _frames = file_string
             .lines()
             .map(|s| u32::to_be_bytes(u32::from_str_radix(s, 16).unwrap()))
             .collect::<Vec<[u8; 4]>>();
