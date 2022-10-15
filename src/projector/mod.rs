@@ -18,6 +18,7 @@ mod pack;
 pub struct ProjectorController {
     #[cfg(feature = "pi")]
     pub spi: Spi,
+    #[allow(dead_code)]
     clicks: Vec<Click>,
 }
 
@@ -86,6 +87,7 @@ impl ProjectorController {
         })
     }
 
+    #[allow(dead_code)]
     pub fn projector_to_frames(
         &mut self,
         projector_command: Projector,
@@ -132,9 +134,10 @@ impl ProjectorController {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn send_projector(
         &mut self,
-        _projector_command: MessageSendPack,
+        #[allow(unused_variables)] projector_command: MessageSendPack,
     ) -> Result<(), anyhow::Error> {
         #[cfg(feature = "pi")]
         {
@@ -155,10 +158,12 @@ impl ProjectorController {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn send_file(&mut self, file_path: &str) -> Result<(), anyhow::Error> {
         let file_string = std::fs::read_to_string(file_path)?;
 
-        let _frames = file_string
+        #[allow(unused_variables)]
+        let frames = file_string
             .lines()
             .map(|s| u32::to_be_bytes(u32::from_str_radix(s, 16).unwrap()))
             .collect::<Vec<[u8; 4]>>();

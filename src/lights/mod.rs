@@ -20,6 +20,7 @@ pub struct LightController {
 }
 
 #[cfg(not(feature = "pi"))]
+#[allow(dead_code)]
 pub struct LightController {
     pins: Vec<()>,
     switches: Vec<Switch>,

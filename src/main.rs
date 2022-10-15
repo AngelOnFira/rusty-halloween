@@ -66,7 +66,8 @@ async fn main() -> Result<(), Error> {
 
     // Initialize the projector
     let tx_clone = tx.clone();
-    let _projector_controller = ProjectorController::init(tx_clone)?;
+    #[allow(unused_variables)]
+    let projector_controller = ProjectorController::init(tx_clone)?;
 
     // Initialize the audio
     let mut audio_manager = Audio::new();
@@ -153,7 +154,7 @@ async fn main() -> Result<(), Error> {
                             #[cfg(feature = "pi")]
                             {
                                 if let Err(e) =
-                                    projector_controller.projector_to_frames(projector_command)
+                                    projector_controller.projector_to_frames(_projector_command)
                                 {
                                     error!("Failed to send projector command: {}", e);
                                 }
