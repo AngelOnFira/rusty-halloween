@@ -1,17 +1,27 @@
 use anyhow::Error;
 use log::info;
 use rillrate::prime::{Switch, SwitchOpts};
-use rppal::gpio::{Gpio, OutputPin};
 use tokio::sync::mpsc;
+
+#[cfg(feature = "pi")]
+use rppal::gpio::{Gpio, OutputPin};
 
 use crate::{
     config::{Config, Pin},
-    proto_schema::schema::{pico_message::Payload, Light, PicoMessage}, MessageKind,
+    proto_schema::schema::{pico_message::Payload, Light, PicoMessage},
+    MessageKind,
 };
 
 #[allow(dead_code)]
+#[cfg(feature = "pi")]
 pub struct LightController {
     pins: Vec<OutputPin>,
+    switches: Vec<Switch>,
+}
+
+#[cfg(not(feature = "pi"))]
+pub struct LightController {
+    pins: Vec<()>,
     switches: Vec<Switch>,
 }
 
@@ -34,7 +44,8 @@ impl LightController {
             info!("Light {}: initializing on pin {}", i, pin.0);
 
             // Only initialize GPIO if the Pi feature is enabled
-            if cfg!(feature = "pi") {
+            #[cfg(feature = "pi")]
+            {
                 let mut pin = Gpio::new()?.get(pin.0).unwrap().into_output();
 
                 // Turn the light off
@@ -62,7 +73,8 @@ impl LightController {
                         ..Default::default()
                     }));
 
-                    message_queue_clone.blocking_send(MessageKind::ExternalMessage(light_message))?;
+                    message_queue_clone
+                        .blocking_send(MessageKind::ExternalMessage(light_message))?;
 
                     this.apply(action);
                 }
@@ -78,6 +90,7 @@ impl LightController {
     #[allow(dead_code)]
     pub fn set_pin(&mut self, pin: u8, value: bool) {
         // Note; light values are inverted since the physical lights are inverted
+        #[cfg(feature = "pi")]
         match value {
             true => self.pins[pin as usize].set_low(),
             false => self.pins[pin as usize].set_high(),

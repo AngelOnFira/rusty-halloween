@@ -100,7 +100,7 @@ async fn main() -> Result<(), Error> {
                         if cfg!(feature = "pi") {
                             #[cfg(feature = "pi")]
                             {
-                                if let Err(e) = projector_controller.send_file(vision_file) {
+                                if let Err(e) = projector_controller.send_file(&vision_file) {
                                     error!("Failed to send projector command: {}", e);
                                 }
                             }

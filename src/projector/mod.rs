@@ -5,13 +5,16 @@ use crate::{projector::pack::CheckSum, proto_schema::schema::PicoMessage};
 use crate::{InternalMessage, MessageKind};
 use packed_struct::PackedStruct;
 use rillrate::prime::{Click, ClickOpts};
-use rppal::spi::{Bus, SlaveSelect, Spi};
 use rust_embed::RustEmbed;
 use tokio::sync::mpsc;
+
+#[cfg(feature = "pi")]
+use rppal::spi::{Bus, SlaveSelect, Spi};
 
 mod pack;
 
 pub struct ProjectorController {
+    #[cfg(feature = "pi")]
     pub spi: Spi,
 }
 
@@ -29,6 +32,7 @@ struct VisionAsset;
 impl ProjectorController {
     pub fn init(message_queue: mpsc::Sender<MessageKind>) -> Result<Self, anyhow::Error> {
         // Set up SPI
+        #[cfg(feature = "pi")]
         let spi = Spi::new(
             Bus::Spi0,
             SlaveSelect::Ss0,
@@ -61,7 +65,10 @@ impl ProjectorController {
             });
         }
 
-        Ok(ProjectorController { spi })
+        Ok(ProjectorController {
+            #[cfg(feature = "pi")]
+            spi,
+        })
     }
 
     pub fn projector_to_frames(
@@ -114,17 +121,20 @@ impl ProjectorController {
         &mut self,
         projector_command: MessageSendPack,
     ) -> Result<(), anyhow::Error> {
-        // Send the header
-        self.spi.write(&projector_command.header)?;
+        #[cfg(feature = "pi")]
+        {
+            // Send the header
+            self.spi.write(&projector_command.header)?;
 
-        // Send each draw instruction
-        for draw_pack in &projector_command.draw_instructions {
-            self.spi.write(draw_pack)?;
-        }
+            // Send each draw instruction
+            for draw_pack in &projector_command.draw_instructions {
+                self.spi.write(draw_pack)?;
+            }
 
-        // Send extra frames to get to 51 total frames
-        for _ in 0..(51 - projector_command.draw_instructions.len() - 1) {
-            self.spi.write(&[0, 0, 0, 0])?;
+            // Send extra frames to get to 51 total frames
+            for _ in 0..(51 - projector_command.draw_instructions.len() - 1) {
+                self.spi.write(&[0, 0, 0, 0])?;
+            }
         }
 
         Ok(())
@@ -140,17 +150,20 @@ impl ProjectorController {
 
         // Create frames in the proto format
 
-        // Send the header
-        self.spi.write(&frames[0])?;
+        #[cfg(feature = "pi")]
+        {
+            // Send the header
+            self.spi.write(&frames[0])?;
 
-        // Send each draw instruction
-        for frame in frames[1..].iter() {
-            self.spi.write(frame)?;
-        }
+            // Send each draw instruction
+            for frame in frames[1..].iter() {
+                self.spi.write(frame)?;
+            }
 
-        // Send any extra frames required to get to 51 total frames
-        for _ in 0..(51 - frames.len()) {
-            self.spi.write(&[0, 0, 0, 0])?;
+            // Send any extra frames required to get to 51 total frames
+            for _ in 0..(51 - frames.len()) {
+                self.spi.write(&[0, 0, 0, 0])?;
+            }
         }
 
         Ok(())
