@@ -24,8 +24,6 @@ jobs:
       - name: Bump version
         id: bump_version
         run: |
-          git config --global user.email "forestkzanderson@gmail.com"
-          git config --global user.name "Forest Anderson"
           cargo install cargo-bump
           cargo bump --git-tag
           echo "tag=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
@@ -33,6 +31,7 @@ jobs:
       - uses: EndBug/add-and-commit@v9
         with:
           default_author: github_actions
+          tag_push: '--force'
 
       - name: Release
         uses: softprops/action-gh-release@v1
@@ -40,4 +39,4 @@ jobs:
           prerelease: true
           generate_release_notes: true
           tag_name: ${{ steps.bump_version.outputs.tag }}
-          files: target/armv7-unknown-linux-gnueabihf/release/rusty-halloween
+          # files: target/armv7-unknown-linux-gnueabihf/release/rusty-halloween
