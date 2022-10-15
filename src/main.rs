@@ -62,13 +62,13 @@ async fn main() -> Result<(), Error> {
 
     // Initialize the lights
     let tx_clone = tx.clone();
-    #[allow(unused_variables)]
-    let light_controller = LightController::init(&config, tx_clone).await?;
+    #[allow(unused_variables, unused_mut)]
+    let mut light_controller = LightController::init(&config, tx_clone).await?;
 
     // Initialize the projector
     let tx_clone = tx.clone();
-    #[allow(unused_variables)]
-    let projector_controller = ProjectorController::init(tx_clone)?;
+    #[allow(unused_variables, unused_mut)]
+    let mut projector_controller = ProjectorController::init(tx_clone)?;
 
     // Initialize the audio
     let mut audio_manager = Audio::new();
@@ -97,7 +97,8 @@ async fn main() -> Result<(), Error> {
             // Handle the message
             match message {
                 MessageKind::InternalMessage(internal_message) => match internal_message {
-                    InternalMessage::Vision { vision_file: _ } => {
+                    #[allow(unused_variables)]
+                    InternalMessage::Vision { vision_file } => {
                         live_tail.log_now(module_path!(), "INFO", "Vision command received");
                         if cfg!(feature = "pi") {
                             #[cfg(feature = "pi")]
