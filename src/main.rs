@@ -68,7 +68,7 @@ async fn main() -> Result<(), Error> {
     // Initialize the projector
     let tx_clone = tx.clone();
     #[allow(unused_variables, unused_mut)]
-    let mut projector_controller = ProjectorController::init(tx_clone)?;
+    let mut projector_controller = ProjectorController::init(tx_clone).await?;
 
     // Initialize the audio
     let mut audio_manager = Audio::new();

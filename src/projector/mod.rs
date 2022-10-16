@@ -35,7 +35,7 @@ pub struct MessageSendPack {
 struct VisionAsset;
 
 impl ProjectorController {
-    pub fn init(message_queue: mpsc::Sender<MessageKind>) -> Result<Self, anyhow::Error> {
+    pub async fn init(message_queue: mpsc::Sender<MessageKind>) -> Result<Self, anyhow::Error> {
         // Set up SPI
         #[cfg(feature = "pi")]
         let spi = Spi::new(
@@ -84,6 +84,18 @@ impl ProjectorController {
 
             clicks.push(click);
         }
+
+        // Send an initial draw command
+        message_queue
+            .clone()
+            .send(MessageKind::InternalMessage(InternalMessage::Vision {
+                vision_file_contents: std::str::from_utf8(
+                    &VisionAsset::get("happy.txt").unwrap().data,
+                )
+                .unwrap()
+                .to_string(),
+            }))
+            .await?;
 
         Ok(ProjectorController {
             #[cfg(feature = "pi")]
