@@ -13,6 +13,7 @@ use tokio::sync::mpsc;
 #[cfg(feature = "pi")]
 use rppal::spi::{Bus, SlaveSelect, Spi};
 
+mod helpers;
 mod pack;
 
 pub struct ProjectorController {
@@ -70,7 +71,11 @@ impl ProjectorController {
 
                     message_queue_clone.blocking_send(MessageKind::InternalMessage(
                         InternalMessage::Vision {
-                            vision_file: vision.to_string(),
+                            vision_file_contents: std::str::from_utf8(
+                                &VisionAsset::get(&vision).unwrap().data,
+                            )
+                            .unwrap()
+                            .to_string(),
                         },
                     ))?;
                 }
@@ -159,9 +164,7 @@ impl ProjectorController {
     }
 
     #[allow(dead_code)]
-    pub fn send_file(&mut self, file_path: &str) -> Result<(), anyhow::Error> {
-        let file_string = std::fs::read_to_string(file_path)?;
-
+    pub fn send_file(&mut self, file_string: &str) -> Result<(), anyhow::Error> {
         #[allow(unused_variables)]
         let frames = file_string
             .lines()

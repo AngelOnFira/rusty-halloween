@@ -32,7 +32,7 @@ fn handle_error(conn: io::Result<LocalSocketStream>) -> Option<LocalSocketStream
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum InternalMessage {
-    Vision { vision_file: String },
+    Vision { vision_file_contents: String },
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -98,12 +98,16 @@ async fn main() -> Result<(), Error> {
             match message {
                 MessageKind::InternalMessage(internal_message) => match internal_message {
                     #[allow(unused_variables)]
-                    InternalMessage::Vision { vision_file } => {
+                    InternalMessage::Vision {
+                        vision_file_contents,
+                    } => {
                         live_tail.log_now(module_path!(), "INFO", "Vision command received");
                         if cfg!(feature = "pi") {
                             #[cfg(feature = "pi")]
                             {
-                                if let Err(e) = projector_controller.send_file(&vision_file) {
+                                if let Err(e) =
+                                    projector_controller.send_file(&vision_file_contents)
+                                {
                                     error!("Failed to send projector command: {}", e);
                                 }
                             }

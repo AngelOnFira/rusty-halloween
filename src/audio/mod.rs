@@ -32,7 +32,8 @@ impl Audio {
     }
 
     pub fn get_sound(&mut self, name: &str) -> Result<StaticSoundData, Box<dyn std::error::Error>> {
-        let _sound_path = format!("src/audio/assets/{}", name);
+        #[allow(unused_variables)]
+        let sound_path = format!("src/audio/assets/{}", name);
 
         if let Some(sound_data) = AudioAsset::get(name) {
             let sound_player = StaticSoundData::from_cursor(
