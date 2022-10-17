@@ -76,7 +76,8 @@ async fn main() -> Result<(), Error> {
     let mut audio_manager = Audio::new();
 
     // Initialize the show
-    let show = Show::load_show_file("src/show/assets/lights.json".to_string());
+    let tx_clone = tx.clone();
+    let show = Show::load_show_file("src/show/assets/lights.json".to_string(), tx_clone);
     dbg!(show);
 
     tokio::spawn(async move {

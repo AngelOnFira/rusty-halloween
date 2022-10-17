@@ -1,9 +1,17 @@
-use crate::projector::ProjectorController;
+use tokio::{sync::mpsc, time::Instant};
+
+use crate::{
+    projector::ProjectorController,
+    proto_schema::schema::{pico_message::Payload, Audio, PicoMessage},
+    MessageKind,
+};
 
 #[derive(Debug)]
 pub struct Show {
     pub song: String,
     pub frames: Vec<Frame>,
+    pub start_time: Option<Instant>,
+    pub message_queue: mpsc::Sender<MessageKind>,
 }
 
 #[derive(Debug)]
@@ -35,11 +43,7 @@ const MAX_LIGHTS: usize = 7;
 const MAX_PROJECTORS: usize = 5;
 
 impl Show {
-    // pub fn new() -> Show {
-    //     Show {}
-    // }
-
-    pub fn load_show(show_file_contents: String) -> Self {
+    pub fn load_show(show_file_contents: String, message_queue: mpsc::Sender<MessageKind>) -> Self {
         // Load as json
         let file_json = json::parse(&show_file_contents).unwrap();
 
@@ -139,11 +143,43 @@ impl Show {
             });
         }
 
-        Show { song, frames }
+        // Sort frames by timestamp
+        frames.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+
+        Show {
+            song,
+            frames,
+            message_queue,
+            start_time: None,
+        }
     }
 
-    pub fn load_show_file(show_file_path: String) -> Self {
+    pub fn load_show_file(
+        show_file_path: String,
+        message_queue: mpsc::Sender<MessageKind>,
+    ) -> Self {
         let show_file_contents = std::fs::read_to_string(show_file_path).unwrap();
-        Show::load_show(show_file_contents)
+        Show::load_show(show_file_contents, message_queue)
+    }
+
+    pub fn start_show(&mut self) {
+        // Set the timer
+        self.start_time = Some(Instant::now());
+
+        // Start the song
+        self.message_queue
+            .try_send(MessageKind::ExternalMessage(PicoMessage {
+                payload: Some(Payload::Audio(Audio {
+                    audio_file: self.song.clone(),
+                    ..Default::default()
+                })),
+                ..Default::default()
+            }))
+            .unwrap();
+
+        // Start the show thread
+        // tokio::spawn(async move {
+        //     // Sleep until the next instruction
+        // }
     }
 }

@@ -10,7 +10,6 @@ impl HeaderPack {
             full_request.push(HeaderPack {
                 ..Default::default()
             });
-
         }
     }
 
@@ -26,7 +25,6 @@ impl HeaderPack {
             });
 
             // TODO: add 50 blank frames
-
         }
     }
 }
