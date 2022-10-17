@@ -21,7 +21,7 @@ jobs:
           args: -- --check
 
   test-x86:
-    name: Rust project - test
+    name: Rust project - test x86
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -40,7 +40,7 @@ jobs:
           command: test
 
   test-arm:
-    name: Rust project - test
+    name: Rust project - test arm
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -50,6 +50,9 @@ jobs:
           toolchain: nightly
           target: armv7-unknown-linux-gnueabihf
           override: true
+
+      - name: Install ALSA
+        run: sudo apt-get install -y libasound2-dev
 
       - uses: actions-rs/cargo@v1
         with:
@@ -63,7 +66,7 @@ jobs:
           command: test
 
   clippy-x86:
-    name: Rust project - clippy
+    name: Rust project - clippy x86
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -83,7 +86,7 @@ jobs:
           command: clippy
 
   clippy-arm:
-    name: Rust project - clippy
+    name: Rust project - clippy arm
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
