@@ -1,0 +1,24 @@
+{
+    "song": "path/to/song.mp3",
+    "0": {
+        "laser-1": [
+            [
+                0,
+                0,
+                0,
+                0,
+                0
+            ]
+        ],
+        "laser-1-config": {
+            "home": true,
+            "speed-profile": true
+        },
+        "light-1": 1.0
+    },
+    "1000": {
+        "laser-1": 0,
+        "light-1": 0,
+        "fog-1": 0.6
+    }
+}

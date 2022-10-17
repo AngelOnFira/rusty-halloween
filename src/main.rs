@@ -8,6 +8,7 @@ use projector::ProjectorController;
 use proto_schema::schema::PicoMessage;
 use protobuf::Message;
 use rillrate::prime::{LiveTail, LiveTailOpts, Pulse, PulseOpts};
+use show::Show;
 use std::io::{self};
 use tokio::sync::mpsc;
 
@@ -16,6 +17,7 @@ mod config;
 mod dashboard;
 mod projector;
 mod proto_schema;
+mod show;
 
 use lights::LightController;
 mod lights;
@@ -72,6 +74,10 @@ async fn main() -> Result<(), Error> {
 
     // Initialize the audio
     let mut audio_manager = Audio::new();
+
+    // Initialize the show
+    let show = Show::load_show_file("src/show/assets/lights.json".to_string());
+    dbg!(show);
 
     tokio::spawn(async move {
         // Start a new pulse for the dashboard
