@@ -1,5 +1,3 @@
-use crate::proto_schema::schema::Header;
-
 use super::pack::HeaderPack;
 
 impl HeaderPack {

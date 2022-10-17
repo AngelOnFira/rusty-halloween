@@ -1,7 +1,6 @@
 use tokio::{sync::mpsc, time::Instant};
 
 use crate::{
-    projector::ProjectorController,
     proto_schema::schema::{pico_message::Payload, Audio, PicoMessage},
     MessageKind,
 };
@@ -104,7 +103,7 @@ impl Show {
                         let speed_profile = laser_config["speed-profile"].as_bool().unwrap();
 
                         // Laser data
-                        let mut laser_frames = laser
+                        let laser_frames = laser
                             .members()
                             .map(|frame| {
                                 let arr = frame
