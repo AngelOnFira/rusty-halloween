@@ -20,11 +20,12 @@ jobs:
           command: fmt
           args: -- --check
 
-  test:
+  test-x86:
     name: Rust project - test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+
       - name: Install stable
         uses: actions-rs/toolchain@v1
         with:
@@ -38,11 +39,35 @@ jobs:
         with:
           command: test
 
-  clippy:
+  test-arm:
+    name: Rust project - test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          target: armv7-unknown-linux-gnueabihf
+          override: true
+
+      - uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: test
+          args: --target armv7-unknown-linux-gnueabihf --release --features pi
+
+      - name: Run cargo test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+
+  clippy-x86:
     name: Rust project - clippy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+
       - name: Install stable
         uses: actions-rs/toolchain@v1
         with:
@@ -56,3 +81,22 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
+
+  clippy-arm:
+    name: Rust project - clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          target: armv7-unknown-linux-gnueabihf
+          override: true
+          components: clippy
+
+      - uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: clippy
+          args: --target armv7-unknown-linux-gnueabihf --release --features pi
