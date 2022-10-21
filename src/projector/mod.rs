@@ -25,9 +25,30 @@ pub struct ProjectorController {
 
 type Frame = [u8; 4];
 
-pub struct MessageSendPack {
+#[derive(PartialEq, Clone, Debug)]
+pub struct FrameSendPack {
     pub header: Frame,
     pub draw_instructions: Vec<Frame>,
+}
+
+#[derive(PartialEq, Clone, Debug)]
+pub struct MessageSendPack {
+    pub header: HeaderPack,
+    pub draw_instructions: Vec<DrawPack>,
+}
+
+/// Change from a MessageSendPack to a FrameSendPack
+impl From<MessageSendPack> for FrameSendPack {
+    fn from(mut msg: MessageSendPack) -> FrameSendPack {
+        FrameSendPack {
+            header: msg.header.checksum_pack(),
+            draw_instructions: msg
+                .draw_instructions
+                .into_iter()
+                .map(|mut x| x.checksum_pack())
+                .collect(),
+        }
+    }
 }
 
 #[derive(RustEmbed)]
@@ -141,7 +162,7 @@ impl ProjectorController {
         }
 
         // Create a message pack
-        let message_pack = MessageSendPack {
+        let message_pack = FrameSendPack {
             header,
             draw_instructions,
         };
@@ -154,7 +175,7 @@ impl ProjectorController {
     #[allow(dead_code)]
     pub fn send_projector(
         &mut self,
-        #[allow(unused_variables)] projector_command: MessageSendPack,
+        #[allow(unused_variables)] projector_command: FrameSendPack,
     ) -> Result<(), anyhow::Error> {
         #[cfg(feature = "pi")]
         {

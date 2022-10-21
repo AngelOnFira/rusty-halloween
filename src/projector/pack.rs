@@ -29,7 +29,7 @@ pub trait CheckSum {
 //         | 0x00008000 = Oneshot
 //         | 0x00007000 = Speed Profile
 //         | 0x00000001 = Checksum
-#[derive(PackedStruct, Default, Debug, PartialEq)]
+#[derive(PackedStruct, Default, Debug, PartialEq, Clone)]
 #[packed_struct(bit_numbering = "msb0")]
 pub struct HeaderPack {
     #[packed_field(bits = "0..=3")]
@@ -69,7 +69,7 @@ impl CheckSum for HeaderPack {
 //         | 0x00000700 = Green 3-bit colour
 //         | 0x000000E0 = Blue 3-bit colour
 //         | 0x00000001 = Checksum
-#[derive(PackedStruct, Default, Debug, PartialEq)]
+#[derive(PackedStruct, Default, Debug, PartialEq, Clone)]
 #[packed_struct(bit_numbering = "msb0")]
 pub struct DrawPack {
     #[packed_field(bits = "0..=8", endian = "msb")]

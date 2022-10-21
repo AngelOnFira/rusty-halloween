@@ -4,7 +4,7 @@ use config::Config;
 use dashboard::Dashboard;
 use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
 use log::{debug, error};
-use projector::ProjectorController;
+use projector::{FrameSendPack, ProjectorController};
 use proto_schema::schema::PicoMessage;
 use protobuf::Message;
 use rillrate::prime::{LiveTail, LiveTailOpts, Pulse, PulseOpts};
@@ -34,9 +34,17 @@ fn handle_error(conn: io::Result<LocalSocketStream>) -> Option<LocalSocketStream
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum InternalMessage {
+    /// Files that just have hex to be dumped to SPI
     Vision { vision_file_contents: String },
+    /// Change a light over GPIO
+    Light { light_id: u8, enable: bool },
+    /// Play an audio file
+    Audio { audio_file_contents: String },
+    /// Direct projector frames
+    Projector(FrameSendPack),
 }
 
+/// Messages that should be processed in the queue
 #[derive(PartialEq, Clone, Debug)]
 pub enum MessageKind {
     ExternalMessage(PicoMessage),
