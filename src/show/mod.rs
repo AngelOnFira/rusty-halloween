@@ -1,9 +1,12 @@
 use std::{cmp::max, time::Duration};
 
-use tokio::{sync::mpsc, time::{Instant, sleep}};
+use tokio::{
+    sync::mpsc,
+    time::{sleep, Instant},
+};
 
 use crate::{
-    proto_schema::schema::{pico_message::Payload, Audio, PicoMessage, Light},
+    proto_schema::schema::{pico_message::Payload, Audio, Light, PicoMessage},
     MessageKind,
 };
 
@@ -175,13 +178,11 @@ impl Show {
 
         // Start the song
         self.message_queue
-            .try_send(MessageKind::ExternalMessage(PicoMessage {
-                payload: Some(Payload::Audio(Audio {
-                    audio_file: self.song.clone(),
-                    ..Default::default()
-                })),
-                ..Default::default()
-            }))
+            .try_send(MessageKind::InternalMessage(
+                crate::InternalMessage::Audio {
+                    audio_file_contents: self.song.clone(),
+                },
+            ))
             .unwrap();
 
         // Start the show thread
@@ -202,20 +203,17 @@ impl Show {
                 for (i, light) in curr_frame.lights.iter().enumerate() {
                     if let Some(light) = light {
                         self.message_queue
-                            .try_send(MessageKind::ExternalMessage(PicoMessage {
-                                payload: Some(Payload::Light(Light {
-                                    light_id: i as i32 + 1,
+                            .try_send(MessageKind::InternalMessage(
+                                crate::InternalMessage::Light {
+                                    light_id: i as u8 + 1,
                                     enable: *light,
-                                    ..Default::default()
-                                })),
-                                ..Default::default()
-                            }))
+                                },
+                            ))
                             .unwrap();
                     }
                 }
 
                 // Send all the lasers data
-
             }
 
             // Sleep until the next instruction

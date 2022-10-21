@@ -47,7 +47,7 @@ pub enum InternalMessage {
 /// Messages that should be processed in the queue
 #[derive(PartialEq, Clone, Debug)]
 pub enum MessageKind {
-    ExternalMessage(PicoMessage),
+    // ExternalMessage(PicoMessage),
     InternalMessage(InternalMessage),
 }
 
@@ -129,13 +129,13 @@ async fn main() -> Result<(), Error> {
                             error!("Projectors are not supported on this platform");
                         }
                     }
-                },
-                MessageKind::ExternalMessage(external_message) => match external_message.payload {
-                    Some(proto_schema::schema::pico_message::Payload::Audio(audio_command)) => {
+                    InternalMessage::Audio {
+                        audio_file_contents,
+                    } => {
                         live_tail.log_now(module_path!(), "INFO", "Audio command received");
                         match audio_manager {
                             Ok(ref mut audio_manager) => {
-                                audio_manager.play_sound(&audio_command.audio_file).unwrap();
+                                audio_manager.play_sound(&audio_file_contents).unwrap();
                             }
                             Err(_) => {
                                 live_tail.log_now(
@@ -146,37 +146,23 @@ async fn main() -> Result<(), Error> {
                             }
                         }
                     }
-                    #[allow(unused_variables)]
-                    Some(proto_schema::schema::pico_message::Payload::Light(light_command)) => {
+                    InternalMessage::Light { light_id, enable } => {
                         live_tail.log_now(module_path!(), "INFO", "Light command received");
                         if cfg!(feature = "pi") {
                             #[cfg(feature = "pi")]
                             {
-                                // If the light ID is out of range of a u8, print an
-                                // error
-                                if light_command.light_id >= 256 {
-                                    error!("Light ID {} is out of range", light_command.light_id);
-                                } else {
-                                    light_controller.set_pin(
-                                        light_command.light_id as u8,
-                                        light_command.enable,
-                                    );
-                                }
+                                light_controller.set_pin(light_id, enable);
                             }
                         } else {
                             error!("Lights are not supported on this platform");
                         }
                     }
-                    #[allow(unused_variables)]
-                    Some(proto_schema::schema::pico_message::Payload::Projector(
-                        projector_command,
-                    )) => {
+                    InternalMessage::Projector(frame_send_pack) => {
                         live_tail.log_now(module_path!(), "INFO", "Projector command received");
                         if cfg!(feature = "pi") {
                             #[cfg(feature = "pi")]
                             {
-                                if let Err(e) =
-                                    projector_controller.projector_to_frames(projector_command)
+                                if let Err(e) = projector_controller.send_projector(frame_send_pack)
                                 {
                                     error!("Failed to send projector command: {}", e);
                                 }
@@ -185,14 +171,14 @@ async fn main() -> Result<(), Error> {
                             error!("Projectors are not supported on this platform");
                         }
                     }
-
-                    None => {}
                 },
             }
         }
     });
 
     let tx_clone = tx.clone();
+
+    // TODO: Rewrite this to change directly to internal message type first
     for mut conn in listener.incoming().filter_map(handle_error) {
         // Recieve the data
         // let mut conn = BufReader::new(conn);
@@ -207,10 +193,10 @@ async fn main() -> Result<(), Error> {
         debug!("{:#?}", proto);
 
         // Add the message to the queue
-        tx_clone
-            .send(MessageKind::ExternalMessage(proto))
-            .await
-            .unwrap();
+        // tx_clone
+        //     .send(MessageKind::ExternalMessage(proto))
+        //     .await
+        //     .unwrap();
 
         // Translate it to the projector protocol
     }

@@ -9,7 +9,7 @@ use rppal::gpio::{Gpio, OutputPin};
 use crate::{
     config::{Config, Pin},
     proto_schema::schema::{pico_message::Payload, Light, PicoMessage},
-    MessageKind,
+    MessageKind, InternalMessage,
 };
 
 #[allow(dead_code)]
@@ -68,15 +68,13 @@ impl LightController {
             let message_queue_clone = message_queue.clone();
             switch.sync_callback(move |envelope| {
                 if let Some(action) = envelope.action {
-                    let mut light_message = PicoMessage::new();
-                    light_message.payload = Some(Payload::Light(Light {
-                        light_id: i as i32,
+                    let light_message = InternalMessage::Light {
+                        light_id: i as u8,
                         enable: action,
-                        ..Default::default()
-                    }));
+                    };
 
                     message_queue_clone
-                        .blocking_send(MessageKind::ExternalMessage(light_message))?;
+                        .blocking_send(MessageKind::InternalMessage(light_message))?;
 
                     this.apply(action);
                 }
