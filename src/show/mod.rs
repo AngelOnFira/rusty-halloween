@@ -1,7 +1,9 @@
-use tokio::{sync::mpsc, time::Instant};
+use std::{cmp::max, time::Duration};
+
+use tokio::{sync::mpsc, time::{Instant, sleep}};
 
 use crate::{
-    proto_schema::schema::{pico_message::Payload, Audio, PicoMessage},
+    proto_schema::schema::{pico_message::Payload, Audio, PicoMessage, Light},
     MessageKind,
 };
 
@@ -23,11 +25,11 @@ pub struct Laser {
     pub home: bool,
     pub speed_profile: bool,
     // Laser
-    pub frames: Box<dyn Iterator<Item = LaserFrame>>,
+    pub data_frame: Vec<LaserDataFrame>,
 }
 
 #[derive(Debug)]
-pub struct LaserFrame {
+pub struct LaserDataFrame {
     pub x_pos: u16,
     pub y_pos: u16,
     pub r: u8,
@@ -90,13 +92,13 @@ impl Show {
                                 home: true,
                                 speed_profile: false,
                                 // TODO: This shouldn't be just a single frame
-                                frames: Box::new(std::iter::once(LaserFrame {
+                                data_frame: vec![LaserDataFrame {
                                     x_pos: 0,
                                     y_pos: 0,
                                     r: 0,
                                     g: 0,
                                     b: 0,
-                                })),
+                                }],
                             });
                         }
 
@@ -107,38 +109,35 @@ impl Show {
                         let speed_profile = laser_config["speed-profile"].as_bool().unwrap();
 
                         // Laser data
-                        let laser_frames: Box<dyn Iterator<Item = LaserFrame>> = Box::new(
-                            laser
-                                .members()
-                                .map(|frame| {
-                                    let frame = frame.to_owned();
-                                    let arr = frame
-                                        .members()
-                                        .map(|x| x.as_u16().unwrap())
-                                        .collect::<Vec<u16>>();
+                        let laser_frames: Vec<LaserDataFrame> = laser
+                            .members()
+                            .map(|frame| {
+                                let frame = frame.to_owned();
+                                let arr = frame
+                                    .members()
+                                    .map(|x| x.as_u16().unwrap())
+                                    .collect::<Vec<u16>>();
 
-                                    let x_pos = arr[0];
-                                    let y_pos = arr[1];
-                                    let r = arr[2] as u8;
-                                    let g = arr[3] as u8;
-                                    let b = arr[4] as u8;
+                                let x_pos = arr[0];
+                                let y_pos = arr[1];
+                                let r = arr[2] as u8;
+                                let g = arr[3] as u8;
+                                let b = arr[4] as u8;
 
-                                    LaserFrame {
-                                        x_pos,
-                                        y_pos,
-                                        r,
-                                        g,
-                                        b,
-                                    }
-                                })
-                                .collect::<Vec<_>>()
-                                .into_iter(),
-                        );
+                                LaserDataFrame {
+                                    x_pos,
+                                    y_pos,
+                                    r,
+                                    g,
+                                    b,
+                                }
+                            })
+                            .collect();
 
                         Some(Laser {
                             home,
                             speed_profile,
-                            frames: laser_frames,
+                            data_frame: laser_frames,
                         })
                     }
                 })
@@ -170,7 +169,7 @@ impl Show {
         Show::load_show(show_file_contents, message_queue)
     }
 
-    pub fn start_show(&mut self) {
+    pub async fn start_show(mut self) {
         // Set the timer
         self.start_time = Some(Instant::now());
 
@@ -186,8 +185,42 @@ impl Show {
             .unwrap();
 
         // Start the show thread
-        // tokio::spawn(async move {
-        //     // Sleep until the next instruction
-        // }
+        let handle = tokio::spawn(async move {
+            // Get the first frame
+            let mut curr_frame = self.frames.remove(0);
+
+            while self.frames.len() > 0 {
+                // Sleep until the current frame is ready
+                let curr_time = self.start_time.unwrap().elapsed().as_millis() as u64;
+                let sleep_time = max(curr_frame.timestamp - curr_time, 0);
+
+                sleep(Duration::from_millis(sleep_time));
+
+                // Execute the current frame
+
+                // Send all the lights data
+                for (i, light) in curr_frame.lights.iter().enumerate() {
+                    if let Some(light) = light {
+                        self.message_queue
+                            .try_send(MessageKind::ExternalMessage(PicoMessage {
+                                payload: Some(Payload::Light(Light {
+                                    light_id: i as i32 + 1,
+                                    enable: *light,
+                                    ..Default::default()
+                                })),
+                                ..Default::default()
+                            }))
+                            .unwrap();
+                    }
+                }
+
+                // Send all the lasers data
+
+            }
+
+            // Sleep until the next instruction
+        });
+
+        handle.await.unwrap();
     }
 }
