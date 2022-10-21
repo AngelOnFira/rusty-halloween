@@ -6,7 +6,6 @@ use tokio::{
 };
 
 use crate::{
-    proto_schema::schema::{pico_message::Payload, Audio, Light, PicoMessage},
     MessageKind,
 };
 
@@ -188,7 +187,7 @@ impl Show {
         // Start the show thread
         let handle = tokio::spawn(async move {
             // Get the first frame
-            let mut curr_frame = self.frames.remove(0);
+            let curr_frame = self.frames.remove(0);
 
             while self.frames.len() > 0 {
                 // Sleep until the current frame is ready

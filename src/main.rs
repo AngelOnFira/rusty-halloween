@@ -85,7 +85,7 @@ async fn main() -> Result<(), Error> {
 
     // Initialize the show
     let tx_clone = tx.clone();
-    let show = Show::load_show_file("src/show/assets/lights.json".to_string(), tx_clone);
+    let _show = Show::load_show_file("src/show/assets/lights.json".to_string(), tx_clone);
 
     tokio::spawn(async move {
         // Start a new pulse for the dashboard
@@ -146,6 +146,7 @@ async fn main() -> Result<(), Error> {
                             }
                         }
                     }
+                    #[allow(unused_variables)]
                     InternalMessage::Light { light_id, enable } => {
                         live_tail.log_now(module_path!(), "INFO", "Light command received");
                         if cfg!(feature = "pi") {
@@ -157,6 +158,7 @@ async fn main() -> Result<(), Error> {
                             error!("Lights are not supported on this platform");
                         }
                     }
+                    #[allow(unused_variables)]
                     InternalMessage::Projector(frame_send_pack) => {
                         live_tail.log_now(module_path!(), "INFO", "Projector command received");
                         if cfg!(feature = "pi") {
@@ -176,7 +178,7 @@ async fn main() -> Result<(), Error> {
         }
     });
 
-    let tx_clone = tx.clone();
+    let _tx_clone = tx.clone();
 
     // TODO: Rewrite this to change directly to internal message type first
     for mut conn in listener.incoming().filter_map(handle_error) {
