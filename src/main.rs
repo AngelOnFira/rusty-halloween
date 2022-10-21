@@ -78,7 +78,6 @@ async fn main() -> Result<(), Error> {
     // Initialize the show
     let tx_clone = tx.clone();
     let show = Show::load_show_file("src/show/assets/lights.json".to_string(), tx_clone);
-    dbg!(show);
 
     tokio::spawn(async move {
         // Start a new pulse for the dashboard

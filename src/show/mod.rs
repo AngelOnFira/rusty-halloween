@@ -5,7 +5,6 @@ use crate::{
     MessageKind,
 };
 
-#[derive(Debug)]
 pub struct Show {
     pub song: String,
     pub frames: Vec<Frame>,
@@ -13,20 +12,18 @@ pub struct Show {
     pub message_queue: mpsc::Sender<MessageKind>,
 }
 
-#[derive(Debug)]
 pub struct Frame {
     pub timestamp: u64,
     pub lights: Vec<Option<bool>>,
     pub lasers: Vec<Option<Laser>>,
 }
 
-#[derive(Debug)]
 pub struct Laser {
     // Laser conf
     pub home: bool,
     pub speed_profile: bool,
     // Laser
-    pub frames: Vec<LaserFrame>,
+    pub frames: Box<dyn Iterator<Item = LaserFrame>>,
 }
 
 #[derive(Debug)]
@@ -85,14 +82,21 @@ impl Show {
                     if frame[&laser_name].is_null() {
                         None
                     } else {
-                        let laser = &frame[&laser_name];
+                        let laser = frame[&laser_name].to_owned();
 
                         // If the laser is set to zero, reset it
                         if laser.is_number() {
                             return Some(Laser {
                                 home: true,
                                 speed_profile: false,
-                                frames: Vec::new(),
+                                // TODO: This shouldn't be just a single frame
+                                frames: Box::new(std::iter::once(LaserFrame {
+                                    x_pos: 0,
+                                    y_pos: 0,
+                                    r: 0,
+                                    g: 0,
+                                    b: 0,
+                                })),
                             });
                         }
 
@@ -103,28 +107,33 @@ impl Show {
                         let speed_profile = laser_config["speed-profile"].as_bool().unwrap();
 
                         // Laser data
-                        let laser_frames = laser
-                            .members()
-                            .map(|frame| {
-                                let arr = frame
-                                    .members()
-                                    .map(|x| x.as_u16().unwrap())
-                                    .collect::<Vec<u16>>();
-                                let x_pos = arr[0];
-                                let y_pos = arr[1];
-                                let r = arr[2] as u8;
-                                let g = arr[3] as u8;
-                                let b = arr[4] as u8;
+                        let laser_frames: Box<dyn Iterator<Item = LaserFrame>> = Box::new(
+                            laser
+                                .members()
+                                .map(|frame| {
+                                    let frame = frame.to_owned();
+                                    let arr = frame
+                                        .members()
+                                        .map(|x| x.as_u16().unwrap())
+                                        .collect::<Vec<u16>>();
 
-                                LaserFrame {
-                                    x_pos,
-                                    y_pos,
-                                    r,
-                                    g,
-                                    b,
-                                }
-                            })
-                            .collect();
+                                    let x_pos = arr[0];
+                                    let y_pos = arr[1];
+                                    let r = arr[2] as u8;
+                                    let g = arr[3] as u8;
+                                    let b = arr[4] as u8;
+
+                                    LaserFrame {
+                                        x_pos,
+                                        y_pos,
+                                        r,
+                                        g,
+                                        b,
+                                    }
+                                })
+                                .collect::<Vec<_>>()
+                                .into_iter(),
+                        );
 
                         Some(Laser {
                             home,
