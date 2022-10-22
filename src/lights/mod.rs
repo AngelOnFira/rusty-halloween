@@ -8,7 +8,7 @@ use rppal::gpio::{Gpio, OutputPin};
 
 use crate::{
     config::{Config, Pin},
-    MessageKind, InternalMessage,
+    InternalMessage, MessageKind,
 };
 
 #[allow(dead_code)]

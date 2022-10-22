@@ -21,7 +21,11 @@ jobs:
         with:
           use-cross: true
           command: build
-          args: --target armv7-unknown-linux-gnueabihf --release --features pi
+          args: |
+            --target armv7-unknown-linux-gnueabihf
+            --release
+            --features pi
+            --bin rusty-halloween
 
       - name: Bump version
         id: bump_version
@@ -33,7 +37,7 @@ jobs:
       - uses: EndBug/add-and-commit@v9
         with:
           default_author: github_actions
-          tag_push: '--force'
+          tag_push: "--force"
 
       - name: Release
         uses: softprops/action-gh-release@v1

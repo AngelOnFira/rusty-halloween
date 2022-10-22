@@ -5,15 +5,17 @@ use tokio::{
     time::{sleep, Instant},
 };
 
-use crate::{
-    MessageKind,
-};
+use crate::MessageKind;
+
+pub struct ShowManager {
+    pub current_show: Option<Show>,
+    pub start_time: Option<Instant>,
+    pub message_queue: mpsc::Sender<MessageKind>,
+}
 
 pub struct Show {
     pub song: String,
     pub frames: Vec<Frame>,
-    pub start_time: Option<Instant>,
-    pub message_queue: mpsc::Sender<MessageKind>,
 }
 
 pub struct Frame {
@@ -42,7 +44,7 @@ pub struct LaserDataFrame {
 const MAX_LIGHTS: usize = 7;
 const MAX_PROJECTORS: usize = 5;
 
-impl Show {
+impl ShowManager {
     pub fn load_show(show_file_contents: String, message_queue: mpsc::Sender<MessageKind>) -> Self {
         // Load as json
         let file_json = json::parse(&show_file_contents).unwrap();
@@ -155,9 +157,8 @@ impl Show {
         // Sort frames by timestamp
         frames.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
 
-        Show {
-            song,
-            frames,
+        ShowManager {
+            current_show: Some(Show { song, frames }),
             message_queue,
             start_time: None,
         }
@@ -168,7 +169,7 @@ impl Show {
         message_queue: mpsc::Sender<MessageKind>,
     ) -> Self {
         let show_file_contents = std::fs::read_to_string(show_file_path).unwrap();
-        Show::load_show(show_file_contents, message_queue)
+        ShowManager::load_show(show_file_contents, message_queue)
     }
 
     pub async fn start_show(mut self) {
@@ -179,22 +180,21 @@ impl Show {
         self.message_queue
             .try_send(MessageKind::InternalMessage(
                 crate::InternalMessage::Audio {
-                    audio_file_contents: self.song.clone(),
+                    audio_file_contents: self.current_show.as_ref().unwrap().song.clone(),
                 },
             ))
             .unwrap();
 
         // Start the show thread
         let handle = tokio::spawn(async move {
-            // Get the first frame
-            let curr_frame = self.frames.remove(0);
+            loop {
+                // Get the next frame
+                let curr_frame = self.current_show.as_mut().unwrap().frames.remove(0);
 
-            while self.frames.len() > 0 {
                 // Sleep until the current frame is ready
                 let curr_time = self.start_time.unwrap().elapsed().as_millis() as u64;
                 let sleep_time = max(curr_frame.timestamp - curr_time, 0);
-
-                sleep(Duration::from_millis(sleep_time));
+                sleep(Duration::from_millis(sleep_time)).await;
 
                 // Execute the current frame
 
@@ -213,9 +213,12 @@ impl Show {
                 }
 
                 // Send all the lasers data
-            }
+                // ...
 
-            // Sleep until the next instruction
+                if self.current_show.as_ref().unwrap().frames.len() == 0 {
+                    break;
+                }
+            }
         });
 
         handle.await.unwrap();

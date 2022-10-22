@@ -11,45 +11,11 @@ use rillrate::prime::{LiveTail, LiveTailOpts, Pulse, PulseOpts};
 use show::Show;
 use std::io::{self};
 use tokio::sync::mpsc;
-
-mod audio;
-mod config;
-mod dashboard;
-mod projector;
-mod proto_schema;
-mod show;
-
 use lights::LightController;
-mod lights;
 
-fn handle_error(conn: io::Result<LocalSocketStream>) -> Option<LocalSocketStream> {
-    match conn {
-        Ok(val) => Some(val),
-        Err(error) => {
-            eprintln!("Incoming connection failed: {}", error);
-            None
-        }
-    }
-}
+use rusty_halloween;
 
-#[derive(PartialEq, Clone, Debug)]
-pub enum InternalMessage {
-    /// Files that just have hex to be dumped to SPI
-    Vision { vision_file_contents: String },
-    /// Change a light over GPIO
-    Light { light_id: u8, enable: bool },
-    /// Play an audio file
-    Audio { audio_file_contents: String },
-    /// Direct projector frames
-    Projector(FrameSendPack),
-}
 
-/// Messages that should be processed in the queue
-#[derive(PartialEq, Clone, Debug)]
-pub enum MessageKind {
-    // ExternalMessage(PicoMessage),
-    InternalMessage(InternalMessage),
-}
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
