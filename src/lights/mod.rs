@@ -91,8 +91,8 @@ impl LightController {
         // Note; light values are inverted since the physical lights are inverted
         #[cfg(feature = "pi")]
         match value {
-            true => self.pins[pin as usize].set_low(),
-            false => self.pins[pin as usize].set_high(),
+            true => self.pins[pin as usize - 1].set_low(),
+            false => self.pins[pin as usize - 1].set_high(),
         }
 
         // Change the switch on the dashboard
