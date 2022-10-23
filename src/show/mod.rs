@@ -10,7 +10,7 @@ use crate::MessageKind;
 pub struct ShowManager {
     pub current_show: Option<Show>,
     pub start_time: Option<Instant>,
-    pub message_queue: mpsc::Sender<MessageKind>,
+    pub message_queue: Option<mpsc::Sender<MessageKind>>,
 }
 
 pub struct Show {
@@ -41,10 +41,18 @@ pub struct LaserDataFrame {
     pub b: u8,
 }
 
-const MAX_LIGHTS: usize = 7;
-const MAX_PROJECTORS: usize = 5;
+pub const MAX_LIGHTS: usize = 7;
+pub const MAX_PROJECTORS: usize = 5;
 
 impl ShowManager {
+    pub fn new() -> Self {
+        Self {
+            current_show: None,
+            start_time: None,
+            message_queue: None,
+        }
+    }
+
     pub fn load_show(show_file_contents: String, message_queue: mpsc::Sender<MessageKind>) -> Self {
         // Load as json
         let file_json = json::parse(&show_file_contents).unwrap();
@@ -159,9 +167,56 @@ impl ShowManager {
 
         ShowManager {
             current_show: Some(Show { song, frames }),
-            message_queue,
+            message_queue: Some(message_queue),
             start_time: None,
         }
+    }
+
+    pub fn save_show(&self, show: Show)-> String {
+        let mut file_json = json::JsonValue::new_object();
+
+        file_json["song"] = show.song.into();
+
+        for frame in show.frames {
+            let timestamp = frame.timestamp.to_string();
+            file_json[&timestamp] = json::JsonValue::new_object();
+
+            for (i, light) in frame.lights.iter().enumerate() {
+                let light_name = format!("light-{}", i);
+                if let Some(light) = light {
+                    file_json[&timestamp][&light_name] = match light {
+                        true => 1.0.into(),
+                        false => 0.0.into(),
+                    };
+                }
+            }
+
+            for (i, laser) in frame.lasers.iter().enumerate() {
+                let laser_name = format!("laser-{}", i);
+                let laser_config_name = format!("laser-{}-config", i);
+                if let Some(laser) = laser {
+                    file_json[&timestamp][&laser_config_name] = json::JsonValue::new_object();
+                    file_json[&timestamp][&laser_config_name]["home"] =
+                        json::JsonValue::Boolean(laser.home);
+                    file_json[&timestamp][&laser_config_name]["speed-profile"] =
+                        json::JsonValue::Boolean(laser.speed_profile);
+
+                    file_json[&timestamp][&laser_name] = json::JsonValue::new_array();
+
+                    for laser_frame in &laser.data_frame {
+                        file_json[&timestamp][&laser_name].push(json::JsonValue::new_array());
+                        let last_index = file_json[&timestamp][&laser_name].len() - 1;
+                        file_json[&timestamp][&laser_name][last_index].push(laser_frame.x_pos);
+                        file_json[&timestamp][&laser_name][last_index].push(laser_frame.y_pos);
+                        file_json[&timestamp][&laser_name][last_index].push(laser_frame.r);
+                        file_json[&timestamp][&laser_name][last_index].push(laser_frame.g);
+                        file_json[&timestamp][&laser_name][last_index].push(laser_frame.b);
+                    }
+                }
+            }
+        }
+
+        file_json.pretty(4)
     }
 
     pub fn load_show_file(
@@ -178,6 +233,8 @@ impl ShowManager {
 
         // Start the song
         self.message_queue
+            .as_ref()
+            .unwrap()
             .try_send(MessageKind::InternalMessage(
                 crate::InternalMessage::Audio {
                     audio_file_contents: self.current_show.as_ref().unwrap().song.clone(),
@@ -202,6 +259,8 @@ impl ShowManager {
                 for (i, light) in curr_frame.lights.iter().enumerate() {
                     if let Some(light) = light {
                         self.message_queue
+                            .as_mut()
+                            .unwrap()
                             .try_send(MessageKind::InternalMessage(
                                 crate::InternalMessage::Light {
                                     light_id: i as u8 + 1,

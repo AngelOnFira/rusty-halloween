@@ -2,6 +2,7 @@
 name = "rusty-halloween"
 version = "0.1.3"
 edition = "2021"
+default-run = "rusty-halloween"
 
 [lib]
 name = "rusty_halloween"
@@ -44,3 +45,4 @@ serde = { version = "1.0.145", features = ["derive"] }
 pi-pinout = "0.1.3"
 rill-protocol = "0.41.0"
 json = "0.12.4"
+rand = "0.8.5"

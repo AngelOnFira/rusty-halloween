@@ -94,5 +94,8 @@ impl LightController {
             true => self.pins[pin as usize].set_low(),
             false => self.pins[pin as usize].set_high(),
         }
+
+        // Change the switch on the dashboard
+        self.switches[pin as usize].apply(value);
     }
 }

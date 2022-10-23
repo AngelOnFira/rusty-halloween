@@ -2082,6 +2082,7 @@ dependencies = [
  "packed_struct",
  "pi-pinout",
  "protobuf",
+ "rand",
  "rill-protocol",
  "rillrate",
  "ron",

@@ -1,21 +1,12 @@
 use anyhow::Error;
-use audio::Audio;
-use config::Config;
-use dashboard::Dashboard;
 use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
 use log::{debug, error};
-use projector::{FrameSendPack, ProjectorController};
-use proto_schema::schema::PicoMessage;
-use protobuf::Message;
 use rillrate::prime::{LiveTail, LiveTailOpts, Pulse, PulseOpts};
-use show::Show;
+use rusty_halloween::prelude::*;
 use std::io::{self};
 use tokio::sync::mpsc;
-use lights::LightController;
-
-use rusty_halloween;
-
-
+use rusty_halloween::InternalMessage;
+use rusty_halloween::MessageKind;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -51,9 +42,9 @@ async fn main() -> Result<(), Error> {
 
     // Initialize the show
     let tx_clone = tx.clone();
-    let _show = Show::load_show_file("src/show/assets/lights.json".to_string(), tx_clone);
+    let _show = ShowManager::load_show_file("src/show/assets/lights.json".to_string(), tx_clone);
 
-    tokio::spawn(async move {
+    let handle = tokio::spawn(async move {
         // Start a new pulse for the dashboard
         let pulse = Pulse::new(
             "app.dashboard.all.pulse",
@@ -144,30 +135,33 @@ async fn main() -> Result<(), Error> {
         }
     });
 
-    let _tx_clone = tx.clone();
+    // Join the handle
+    handle.await?;
 
-    // TODO: Rewrite this to change directly to internal message type first
-    for mut conn in listener.incoming().filter_map(handle_error) {
-        // Recieve the data
-        // let mut conn = BufReader::new(conn);
-        // let mut buffer = String::new();
-        // conn.read_line(&mut buffer)?;
+    // let _tx_clone = tx.clone();
 
-        // Try to decode it as protobuf
-        // TODO: Reply with an error if this fails
-        let proto = PicoMessage::parse_from_reader(&mut conn).unwrap();
+    // // TODO: Rewrite this to change directly to internal message type first
+    // for mut conn in listener.incoming().filter_map(handle_error) {
+    //     // Recieve the data
+    //     // let mut conn = BufReader::new(conn);
+    //     // let mut buffer = String::new();
+    //     // conn.read_line(&mut buffer)?;
 
-        // Debug the message
-        debug!("{:#?}", proto);
+    //     // Try to decode it as protobuf
+    //     // TODO: Reply with an error if this fails
+    //     // let proto = PicoMessage::parse_from_reader(&mut conn).unwrap();
 
-        // Add the message to the queue
-        // tx_clone
-        //     .send(MessageKind::ExternalMessage(proto))
-        //     .await
-        //     .unwrap();
+    //     // Debug the message
+    //     debug!("{:#?}", proto);
 
-        // Translate it to the projector protocol
-    }
+    //     // Add the message to the queue
+    //     // tx_clone
+    //     //     .send(MessageKind::ExternalMessage(proto))
+    //     //     .await
+    //     //     .unwrap();
+
+    //     // Translate it to the projector protocol
+    // }
 
     Ok(())
 }
