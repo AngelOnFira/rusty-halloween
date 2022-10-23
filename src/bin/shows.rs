@@ -1,7 +1,9 @@
+use std::char::MAX;
+
 use rand::Rng;
 use rusty_halloween::prelude::*;
 
-const BPM: f32 = 168.0;
+const BPM: f32 = 166.0;
 
 fn main() {
     println!("Hello, world!");
@@ -15,11 +17,12 @@ fn main() {
             let frame = Frame {
                 timestamp: i * (60.0 / BPM * 1000.0) as u64,
                 lights: (0..MAX_LIGHTS)
-                    .into_iter()
-                    .map(|_| match rng.gen_range(0..=3) {
-                        0 => Some(false),
-                        1 => Some(true),
-                        _ => None,
+                    .map(|light| {
+                        if i as usize % MAX_LIGHTS == light {
+                            Some(true)
+                        } else {
+                            Some(false)
+                        }
                     })
                     .collect(),
                 lasers: (0..MAX_PROJECTORS).into_iter().map(|_| None).collect(),

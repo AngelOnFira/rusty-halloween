@@ -259,9 +259,9 @@ impl ShowManager {
                 let curr_frame = self.current_show.as_mut().unwrap().frames.remove(0);
 
                 // Sleep until the current frame is ready
-                let curr_time = self.start_time.unwrap().elapsed().as_millis() as u64;
-                let sleep_time = max(curr_frame.timestamp - curr_time, 0);
-                sleep(Duration::from_millis(sleep_time)).await;
+                let curr_time = self.start_time.unwrap().elapsed().as_millis() as i64;
+                let sleep_time = max(curr_frame.timestamp as i64 - curr_time, 0);
+                sleep(Duration::from_millis(sleep_time as u64)).await;
 
                 // Execute the current frame
 
