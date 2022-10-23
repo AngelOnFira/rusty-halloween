@@ -1,17 +1,8 @@
-use anyhow::Error;
-use audio::Audio;
-use config::Config;
-use dashboard::Dashboard;
-use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
-use lights::LightController;
-use log::{debug, error};
-use projector::{FrameSendPack, ProjectorController};
-use proto_schema::schema::PicoMessage;
-use protobuf::Message;
-use rillrate::prime::{LiveTail, LiveTailOpts, Pulse, PulseOpts};
-use show::ShowManager;
+use interprocess::local_socket::LocalSocketStream;
+
+use projector::FrameSendPack;
+
 use std::io::{self};
-use tokio::sync::mpsc;
 
 pub mod audio;
 pub mod config;

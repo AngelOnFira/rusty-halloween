@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use rand::Rng;
 use rusty_halloween::prelude::*;
 
@@ -14,7 +12,7 @@ fn main() {
     let frames = (0..1_000)
         .into_iter()
         .map(|i| {
-            let mut frame = Frame {
+            let frame = Frame {
                 timestamp: i * (60.0 / BPM * 1000.0) as u64,
                 lights: (0..MAX_LIGHTS)
                     .into_iter()

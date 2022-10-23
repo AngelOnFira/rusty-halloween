@@ -1,11 +1,11 @@
 use anyhow::Error;
-use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
-use log::{debug, error};
+use interprocess::local_socket::LocalSocketListener;
+use log::error;
 use rillrate::prime::{LiveTail, LiveTailOpts, Pulse, PulseOpts};
 use rusty_halloween::prelude::*;
 use rusty_halloween::InternalMessage;
 use rusty_halloween::MessageKind;
-use std::io::{self};
+
 use tokio::sync::mpsc;
 
 #[tokio::main]
@@ -19,7 +19,7 @@ async fn main() -> Result<(), Error> {
         std::fs::remove_file("/tmp/pico.sock")?;
     }
 
-    let listener = LocalSocketListener::bind("/tmp/pico.sock")?;
+    let _listener = LocalSocketListener::bind("/tmp/pico.sock")?;
 
     // Message queue
     let (tx, mut rx) = mpsc::channel(100);
@@ -38,8 +38,8 @@ async fn main() -> Result<(), Error> {
     let mut projector_controller = ProjectorController::init(tx_clone).await?;
 
     // Initialize the audio
-    let (audio_channel_tx, mut audio_channel_rx) = mpsc::channel(100);
-    let mut audio_manager = Audio::new(audio_channel_rx);
+    let (audio_channel_tx, audio_channel_rx) = mpsc::channel(100);
+    let audio_manager = Audio::new(audio_channel_rx);
 
     let handle = tokio::spawn(async move {
         println!("Starting the reciever thread");
@@ -137,10 +137,7 @@ async fn main() -> Result<(), Error> {
     //     // Join the handle
     //     handle.await?;
 
-    let _ = tokio::join!(
-        show.start_show(),
-        handle,
-    );
+    let _ = tokio::join!(show.start_show(), handle,);
 
     // let _tx_clone = tx.clone();
 
