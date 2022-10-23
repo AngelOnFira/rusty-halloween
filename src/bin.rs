@@ -3,10 +3,10 @@ use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
 use log::{debug, error};
 use rillrate::prime::{LiveTail, LiveTailOpts, Pulse, PulseOpts};
 use rusty_halloween::prelude::*;
-use std::io::{self};
-use tokio::sync::mpsc;
 use rusty_halloween::InternalMessage;
 use rusty_halloween::MessageKind;
+use std::io::{self};
+use tokio::sync::mpsc;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -22,7 +22,7 @@ async fn main() -> Result<(), Error> {
     let listener = LocalSocketListener::bind("/tmp/pico.sock")?;
 
     // Message queue
-    let (tx, mut rx) = mpsc::channel(32);
+    let (tx, mut rx) = mpsc::channel(100);
 
     // Start the dashboard
     Dashboard::init(tx.clone()).await?;
@@ -38,13 +38,11 @@ async fn main() -> Result<(), Error> {
     let mut projector_controller = ProjectorController::init(tx_clone).await?;
 
     // Initialize the audio
-    let mut audio_manager = Audio::new();
-
-    // Initialize the show
-    let tx_clone = tx.clone();
-    let _show = ShowManager::load_show_file("src/show/assets/lights.json".to_string(), tx_clone);
+    let (audio_channel_tx, mut audio_channel_rx) = mpsc::channel(100);
+    let mut audio_manager = Audio::new(audio_channel_rx);
 
     let handle = tokio::spawn(async move {
+        println!("Starting the reciever thread");
         // Start a new pulse for the dashboard
         let pulse = Pulse::new(
             "app.dashboard.all.pulse",
@@ -64,6 +62,8 @@ async fn main() -> Result<(), Error> {
 
             // Update the pulse
             pulse.push(1);
+
+            println!("Message: {:?}", message);
 
             // Handle the message
             match message {
@@ -91,8 +91,8 @@ async fn main() -> Result<(), Error> {
                     } => {
                         live_tail.log_now(module_path!(), "INFO", "Audio command received");
                         match audio_manager {
-                            Ok(ref mut audio_manager) => {
-                                audio_manager.play_sound(&audio_file_contents).unwrap();
+                            Ok(_) => {
+                                audio_channel_tx.send(audio_file_contents).await.unwrap();
                             }
                             Err(_) => {
                                 live_tail.log_now(
@@ -103,17 +103,9 @@ async fn main() -> Result<(), Error> {
                             }
                         }
                     }
-                    #[allow(unused_variables)]
                     InternalMessage::Light { light_id, enable } => {
                         live_tail.log_now(module_path!(), "INFO", "Light command received");
-                        if cfg!(feature = "pi") {
-                            #[cfg(feature = "pi")]
-                            {
-                                light_controller.set_pin(light_id, enable);
-                            }
-                        } else {
-                            error!("Lights are not supported on this platform");
-                        }
+                        light_controller.set_pin(light_id, enable);
                     }
                     #[allow(unused_variables)]
                     InternalMessage::Projector(frame_send_pack) => {
@@ -135,8 +127,20 @@ async fn main() -> Result<(), Error> {
         }
     });
 
-    // Join the handle
-    handle.await?;
+    // Initialize the show
+    let tx_clone = tx.clone();
+    let show = ShowManager::load_show_file("halloween.json".to_string(), tx_clone);
+    // tokio::spawn(async move {
+    //     show.start_show().await;
+    // });
+
+    //     // Join the handle
+    //     handle.await?;
+
+    let _ = tokio::join!(
+        show.start_show(),
+        handle,
+    );
 
     // let _tx_clone = tx.clone();
 

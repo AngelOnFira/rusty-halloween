@@ -9,6 +9,7 @@ use kira::{
     },
 };
 use rust_embed::RustEmbed;
+use tokio::sync::mpsc;
 
 pub struct Audio {
     manager: AudioManager<CpalBackend>,
@@ -20,15 +21,31 @@ pub struct Audio {
 struct AudioAsset;
 
 impl Audio {
-    pub fn new() -> Result<Self, Error> {
+    pub fn new(mut receiver: mpsc::Receiver<String>) -> Result<(), Error> {
         // TODO: Gracefully handle audio not being available
         let manager = AudioManager::<CpalBackend>::new(AudioManagerSettings::default())?;
 
         let sound_data = HashMap::new();
-        Ok(Self {
+
+        let mut audio_manager = Self {
             manager,
             _sound_data: sound_data,
-        })
+        };
+
+        // Start the audio manager thread
+        tokio::spawn(async move {
+            while let Some(sound) = receiver.recv().await {
+                audio_manager.play_sound(&sound).unwrap();
+            }
+        });
+
+        // Ok(Self {
+        //     manager,
+        //     _sound_data: sound_data,
+        //     audio_channel: receiver,
+        // })
+
+        Ok(())
     }
 
     pub fn get_sound(&mut self, name: &str) -> Result<StaticSoundData, Box<dyn std::error::Error>> {

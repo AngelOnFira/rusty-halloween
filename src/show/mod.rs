@@ -1,5 +1,6 @@
 use std::{cmp::max, time::Duration};
 
+use rust_embed::RustEmbed;
 use tokio::{
     sync::mpsc,
     time::{sleep, Instant},
@@ -31,6 +32,10 @@ pub struct Laser {
     // Laser
     pub data_frame: Vec<LaserDataFrame>,
 }
+
+#[derive(RustEmbed)]
+#[folder = "src/show/assets"]
+struct ShowAsset;
 
 #[derive(Debug)]
 pub struct LaserDataFrame {
@@ -172,7 +177,7 @@ impl ShowManager {
         }
     }
 
-    pub fn save_show(&self, show: Show)-> String {
+    pub fn save_show(&self, show: Show) -> String {
         let mut file_json = json::JsonValue::new_object();
 
         file_json["song"] = show.song.into();
@@ -223,7 +228,12 @@ impl ShowManager {
         show_file_path: String,
         message_queue: mpsc::Sender<MessageKind>,
     ) -> Self {
-        let show_file_contents = std::fs::read_to_string(show_file_path).unwrap();
+        // let show_file_contents = std::fs::read_to_string(show_file_path).unwrap();
+        let show_file_contents: String =
+            std::str::from_utf8(&ShowAsset::get(&show_file_path).unwrap().data)
+                .unwrap()
+                .to_string();
+
         ShowManager::load_show(show_file_contents, message_queue)
     }
 
@@ -243,7 +253,7 @@ impl ShowManager {
             .unwrap();
 
         // Start the show thread
-        let handle = tokio::spawn(async move {
+        tokio::spawn(async move {
             loop {
                 // Get the next frame
                 let curr_frame = self.current_show.as_mut().unwrap().frames.remove(0);
@@ -271,6 +281,12 @@ impl ShowManager {
                     }
                 }
 
+                // Print the message queue size
+                println!(
+                    "Message queue size: {}",
+                    self.message_queue.as_ref().unwrap().capacity()
+                );
+
                 // Send all the lasers data
                 // ...
 
@@ -279,7 +295,5 @@ impl ShowManager {
                 }
             }
         });
-
-        handle.await.unwrap();
     }
 }

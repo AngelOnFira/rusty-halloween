@@ -96,6 +96,6 @@ impl LightController {
         }
 
         // Change the switch on the dashboard
-        self.switches[pin as usize].apply(value);
+        self.switches[pin as usize - 1].apply(value);
     }
 }
