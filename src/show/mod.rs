@@ -68,15 +68,7 @@ impl ShowManager {
         let mut frames = Vec::new();
 
         // Get every frame
-        for (timestamp, frame) in file_json.entries() {
-            // Debug the frame
-            println!("{:?}", frame);
-
-            // Skip the song name
-            if timestamp == "song" {
-                continue;
-            }
-
+        for (timestamp, frame) in file_json["timestamps"].entries() {
             let timestamp = timestamp.parse().unwrap();
 
             // Get all of the lights of this frame
@@ -184,12 +176,12 @@ impl ShowManager {
 
         for frame in show.frames {
             let timestamp = frame.timestamp.to_string();
-            file_json[&timestamp] = json::JsonValue::new_object();
+            file_json["timestamps"][&timestamp] = json::JsonValue::new_object();
 
             for (i, light) in frame.lights.iter().enumerate() {
                 let light_name = format!("light-{}", i);
                 if let Some(light) = light {
-                    file_json[&timestamp][&light_name] = match light {
+                    file_json["timestamps"][&timestamp][&light_name] = match light {
                         true => 1.0.into(),
                         false => 0.0.into(),
                     };
@@ -200,22 +192,29 @@ impl ShowManager {
                 let laser_name = format!("laser-{}", i);
                 let laser_config_name = format!("laser-{}-config", i);
                 if let Some(laser) = laser {
-                    file_json[&timestamp][&laser_config_name] = json::JsonValue::new_object();
-                    file_json[&timestamp][&laser_config_name]["home"] =
+                    file_json["timestamps"][&timestamp][&laser_config_name] =
+                        json::JsonValue::new_object();
+                    file_json["timestamps"][&timestamp][&laser_config_name]["home"] =
                         json::JsonValue::Boolean(laser.home);
-                    file_json[&timestamp][&laser_config_name]["speed-profile"] =
+                    file_json["timestamps"][&timestamp][&laser_config_name]["speed-profile"] =
                         json::JsonValue::Boolean(laser.speed_profile);
 
-                    file_json[&timestamp][&laser_name] = json::JsonValue::new_array();
+                    file_json["timestamps"][&timestamp][&laser_name] = json::JsonValue::new_array();
 
                     for laser_frame in &laser.data_frame {
-                        file_json[&timestamp][&laser_name].push(json::JsonValue::new_array());
-                        let last_index = file_json[&timestamp][&laser_name].len() - 1;
-                        file_json[&timestamp][&laser_name][last_index].push(laser_frame.x_pos);
-                        file_json[&timestamp][&laser_name][last_index].push(laser_frame.y_pos);
-                        file_json[&timestamp][&laser_name][last_index].push(laser_frame.r);
-                        file_json[&timestamp][&laser_name][last_index].push(laser_frame.g);
-                        file_json[&timestamp][&laser_name][last_index].push(laser_frame.b);
+                        file_json["timestamps"][&timestamp][&laser_name]
+                            .push(json::JsonValue::new_array());
+                        let last_index = file_json["timestamps"][&timestamp][&laser_name].len() - 1;
+                        file_json["timestamps"][&timestamp][&laser_name][last_index]
+                            .push(laser_frame.x_pos);
+                        file_json["timestamps"][&timestamp][&laser_name][last_index]
+                            .push(laser_frame.y_pos);
+                        file_json["timestamps"][&timestamp][&laser_name][last_index]
+                            .push(laser_frame.r);
+                        file_json["timestamps"][&timestamp][&laser_name][last_index]
+                            .push(laser_frame.g);
+                        file_json["timestamps"][&timestamp][&laser_name][last_index]
+                            .push(laser_frame.b);
                     }
                 }
             }

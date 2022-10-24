@@ -11,7 +11,7 @@ use tokio::sync::mpsc;
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     console_subscriber::init();
-    
+
     // Load the config file
     let config = Config::load()?;
 
