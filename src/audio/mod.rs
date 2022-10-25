@@ -16,6 +16,7 @@ pub struct Audio {
     _sound_data: HashMap<String, StaticSoundData>,
 }
 
+#[cfg(feature="embed_audio")]
 #[derive(RustEmbed)]
 #[folder = "src/audio/assets"]
 struct AudioAsset;

@@ -15,6 +15,7 @@ path = "src/bin.rs"
 [features]
 default = []
 pi = ["dep:rppal"]
+embed_audio = []
 
 [dependencies]
 # Sending data
