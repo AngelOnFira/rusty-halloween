@@ -9,6 +9,11 @@ use tokio::{
 mod show;
 mod show_manager;
 
+pub mod prelude {
+    pub use crate::show::show::*;
+    pub use crate::show::show_manager::*;
+}
+
 #[derive(RustEmbed)]
 #[folder = "src/show/assets"]
 struct ShowAsset;

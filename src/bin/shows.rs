@@ -1,7 +1,9 @@
-use std::char::MAX;
-
 use rand::Rng;
-use rusty_halloween::prelude::*;
+use rusty_halloween::{
+    prelude::*,
+    show::prelude::{Frame, Show, ShowManager},
+};
+use std::char::MAX;
 
 const BPM: f32 = 166.0;
 

@@ -2,15 +2,15 @@
 name = "rusty-halloween"
 version = "0.1.6"
 edition = "2021"
-# default-run = "rusty-halloween"
+default-run = "rusty-halloween"
 
 [lib]
 name = "rusty_halloween"
 path = "src/lib.rs"
 
-# [[bin]]
-# name = "rusty-halloween"
-# path = "src/bin.rs"
+[[bin]]
+name = "rusty-halloween"
+path = "src/bin.rs"
 
 [features]
 default = []

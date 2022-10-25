@@ -26,3 +26,25 @@ pub struct Laser {
     // Laser
     pub data_frame: Vec<LaserDataFrame>,
 }
+
+impl Show {
+    pub fn load_shows() {
+        // Find all folders in the shows folder
+        let shows = std::fs::read_dir("shows").unwrap();
+
+        let names = shows
+            .into_iter()
+            .map(|show| {
+                show.unwrap()
+                    .path()
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_string()
+            })
+            .collect::<Vec<String>>();
+
+        println!("Found shows: {:?}", names);
+    }
+}
