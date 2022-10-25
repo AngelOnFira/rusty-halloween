@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::Cursor};
+use std::{borrow::Cow, collections::HashMap, io::Cursor, path::Path};
 
 use anyhow::Error;
 use kira::{
@@ -13,10 +13,9 @@ use tokio::sync::mpsc;
 
 pub struct Audio {
     manager: AudioManager<CpalBackend>,
-    _sound_data: HashMap<String, StaticSoundData>,
 }
 
-#[cfg(feature="embed_audio")]
+// #[cfg(feature="embed_audio")]
 #[derive(RustEmbed)]
 #[folder = "src/audio/assets"]
 struct AudioAsset;
@@ -26,12 +25,7 @@ impl Audio {
         // TODO: Gracefully handle audio not being available
         let manager = AudioManager::<CpalBackend>::new(AudioManagerSettings::default())?;
 
-        let sound_data = HashMap::new();
-
-        let mut audio_manager = Self {
-            manager,
-            _sound_data: sound_data,
-        };
+        let mut audio_manager = Self { manager };
 
         // Start the audio manager thread
         tokio::spawn(async move {
@@ -40,16 +34,10 @@ impl Audio {
             }
         });
 
-        // Ok(Self {
-        //     manager,
-        //     _sound_data: sound_data,
-        //     audio_channel: receiver,
-        // })
-
         Ok(())
     }
 
-    pub fn get_sound(&mut self, name: &str) -> Result<StaticSoundData, Box<dyn std::error::Error>> {
+    pub fn get_sound(name: &str) -> Result<StaticSoundData, Box<dyn std::error::Error>> {
         #[allow(unused_variables)]
         let sound_path = format!("src/audio/assets/{}", name);
 
@@ -69,11 +57,29 @@ impl Audio {
         ))))
     }
 
+    pub fn get_sound_file(name: &str) -> Cow<[u8]> {
+        let sound_data = AudioAsset::get(&format!("{}.mp3", name)).unwrap();
+        sound_data.data
+    }
+
     pub fn play_sound(&mut self, name: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let sound_data = self.get_sound(name)?;
+        let sound_data = Audio::get_sound(name)?;
 
         self.manager.play(sound_data)?;
 
         Ok(())
+    }
+
+    pub fn get_embedded_sounds() -> Vec<String> {
+        AudioAsset::iter()
+            .map(|s| {
+                Path::new(&s.to_string())
+                    .file_stem()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_string()
+            })
+            .collect()
     }
 }

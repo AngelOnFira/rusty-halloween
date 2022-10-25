@@ -6,10 +6,12 @@ use rusty_halloween::prelude::*;
 use rusty_halloween::InternalMessage;
 use rusty_halloween::MessageKind;
 
+use rusty_halloween::structure::FileStructure;
 use tokio::sync::mpsc;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    #[cfg(not(feature = "pi"))]
     console_subscriber::init();
 
     // Load the config file
@@ -20,6 +22,9 @@ async fn main() -> Result<(), Error> {
     if std::path::Path::new("/tmp/pico.sock").exists() {
         std::fs::remove_file("/tmp/pico.sock")?;
     }
+
+    // Set up the local audio storage
+    FileStructure::verify();
 
     let _listener = LocalSocketListener::bind("/tmp/pico.sock")?;
 
@@ -139,7 +144,7 @@ async fn main() -> Result<(), Error> {
     //     // Join the handle
     //     handle.await?;
 
-    let _ = tokio::join!(show.start_show(), handle,);
+    let _ = tokio::join!(show.start_show(), handle);
 
     // let _tx_clone = tx.clone();
 

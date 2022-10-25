@@ -11,6 +11,7 @@ pub mod lights;
 pub mod projector;
 pub mod proto_schema;
 pub mod show;
+pub mod structure;
 
 pub mod prelude {
     pub use crate::audio::*;
