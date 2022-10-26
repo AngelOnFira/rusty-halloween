@@ -12,20 +12,25 @@ use tokio::sync::mpsc;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    println!("Starting Tokio console...");
     #[cfg(not(feature = "pi"))]
     console_subscriber::init();
 
     // Load the config file
+    println!("Starting config...");
     let config = Config::load()?;
 
     // Make sure the socket is removed if the program exits, check if the file
     // exists first
+    println!("Starting socket...");
     if std::path::Path::new("/tmp/pico.sock").exists() {
         std::fs::remove_file("/tmp/pico.sock")?;
     }
 
     // Set up the local audio storage
+    println!("Starting audio system...");
     FileStructure::verify();
+
 
     let _listener = LocalSocketListener::bind("/tmp/pico.sock")?;
 
@@ -33,19 +38,23 @@ async fn main() -> Result<(), Error> {
     let (tx, mut rx) = mpsc::channel(100);
 
     // Start the dashboard
+    println!("Starting dashboard...");
     Dashboard::init(tx.clone()).await?;
 
     // Initialize the lights
+    println!("Starting lights...");
     let tx_clone = tx.clone();
     #[allow(unused_variables, unused_mut)]
     let mut light_controller = LightController::init(&config, tx_clone).await?;
 
     // Initialize the projector
+    println!("Starting projector...");
     let tx_clone = tx.clone();
     #[allow(unused_variables, unused_mut)]
     let mut projector_controller = ProjectorController::init(tx_clone).await?;
 
     // Initialize the audio
+    println!("Starting audio...");
     let (audio_channel_tx, audio_channel_rx) = mpsc::channel(100);
     let audio_manager = Audio::new(audio_channel_rx);
 
@@ -136,6 +145,7 @@ async fn main() -> Result<(), Error> {
     });
 
     // Get the shows on disk
+    println!("Starting shows...");
     let shows = Show::load_shows();
 
     // Initialize the show

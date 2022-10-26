@@ -25,8 +25,9 @@ impl FileStructure {
 
         // Save each embedded song to its own folder
         Audio::get_embedded_sounds().iter().for_each(|sound| {
-            if !Path::new(&format!("shows/{}/{}.wav", sound, sound)).exists() {
-                File::create(&format!("shows/{}/{}.wav", sound, sound))
+            let name = format!("shows/{}/{}.mp3", sound, sound);
+            if !Path::new(&name).exists() {
+                File::create(&name)
                     .unwrap()
                     .write_all(&Audio::get_sound_file(sound))
                     .unwrap();

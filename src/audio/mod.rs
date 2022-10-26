@@ -12,7 +12,7 @@ use rust_embed::RustEmbed;
 use tokio::sync::mpsc;
 
 pub struct Audio {
-    manager: AudioManager<CpalBackend>,
+    manager: Option<AudioManager<CpalBackend>>,
 }
 
 // #[cfg(feature="embed_audio")]
@@ -23,9 +23,16 @@ struct AudioAsset;
 impl Audio {
     pub fn new(mut receiver: mpsc::Receiver<String>) -> Result<(), Error> {
         // TODO: Gracefully handle audio not being available
-        let manager = AudioManager::<CpalBackend>::new(AudioManagerSettings::default())?;
-
-        let mut audio_manager = Self { manager };
+        let mut audio_manager =
+            match AudioManager::<CpalBackend>::new(AudioManagerSettings::default()) {
+                Ok(manager) => Self {
+                    manager: Some(manager),
+                },
+                Err(e) => {
+                    println!("Error initializing audio: {}", e);
+                    Self { manager: None }
+                }
+            };
 
         // Start the audio manager thread
         tokio::spawn(async move {
@@ -65,7 +72,9 @@ impl Audio {
     pub fn play_sound(&mut self, name: &str) -> Result<(), Box<dyn std::error::Error>> {
         let sound_data = Audio::get_sound(name)?;
 
-        self.manager.play(sound_data)?;
+        if let Some(manager) = self.manager.as_mut() {
+            manager.play(sound_data)?;
+        }
 
         Ok(())
     }
