@@ -6,6 +6,7 @@ use rusty_halloween::prelude::*;
 use rusty_halloween::InternalMessage;
 use rusty_halloween::MessageKind;
 
+use rusty_halloween::show::prelude::ShowManager;
 use rusty_halloween::structure::FileStructure;
 use tokio::sync::mpsc;
 
@@ -144,8 +145,8 @@ async fn main() -> Result<(), Error> {
 
     // Get the shows on disk
     println!("Starting shows...");
-    let _tx_clone = tx.clone();
-    // let shows = Show::load_shows(tx_clone);
+    let tx_clone = tx.clone();
+    let shows = ShowManager::load_shows(tx_clone);
 
     // Initialize the show
     let _tx_clone = tx.clone();

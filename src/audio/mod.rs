@@ -1,4 +1,4 @@
-use std::{borrow::Cow, io::Cursor, path::Path};
+use std::{borrow::Cow, fmt::format, io::Cursor, path::Path};
 
 use anyhow::Error;
 use kira::{
@@ -10,6 +10,8 @@ use kira::{
 };
 use rust_embed::RustEmbed;
 use tokio::sync::mpsc;
+
+use crate::prelude::prelude::Song;
 
 pub struct Audio {
     manager: Option<AudioManager<CpalBackend>>,
@@ -44,17 +46,36 @@ impl Audio {
         Ok(())
     }
 
-    pub fn get_sound(name: &str) -> Result<StaticSoundData, Box<dyn std::error::Error>> {
+    pub fn get_sound(name: &str) -> Result<Song, Box<dyn std::error::Error>> {
         #[allow(unused_variables)]
         let sound_path = format!("src/audio/assets/{}", name);
 
+        // Try to load it from the embedded file
         if let Some(sound_data) = AudioAsset::get(name) {
             let sound_player = StaticSoundData::from_cursor(
                 Cursor::new(sound_data.data),
                 StaticSoundSettings::default(),
             )?;
 
-            return Ok(sound_player);
+            return Ok(Song {
+                name: name.to_string(),
+                stream: Some(sound_player),
+            });
+        }
+
+        // Try to load it from the filesystem at
+        // shows/<song_name>/<song_name>.mp3
+        let sound_path = format!("shows/{}/{}.mp3", name, name);
+
+        let sound_path = Path::new(&sound_path);
+        if sound_path.exists() {
+            let sound_player =
+                StaticSoundData::from_file(sound_path, StaticSoundSettings::default())?;
+
+            return Ok(Song {
+                name: name.to_string(),
+                stream: Some(sound_player),
+            });
         }
 
         // Return "Sound not found" error
@@ -73,7 +94,9 @@ impl Audio {
         let sound_data = Audio::get_sound(name)?;
 
         if let Some(manager) = self.manager.as_mut() {
-            manager.play(sound_data)?;
+            if let Some(stream) = sound_data.stream {
+                manager.play(stream)?;
+            }
         }
 
         Ok(())
