@@ -4,7 +4,10 @@ use std::{
     path::Path,
 };
 
-use crate::prelude::Audio;
+use crate::prelude::{
+    prelude::{Show, ShowManager},
+    Audio,
+};
 
 pub struct FileStructure {}
 
@@ -31,6 +34,21 @@ impl FileStructure {
                     .unwrap()
                     .write_all(&Audio::get_sound_file(sound))
                     .unwrap();
+            }
+        });
+
+        // Create a instructions.json file for each folder
+        Audio::get_embedded_sounds().iter().for_each(|sound| {
+            let name = format!("shows/{}/instructions.json", sound);
+            if !Path::new(&name).exists() {
+                std::fs::write(
+                    name,
+                    ShowManager::new().save_show(Show {
+                        song: format!("{}.mp3", sound),
+                        frames: Show::row_flashing(),
+                    }),
+                )
+                .unwrap();
             }
         });
     }

@@ -1,4 +1,5 @@
 use crate::MessageKind;
+use rillrate::prime::{Click, ClickOpts};
 use rust_embed::RustEmbed;
 use std::{cmp::max, time::Duration};
 use tokio::{
@@ -14,6 +15,7 @@ use super::{
 pub struct ShowManager {
     pub current_show: Option<Show>,
     pub start_time: Option<Instant>,
+    pub show_buttons: Option<Vec<Click>>,
     pub message_queue: Option<mpsc::Sender<MessageKind>>,
 }
 
@@ -23,13 +25,17 @@ impl ShowManager {
             current_show: None,
             start_time: None,
             message_queue: None,
+            show_buttons: None,
         }
     }
 
     pub fn load_show(show_file_contents: String, message_queue: mpsc::Sender<MessageKind>) -> Self {
+        let message_queue_clone = message_queue.clone();
+
         ShowManager {
             current_show: Some(Show::load_show(show_file_contents)),
             message_queue: Some(message_queue),
+            show_buttons: Some(ShowManager::load_shows(message_queue_clone)),
             start_time: None,
         }
     }
@@ -159,5 +165,53 @@ impl ShowManager {
                 }
             }
         });
+    }
+
+    pub fn load_shows(message_queue: mpsc::Sender<MessageKind>) -> Vec<Click> {
+        // Find all folders in the shows folder
+        let shows = std::fs::read_dir("shows").unwrap();
+
+        let names = shows
+            .into_iter()
+            .map(|show| {
+                show.unwrap()
+                    .path()
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_string()
+            })
+            .collect::<Vec<String>>();
+
+        println!("Found shows: {:?}", names);
+
+        // For each one, load the show and song
+        let clicks = names
+            .iter()
+            .map(|name| {
+                // Load the show file
+                let show_file =
+                    std::fs::read_to_string(format!("shows/{}/instructions.json", name)).unwrap();
+
+                // Set up the buttons on the dashboard
+                let click = Click::new(
+                    format!("app.dashboard.Shows.{}", name),
+                    ClickOpts::default().label("Start"),
+                );
+                let this = click.clone();
+
+                let message_queue_clone = message_queue.clone();
+                click.sync_callback(move |envelope| {
+                    // Start loading that song
+                    this.apply();
+                    Ok(())
+                });
+
+                click
+            })
+            .collect::<Vec<Click>>();
+
+        clicks
     }
 }

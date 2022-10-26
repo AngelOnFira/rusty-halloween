@@ -146,7 +146,8 @@ async fn main() -> Result<(), Error> {
 
     // Get the shows on disk
     println!("Starting shows...");
-    let shows = Show::load_shows();
+    let tx_clone = tx.clone();
+    // let shows = Show::load_shows(tx_clone);
 
     // Initialize the show
     let tx_clone = tx.clone();

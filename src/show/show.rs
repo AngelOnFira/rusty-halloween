@@ -1,4 +1,5 @@
 use crate::MessageKind;
+use rillrate::prime::{Click, ClickOpts};
 use rust_embed::RustEmbed;
 use std::{cmp::max, time::Duration};
 use tokio::{
@@ -28,28 +29,6 @@ pub struct Laser {
 }
 
 impl Show {
-    pub fn load_shows() {
-        // Find all folders in the shows folder
-        let shows = std::fs::read_dir("shows").unwrap();
-
-        let names = shows
-            .into_iter()
-            .map(|show| {
-                show.unwrap()
-                    .path()
-                    .file_name()
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-                    .to_string()
-            })
-            .collect::<Vec<String>>();
-
-        println!("Found shows: {:?}", names);
-
-        // For each one, load the show and song
-    }
-
     pub fn load_show(show_file_contents: String) -> Self {
         // Load as json
         let file_json = json::parse(&show_file_contents).unwrap();
@@ -155,5 +134,30 @@ impl Show {
         frames.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
 
         Show { song, frames }
+    }
+}
+
+// Show frame patterns
+impl Show {
+    pub fn row_flashing() -> Vec<Frame> {
+        (0..1_000)
+            .into_iter()
+            .map(|i| {
+                let frame = Frame {
+                    timestamp: i * (60.0 / 166.0 * 1000.0) as u64,
+                    lights: (0..MAX_LIGHTS)
+                        .map(|light| {
+                            if i as usize % MAX_LIGHTS == light {
+                                Some(true)
+                            } else {
+                                Some(false)
+                            }
+                        })
+                        .collect(),
+                    lasers: (0..MAX_PROJECTORS).into_iter().map(|_| None).collect(),
+                };
+                frame
+            })
+            .collect::<Vec<Frame>>()
     }
 }

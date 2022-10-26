@@ -13,25 +13,7 @@ fn main() {
     // Thread random
     let mut rng = rand::thread_rng();
 
-    let frames = (0..1_000)
-        .into_iter()
-        .map(|i| {
-            let frame = Frame {
-                timestamp: i * (60.0 / BPM * 1000.0) as u64,
-                lights: (0..MAX_LIGHTS)
-                    .map(|light| {
-                        if i as usize % MAX_LIGHTS == light {
-                            Some(true)
-                        } else {
-                            Some(false)
-                        }
-                    })
-                    .collect(),
-                lasers: (0..MAX_PROJECTORS).into_iter().map(|_| None).collect(),
-            };
-            frame
-        })
-        .collect::<Vec<Frame>>();
+    let frames = Show::row_flashing();
 
     // Create a show
     let show = Show {
