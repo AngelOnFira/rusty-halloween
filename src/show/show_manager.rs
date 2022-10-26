@@ -7,10 +7,7 @@ use tokio::{
     time::{sleep, Instant},
 };
 
-use super::{
-    show::{Frame, Laser, Show},
-    LaserDataFrame, ShowAsset, MAX_LIGHTS, MAX_PROJECTORS,
-};
+use super::{show::Show, ShowAsset};
 
 pub struct ShowManager {
     pub current_show: Option<Show>,
@@ -191,7 +188,7 @@ impl ShowManager {
             .iter()
             .map(|name| {
                 // Load the show file
-                let show_file =
+                let _show_file =
                     std::fs::read_to_string(format!("shows/{}/instructions.json", name)).unwrap();
 
                 // Set up the buttons on the dashboard
@@ -201,8 +198,8 @@ impl ShowManager {
                 );
                 let this = click.clone();
 
-                let message_queue_clone = message_queue.clone();
-                click.sync_callback(move |envelope| {
+                let _message_queue_clone = message_queue.clone();
+                click.sync_callback(move |_envelope| {
                     // Start loading that song
                     this.apply();
                     Ok(())

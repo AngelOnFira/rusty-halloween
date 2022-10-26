@@ -6,7 +6,6 @@ use rusty_halloween::prelude::*;
 use rusty_halloween::InternalMessage;
 use rusty_halloween::MessageKind;
 
-use rusty_halloween::show::prelude::Show;
 use rusty_halloween::structure::FileStructure;
 use tokio::sync::mpsc;
 
@@ -30,7 +29,6 @@ async fn main() -> Result<(), Error> {
     // Set up the local audio storage
     println!("Starting audio system...");
     FileStructure::verify();
-
 
     let _listener = LocalSocketListener::bind("/tmp/pico.sock")?;
 
@@ -146,11 +144,11 @@ async fn main() -> Result<(), Error> {
 
     // Get the shows on disk
     println!("Starting shows...");
-    let tx_clone = tx.clone();
+    let _tx_clone = tx.clone();
     // let shows = Show::load_shows(tx_clone);
 
     // Initialize the show
-    let tx_clone = tx.clone();
+    let _tx_clone = tx.clone();
     // let show = ShowManager::load_show_file("halloween.json".to_string(), tx_clone);
     // tokio::spawn(async move {
     //     show.start_show().await;

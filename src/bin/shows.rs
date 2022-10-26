@@ -1,9 +1,4 @@
-use rand::Rng;
-use rusty_halloween::{
-    prelude::*,
-    show::prelude::{Frame, Show, ShowManager, Song},
-};
-use std::char::MAX;
+use rusty_halloween::show::prelude::{Show, ShowManager, Song};
 
 const BPM: f32 = 166.0;
 
@@ -11,7 +6,7 @@ fn main() {
     println!("Hello, world!");
 
     // Thread random
-    let mut rng = rand::thread_rng();
+    let _rng = rand::thread_rng();
 
     let frames = Show::row_flashing();
 
