@@ -1,7 +1,7 @@
 use rand::Rng;
 use rusty_halloween::{
     prelude::*,
-    show::prelude::{Frame, Show, ShowManager},
+    show::prelude::{Frame, Show, ShowManager, Song},
 };
 use std::char::MAX;
 
@@ -17,7 +17,10 @@ fn main() {
 
     // Create a show
     let show = Show {
-        song: "song3.mp3".to_string(),
+        song: Song {
+            name: "song3.mp3".to_string(),
+            stream: None,
+        },
         frames: frames,
     };
 

@@ -1,4 +1,5 @@
 use crate::MessageKind;
+use kira::sound::static_sound::StaticSoundData;
 use rillrate::prime::{Click, ClickOpts};
 use rust_embed::RustEmbed;
 use std::{cmp::max, time::Duration};
@@ -10,8 +11,13 @@ use tokio::{
 use super::{LaserDataFrame, MAX_LIGHTS, MAX_PROJECTORS};
 
 pub struct Show {
-    pub song: String,
+    pub song: Song,
     pub frames: Vec<Frame>,
+}
+
+pub struct Song {
+    pub name: String,
+    pub stream: Option<StaticSoundData>,
 }
 
 pub struct Frame {
@@ -133,7 +139,13 @@ impl Show {
         // Sort frames by timestamp
         frames.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
 
-        Show { song, frames }
+        Show {
+            song: Song {
+                name: song,
+                stream: None,
+            },
+            frames,
+        }
     }
 }
 

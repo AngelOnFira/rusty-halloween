@@ -43,7 +43,7 @@ impl ShowManager {
     pub fn save_show(&self, show: Show) -> String {
         let mut file_json = json::JsonValue::new_object();
 
-        file_json["song"] = show.song.into();
+        file_json["song"] = show.song.name.into();
 
         for frame in show.frames {
             let timestamp = frame.timestamp.to_string();
@@ -117,7 +117,7 @@ impl ShowManager {
             .unwrap()
             .try_send(MessageKind::InternalMessage(
                 crate::InternalMessage::Audio {
-                    audio_file_contents: self.current_show.as_ref().unwrap().song.clone(),
+                    audio_file_contents: self.current_show.as_ref().unwrap().song.name.clone(),
                 },
             ))
             .unwrap();

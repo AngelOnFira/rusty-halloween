@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::prelude::{
-    prelude::{Show, ShowManager},
+    prelude::{Show, ShowManager, Song},
     Audio,
 };
 
@@ -44,7 +44,10 @@ impl FileStructure {
                 std::fs::write(
                     name,
                     ShowManager::new().save_show(Show {
-                        song: format!("{}.mp3", sound),
+                        song: Song {
+                            name: format!("{}.mp3", sound),
+                            stream: None,
+                        },
                         frames: Show::row_flashing(),
                     }),
                 )
