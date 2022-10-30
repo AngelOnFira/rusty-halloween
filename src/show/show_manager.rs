@@ -190,29 +190,63 @@ impl ShowManager {
         let shows = names
             .iter()
             .map(|name| {
-                // Load the show file
-                let _show_file =
-                    std::fs::read_to_string(format!("shows/{}/instructions.json", name)).unwrap();
+                // Get the name of all the files in the folder
+                let files = std::fs::read_dir(format!("shows/{}", name)).unwrap();
 
-                // Set up the buttons on the dashboard
-                let click = Click::new(
-                    format!("app.dashboard.Shows.{}", name),
-                    ClickOpts::default().label("Start"),
-                );
-                let this = click.clone();
+                // Get all that begin with `instructions-`
+                let instructions_files = files
+                    .into_iter()
+                    .filter(|file| {
+                        file.as_ref()
+                            .unwrap()
+                            .path()
+                            .file_name()
+                            .unwrap()
+                            .to_str()
+                            .unwrap()
+                            .starts_with("instructions-")
+                    })
+                    .collect::<Vec<_>>();
 
-                let _message_queue_clone = message_queue.clone();
-                click.sync_callback(move |_envelope| {
-                    // Start loading that song
-                    this.apply();
-                    Ok(())
-                });
+                let song = Audio::get_sound(name).unwrap();
 
-                Show {
-                    song: Audio::get_sound(name).unwrap(),
-                    frames: Vec::new(),
-                }
+                // Create a show for each one of these files
+                let shows = instructions_files
+                    .into_iter()
+                    .filter_map(|file| {
+                        if let Ok(file) = file {
+                            // Load the show file
+                            let file_contents = std::fs::read_to_string(file.path()).unwrap();
+
+                            // Load the frames
+                            let mut show = Show::load_show(file_contents);
+
+                            show.song = song.clone();
+
+                            // Set up the buttons on the dashboard
+                            let click = Click::new(
+                                format!("app.dashboard.Shows.{}", name),
+                                ClickOpts::default().label("Start"),
+                            );
+                            let this = click.clone();
+
+                            let _message_queue_clone = message_queue.clone();
+                            click.sync_callback(move |_envelope| {
+                                // Start loading that song
+                                this.apply();
+                                Ok(())
+                            });
+
+                            return Some(show);
+                        }
+
+                        None
+                    })
+                    .collect::<Vec<_>>();
+
+                shows
             })
+            .flatten()
             .collect::<Vec<Show>>();
 
         shows

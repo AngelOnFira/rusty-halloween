@@ -148,6 +148,9 @@ async fn main() -> Result<(), Error> {
     let tx_clone = tx.clone();
     let shows = ShowManager::load_shows(tx_clone);
 
+    // Debug the shows that were found
+    println!("Found {} shows", shows.len());
+
     // Initialize the show
     let _tx_clone = tx.clone();
     // let show = ShowManager::load_show_file("halloween.json".to_string(), tx_clone);

@@ -7,6 +7,7 @@ pub struct Show {
     pub frames: Vec<Frame>,
 }
 
+#[derive(Clone)]
 pub struct Song {
     pub name: String,
     pub stream: Option<StaticSoundData>,

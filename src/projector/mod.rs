@@ -25,6 +25,9 @@ pub struct ProjectorController {
 
 type Frame = [u8; 4];
 
+#[cfg(feature = "pi")]
+const BAUD: u32 = 9_600;
+
 #[derive(PartialEq, Clone, Debug)]
 pub struct FrameSendPack {
     pub header: Frame,
@@ -62,7 +65,7 @@ impl ProjectorController {
         let spi = Spi::new(
             Bus::Spi0,
             SlaveSelect::Ss0,
-            115_200,
+            BAUD,
             rppal::spi::Mode::Mode0,
         )?;
 
