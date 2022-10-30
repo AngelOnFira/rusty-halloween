@@ -26,7 +26,7 @@ pub struct ProjectorController {
 type Frame = [u8; 4];
 
 #[cfg(feature = "pi")]
-const BAUD: u32 = 9_600;
+const BAUD: u32 = 56_000;
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct FrameSendPack {

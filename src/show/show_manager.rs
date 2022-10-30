@@ -43,16 +43,14 @@ impl ShowManager {
     pub fn save_show(&self, show: Show) -> String {
         let mut file_json = json::JsonValue::new_object();
 
-        file_json["song"] = show.song.name.into();
-
         for frame in show.frames {
             let timestamp = frame.timestamp.to_string();
-            file_json["timestamps"][&timestamp] = json::JsonValue::new_object();
+            file_json[&timestamp] = json::JsonValue::new_object();
 
             for (i, light) in frame.lights.iter().enumerate() {
                 let light_name = format!("light-{}", i);
                 if let Some(light) = light {
-                    file_json["timestamps"][&timestamp][&light_name] = match light {
+                    file_json[&timestamp][&light_name] = match light {
                         true => 1.0.into(),
                         false => 0.0.into(),
                     };
@@ -63,29 +61,22 @@ impl ShowManager {
                 let laser_name = format!("laser-{}", i);
                 let laser_config_name = format!("laser-{}-config", i);
                 if let Some(laser) = laser {
-                    file_json["timestamps"][&timestamp][&laser_config_name] =
-                        json::JsonValue::new_object();
-                    file_json["timestamps"][&timestamp][&laser_config_name]["home"] =
+                    file_json[&timestamp][&laser_config_name] = json::JsonValue::new_object();
+                    file_json[&timestamp][&laser_config_name]["home"] =
                         json::JsonValue::Boolean(laser.home);
-                    file_json["timestamps"][&timestamp][&laser_config_name]["speed-profile"] =
+                    file_json[&timestamp][&laser_config_name]["speed-profile"] =
                         json::JsonValue::Boolean(laser.speed_profile);
 
-                    file_json["timestamps"][&timestamp][&laser_name] = json::JsonValue::new_array();
+                    file_json[&timestamp][&laser_name] = json::JsonValue::new_array();
 
                     for laser_frame in &laser.data_frame {
-                        file_json["timestamps"][&timestamp][&laser_name]
-                            .push(json::JsonValue::new_array());
-                        let last_index = file_json["timestamps"][&timestamp][&laser_name].len() - 1;
-                        file_json["timestamps"][&timestamp][&laser_name][last_index]
-                            .push(laser_frame.x_pos);
-                        file_json["timestamps"][&timestamp][&laser_name][last_index]
-                            .push(laser_frame.y_pos);
-                        file_json["timestamps"][&timestamp][&laser_name][last_index]
-                            .push(laser_frame.r);
-                        file_json["timestamps"][&timestamp][&laser_name][last_index]
-                            .push(laser_frame.g);
-                        file_json["timestamps"][&timestamp][&laser_name][last_index]
-                            .push(laser_frame.b);
+                        file_json[&timestamp][&laser_name].push(json::JsonValue::new_array());
+                        let last_index = file_json[&timestamp][&laser_name].len() - 1;
+                        file_json[&timestamp][&laser_name][last_index].push(laser_frame.x_pos);
+                        file_json[&timestamp][&laser_name][last_index].push(laser_frame.y_pos);
+                        file_json[&timestamp][&laser_name][last_index].push(laser_frame.r);
+                        file_json[&timestamp][&laser_name][last_index].push(laser_frame.g);
+                        file_json[&timestamp][&laser_name][last_index].push(laser_frame.b);
                     }
                 }
             }
@@ -112,15 +103,17 @@ impl ShowManager {
         self.start_time = Some(Instant::now());
 
         // Start the song
-        self.message_queue
-            .as_ref()
-            .unwrap()
-            .try_send(MessageKind::InternalMessage(
-                crate::InternalMessage::Audio {
-                    audio_file_contents: self.current_show.as_ref().unwrap().song.name.clone(),
-                },
-            ))
-            .unwrap();
+        if let Some(song) = self.current_show.unwrap().song {
+            self.message_queue
+                .as_ref()
+                .unwrap()
+                .try_send(MessageKind::InternalMessage(
+                    crate::InternalMessage::Audio {
+                        audio_file_contents: song,
+                    },
+                ))
+                .unwrap();
+        }
 
         // Start the show thread
         tokio::spawn(async move {
@@ -208,6 +201,34 @@ impl ShowManager {
                     })
                     .collect::<Vec<_>>();
 
+                // Get all that that have a file format .mp3, keep only the path
+                // of the first one
+                let song_file_name = instructions_files
+                    .iter()
+                    .filter(|file| {
+                        file.as_ref()
+                            .unwrap()
+                            .path()
+                            .extension()
+                            .unwrap()
+                            .to_str()
+                            .unwrap()
+                            == "mp3"
+                    })
+                    .map(|file| {
+                        file.as_ref()
+                            .unwrap()
+                            .path()
+                            .file_stem()
+                            .unwrap()
+                            .to_str()
+                            .unwrap()
+                            .to_string()
+                    })
+                    .next()
+                    .unwrap()
+                    .clone();
+
                 let song = Audio::get_sound(name).unwrap();
 
                 // Create a show for each one of these files
@@ -221,7 +242,7 @@ impl ShowManager {
                             // Load the frames
                             let mut show = Show::load_show(file_contents);
 
-                            show.song = song.clone();
+                            show.song = Some(song.clone());
 
                             // Set up the buttons on the dashboard
                             let click = Click::new(

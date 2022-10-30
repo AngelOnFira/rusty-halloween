@@ -1,5 +1,6 @@
 use interprocess::local_socket::LocalSocketStream;
 
+use prelude::prelude::Song;
 use projector::FrameSendPack;
 
 use std::io::{self};
@@ -33,20 +34,20 @@ fn handle_error(conn: io::Result<LocalSocketStream>) -> Option<LocalSocketStream
     }
 }
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(Clone)]
 pub enum InternalMessage {
     /// Files that just have hex to be dumped to SPI
     Vision { vision_file_contents: String },
     /// Change a light over GPIO
     Light { light_id: u8, enable: bool },
     /// Play an audio file
-    Audio { audio_file_contents: String },
+    Audio { audio_file_contents: Song },
     /// Direct projector frames
     Projector(FrameSendPack),
 }
 
 /// Messages that should be processed in the queue
-#[derive(PartialEq, Clone, Debug)]
+#[derive(Clone)]
 pub enum MessageKind {
     // ExternalMessage(PicoMessage),
     InternalMessage(InternalMessage),

@@ -44,10 +44,10 @@ impl FileStructure {
                 std::fs::write(
                     name,
                     ShowManager::new().save_show(Show {
-                        song: Song {
+                        song: Some(Song {
                             name: format!("{}.mp3", sound),
                             stream: None,
-                        },
+                        }),
                         frames: Show::row_flashing(),
                     }),
                 )

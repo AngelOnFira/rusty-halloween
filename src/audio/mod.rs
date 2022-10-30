@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fmt::format, io::Cursor, path::Path};
+use std::{borrow::Cow, fmt::format, io::Cursor, path::Path, collections::HashMap};
 
 use anyhow::Error;
 use kira::{
@@ -15,6 +15,7 @@ use crate::prelude::prelude::Song;
 
 pub struct Audio {
     manager: Option<AudioManager<CpalBackend>>,
+    song_cache: HashMap<String, StaticSoundData>
 }
 
 // #[cfg(feature="embed_audio")]

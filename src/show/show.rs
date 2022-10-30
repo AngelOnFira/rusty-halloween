@@ -3,7 +3,7 @@ use kira::sound::static_sound::StaticSoundData;
 use super::{LaserDataFrame, MAX_LIGHTS, MAX_PROJECTORS};
 
 pub struct Show {
-    pub song: Song,
+    pub song: Option<Song>,
     pub frames: Vec<Frame>,
 }
 
@@ -31,9 +31,6 @@ impl Show {
     pub fn load_show(show_file_contents: String) -> Self {
         // Load as json
         let file_json = json::parse(&show_file_contents).unwrap();
-
-        // Get the song name
-        let song = file_json["song"].as_str().unwrap().to_string();
 
         let mut frames = Vec::new();
 
@@ -132,13 +129,7 @@ impl Show {
         // Sort frames by timestamp
         frames.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
 
-        Show {
-            song: Song {
-                name: song,
-                stream: None,
-            },
-            frames,
-        }
+        Show { song: None, frames }
     }
 }
 
