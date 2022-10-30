@@ -21,6 +21,7 @@ pub mod prelude {
     pub use crate::projector::*;
     pub use crate::proto_schema::*;
     pub use crate::show::*;
+    pub use crate::structure::*;
 }
 
 fn handle_error(conn: io::Result<LocalSocketStream>) -> Option<LocalSocketStream> {

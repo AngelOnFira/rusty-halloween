@@ -3,11 +3,10 @@ use interprocess::local_socket::LocalSocketListener;
 use log::error;
 use rillrate::prime::{LiveTail, LiveTailOpts, Pulse, PulseOpts};
 use rusty_halloween::prelude::*;
-use rusty_halloween::InternalMessage;
-use rusty_halloween::MessageKind;
-
 use rusty_halloween::show::prelude::ShowManager;
 use rusty_halloween::structure::FileStructure;
+use rusty_halloween::InternalMessage;
+use rusty_halloween::MessageKind;
 use tokio::sync::mpsc;
 
 #[tokio::main]
@@ -147,6 +146,11 @@ async fn main() -> Result<(), Error> {
     println!("Starting shows...");
     let tx_clone = tx.clone();
     let shows = ShowManager::load_shows(tx_clone);
+
+    // Start the show
+    let mut show_manager = ShowManager::new();
+    show_manager.current_show = Some(shows[0].clone());
+    show_manager.start_show();
 
     // Initialize the show
     let _tx_clone = tx.clone();

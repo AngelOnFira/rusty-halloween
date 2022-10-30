@@ -2,7 +2,7 @@ use crate::{
     prelude::{prelude::Song, Audio},
     MessageKind,
 };
-use rillrate::prime::{Click, ClickOpts};
+use rillrate::prime::{Click, ClickOpts, Gauge, GaugeOpts};
 use rust_embed::RustEmbed;
 use std::{cmp::max, time::Duration};
 use tokio::{
@@ -17,99 +17,39 @@ pub struct ShowManager {
     pub start_time: Option<Instant>,
     pub shows: Option<Vec<Show>>,
     pub message_queue: Option<mpsc::Sender<MessageKind>>,
+    pub progress_bar: Gauge,
 }
 
 impl ShowManager {
     pub fn new() -> Self {
+        let progress_bar = Gauge::new(
+            "app.dashboard.Show.Progress",
+            Default::default(),
+            GaugeOpts::default().min(0.0).max(0.0),
+        );
+
         Self {
             current_show: None,
             start_time: None,
             message_queue: None,
             shows: None,
+            progress_bar,
         }
     }
 
-    pub fn load_show(show_file_contents: String, message_queue: mpsc::Sender<MessageKind>) -> Self {
-        let message_queue_clone = message_queue.clone();
-
-        ShowManager {
-            current_show: Some(Show::load_show(show_file_contents)),
-            message_queue: Some(message_queue),
-            shows: Some(ShowManager::load_shows(message_queue_clone)),
-            start_time: None,
-        }
-    }
-
-    pub fn save_show(&self, show: Show) -> String {
-        let mut file_json = json::JsonValue::new_object();
-
-        file_json["song"] = show.song.name.into();
-
-        for frame in show.frames {
-            let timestamp = frame.timestamp.to_string();
-            file_json["timestamps"][&timestamp] = json::JsonValue::new_object();
-
-            for (i, light) in frame.lights.iter().enumerate() {
-                let light_name = format!("light-{}", i);
-                if let Some(light) = light {
-                    file_json["timestamps"][&timestamp][&light_name] = match light {
-                        true => 1.0.into(),
-                        false => 0.0.into(),
-                    };
-                }
-            }
-
-            for (i, laser) in frame.lasers.iter().enumerate() {
-                let laser_name = format!("laser-{}", i);
-                let laser_config_name = format!("laser-{}-config", i);
-                if let Some(laser) = laser {
-                    file_json["timestamps"][&timestamp][&laser_config_name] =
-                        json::JsonValue::new_object();
-                    file_json["timestamps"][&timestamp][&laser_config_name]["home"] =
-                        json::JsonValue::Boolean(laser.home);
-                    file_json["timestamps"][&timestamp][&laser_config_name]["speed-profile"] =
-                        json::JsonValue::Boolean(laser.speed_profile);
-
-                    file_json["timestamps"][&timestamp][&laser_name] = json::JsonValue::new_array();
-
-                    for laser_frame in &laser.data_frame {
-                        file_json["timestamps"][&timestamp][&laser_name]
-                            .push(json::JsonValue::new_array());
-                        let last_index = file_json["timestamps"][&timestamp][&laser_name].len() - 1;
-                        file_json["timestamps"][&timestamp][&laser_name][last_index]
-                            .push(laser_frame.x_pos);
-                        file_json["timestamps"][&timestamp][&laser_name][last_index]
-                            .push(laser_frame.y_pos);
-                        file_json["timestamps"][&timestamp][&laser_name][last_index]
-                            .push(laser_frame.r);
-                        file_json["timestamps"][&timestamp][&laser_name][last_index]
-                            .push(laser_frame.g);
-                        file_json["timestamps"][&timestamp][&laser_name][last_index]
-                            .push(laser_frame.b);
-                    }
-                }
-            }
-        }
-
-        file_json.pretty(4)
-    }
-
-    pub fn load_show_file(
-        show_file_path: String,
+    pub fn set_show(
+        &mut self,
+        show_file_contents: String,
         message_queue: mpsc::Sender<MessageKind>,
-    ) -> Self {
-        // let show_file_contents = std::fs::read_to_string(show_file_path).unwrap();
-        let show_file_contents: String =
-            std::str::from_utf8(&ShowAsset::get(&show_file_path).unwrap().data)
-                .unwrap()
-                .to_string();
-
-        ShowManager::load_show(show_file_contents, message_queue)
+    ) {
+        self.current_show = Some(Show::load_show(show_file_contents));
     }
 
     pub async fn start_show(mut self) {
         // Set the timer
         self.start_time = Some(Instant::now());
+
+        let mut current_show = self.current_show.unwrap();
 
         // Start the song
         self.message_queue
@@ -117,16 +57,35 @@ impl ShowManager {
             .unwrap()
             .try_send(MessageKind::InternalMessage(
                 crate::InternalMessage::Audio {
-                    audio_file_contents: self.current_show.as_ref().unwrap().song.name.clone(),
+                    audio_file_contents: current_show.song.name.clone(),
                 },
             ))
             .unwrap();
+
+        let progress_bar = Gauge::new(
+            "app.dashboard.Show.Progress",
+            Default::default(),
+            GaugeOpts::default()
+                .min(0.0)
+                .max(current_show.frames.last().unwrap().timestamp as f64 / 1000.0),
+        );
+
+        self.progress_bar = progress_bar;
+
+        // Spawn a progress bar thread
+        tokio::spawn(async move {
+            loop {
+                sleep(Duration::from_millis(100)).await;
+                let current_time = self.start_time.unwrap().elapsed().as_millis() as f64;
+                self.progress_bar.set(current_time / 1000.0);
+            }
+        });
 
         // Start the show thread
         tokio::spawn(async move {
             loop {
                 // Get the next frame
-                let curr_frame = self.current_show.as_mut().unwrap().frames.remove(0);
+                let curr_frame = current_show.frames.remove(0);
 
                 // Sleep until the current frame is ready
                 let curr_time = self.start_time.unwrap().elapsed().as_millis() as i64;
@@ -160,7 +119,7 @@ impl ShowManager {
                 // Send all the lasers data
                 // ...
 
-                if self.current_show.as_ref().unwrap().frames.len() == 0 {
+                if current_show.frames.len() == 0 {
                     break;
                 }
             }
@@ -190,9 +149,14 @@ impl ShowManager {
         let shows = names
             .iter()
             .map(|name| {
+                // Print the show name
+                println!("Loading show: {}", name);
+
                 // Load the show file
-                let _show_file =
+                let show_file =
                     std::fs::read_to_string(format!("shows/{}/instructions.json", name)).unwrap();
+
+                // Load the show
 
                 // Set up the buttons on the dashboard
                 let click = Click::new(

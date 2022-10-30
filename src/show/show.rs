@@ -2,22 +2,26 @@ use kira::sound::static_sound::StaticSoundData;
 
 use super::{LaserDataFrame, MAX_LIGHTS, MAX_PROJECTORS};
 
+#[derive(Clone)]
 pub struct Show {
     pub song: Song,
     pub frames: Vec<Frame>,
 }
 
+#[derive(Clone)]
 pub struct Song {
     pub name: String,
     pub stream: Option<StaticSoundData>,
 }
 
+#[derive(Clone)]
 pub struct Frame {
     pub timestamp: u64,
     pub lights: Vec<Option<bool>>,
     pub lasers: Vec<Option<Laser>>,
 }
 
+#[derive(Clone)]
 pub struct Laser {
     // Laser conf
     pub home: bool,
@@ -26,6 +30,7 @@ pub struct Laser {
     pub data_frame: Vec<LaserDataFrame>,
 }
 
+/// Saving and loading show
 impl Show {
     pub fn load_show(show_file_contents: String) -> Self {
         // Load as json
@@ -138,6 +143,60 @@ impl Show {
             },
             frames,
         }
+    }
+
+    pub fn save_show(show: Show) -> String {
+        let mut file_json = json::JsonValue::new_object();
+
+        file_json["song"] = show.song.name.into();
+
+        for frame in show.frames {
+            let timestamp = frame.timestamp.to_string();
+            file_json["timestamps"][&timestamp] = json::JsonValue::new_object();
+
+            for (i, light) in frame.lights.iter().enumerate() {
+                let light_name = format!("light-{}", i);
+                if let Some(light) = light {
+                    file_json["timestamps"][&timestamp][&light_name] = match light {
+                        true => 1.0.into(),
+                        false => 0.0.into(),
+                    };
+                }
+            }
+
+            for (i, laser) in frame.lasers.iter().enumerate() {
+                let laser_name = format!("laser-{}", i);
+                let laser_config_name = format!("laser-{}-config", i);
+                if let Some(laser) = laser {
+                    file_json["timestamps"][&timestamp][&laser_config_name] =
+                        json::JsonValue::new_object();
+                    file_json["timestamps"][&timestamp][&laser_config_name]["home"] =
+                        json::JsonValue::Boolean(laser.home);
+                    file_json["timestamps"][&timestamp][&laser_config_name]["speed-profile"] =
+                        json::JsonValue::Boolean(laser.speed_profile);
+
+                    file_json["timestamps"][&timestamp][&laser_name] = json::JsonValue::new_array();
+
+                    for laser_frame in &laser.data_frame {
+                        file_json["timestamps"][&timestamp][&laser_name]
+                            .push(json::JsonValue::new_array());
+                        let last_index = file_json["timestamps"][&timestamp][&laser_name].len() - 1;
+                        file_json["timestamps"][&timestamp][&laser_name][last_index]
+                            .push(laser_frame.x_pos);
+                        file_json["timestamps"][&timestamp][&laser_name][last_index]
+                            .push(laser_frame.y_pos);
+                        file_json["timestamps"][&timestamp][&laser_name][last_index]
+                            .push(laser_frame.r);
+                        file_json["timestamps"][&timestamp][&laser_name][last_index]
+                            .push(laser_frame.g);
+                        file_json["timestamps"][&timestamp][&laser_name][last_index]
+                            .push(laser_frame.b);
+                    }
+                }
+            }
+        }
+
+        file_json.pretty(4)
     }
 }
 
