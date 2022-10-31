@@ -96,7 +96,7 @@ impl ProjectorController {
                             .unwrap()
                             .to_string(),
                         },
-                    ));
+                    )).unwrap();
                 }
                 Ok(())
             });
@@ -114,7 +114,7 @@ impl ProjectorController {
                 .unwrap()
                 .to_string(),
             }))
-            .await;
+            .await.unwrap();
 
         Ok(ProjectorController {
             #[cfg(feature = "pi")]

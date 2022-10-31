@@ -1,7 +1,7 @@
 use super::pack::HeaderPack;
 
 impl HeaderPack {
-    pub fn ResetRequest() {
+    pub fn reset_request() {
         let mut full_request = Vec::new();
 
         for _ in 0..51 {
@@ -11,7 +11,7 @@ impl HeaderPack {
         }
     }
 
-    pub fn HomeRequest() {
+    pub fn home_request() {
         let mut full_request = Vec::new();
 
         for _ in 0..51 {

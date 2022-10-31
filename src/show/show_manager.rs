@@ -20,12 +20,12 @@ pub struct ShowManager {
 }
 
 impl ShowManager {
-    pub fn new() -> Self {
+    pub fn new(shows: Vec<Show>) -> Self {
         Self {
             current_show: None,
             start_time: None,
             message_queue: None,
-            shows: None,
+            shows: Some(shows),
         }
     }
 
@@ -70,13 +70,25 @@ impl ShowManager {
                     file_json[&timestamp][&laser_name] = json::JsonValue::new_array();
 
                     for laser_frame in &laser.data_frame {
-                        file_json[&timestamp][&laser_name].push(json::JsonValue::new_array());
+                        file_json[&timestamp][&laser_name]
+                            .push(json::JsonValue::new_array())
+                            .unwrap();
                         let last_index = file_json[&timestamp][&laser_name].len() - 1;
-                        file_json[&timestamp][&laser_name][last_index].push(laser_frame.x_pos);
-                        file_json[&timestamp][&laser_name][last_index].push(laser_frame.y_pos);
-                        file_json[&timestamp][&laser_name][last_index].push(laser_frame.r);
-                        file_json[&timestamp][&laser_name][last_index].push(laser_frame.g);
-                        file_json[&timestamp][&laser_name][last_index].push(laser_frame.b);
+                        file_json[&timestamp][&laser_name][last_index]
+                            .push(laser_frame.x_pos)
+                            .unwrap();
+                        file_json[&timestamp][&laser_name][last_index]
+                            .push(laser_frame.y_pos)
+                            .unwrap();
+                        file_json[&timestamp][&laser_name][last_index]
+                            .push(laser_frame.r)
+                            .unwrap();
+                        file_json[&timestamp][&laser_name][last_index]
+                            .push(laser_frame.g)
+                            .unwrap();
+                        file_json[&timestamp][&laser_name][last_index]
+                            .push(laser_frame.b)
+                            .unwrap();
                     }
                 }
             }
@@ -98,7 +110,10 @@ impl ShowManager {
         ShowManager::load_show(show_file_contents, message_queue)
     }
 
-    pub async fn start_show(mut self) {
+    pub async fn start_show(&mut self, id: u64) {
+        // Set the show from the id
+        self.current_show = self.shows.as_ref().unwrap()[id as usize].clone();
+
         // Set the timer
         self.start_time = Some(Instant::now());
 
@@ -111,7 +126,8 @@ impl ShowManager {
                     crate::InternalMessage::Audio {
                         audio_file_contents: Arc::new(song.clone()),
                     },
-                ));
+                ))
+                .unwrap();
         }
 
         // Start the show thread
@@ -130,12 +146,16 @@ impl ShowManager {
                 // Send all the lights data
                 for (i, light) in curr_frame.lights.iter().enumerate() {
                     if let Some(light) = light {
-                        self.message_queue.as_mut().unwrap().try_send(
-                            MessageKind::InternalMessage(crate::InternalMessage::Light {
-                                light_id: i as u8 + 1,
-                                enable: *light,
-                            }),
-                        );
+                        self.message_queue
+                            .as_mut()
+                            .unwrap()
+                            .try_send(MessageKind::InternalMessage(
+                                crate::InternalMessage::Light {
+                                    light_id: i as u8 + 1,
+                                    enable: *light,
+                                },
+                            ))
+                            .unwrap();
                     }
                 }
 
@@ -196,10 +216,13 @@ impl ShowManager {
                     })
                     .collect::<Vec<_>>();
 
+                // Get the name of all the files in the folder
+                let files = std::fs::read_dir(format!("shows/{}", name)).unwrap();
+
                 // Get all that that have a file format .mp3, keep only the path
                 // of the first one
-                let song_file_name = instructions_files
-                    .iter()
+                let song_file_name = files
+                    .into_iter()
                     .filter(|file| {
                         file.as_ref()
                             .unwrap()
@@ -224,7 +247,7 @@ impl ShowManager {
                     .unwrap()
                     .clone();
 
-                let song = Audio::get_sound(name).unwrap();
+                let song = Audio::get_sound(&song_file_name).unwrap();
 
                 // Create a show for each one of these files
                 let shows = instructions_files

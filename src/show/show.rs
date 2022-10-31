@@ -2,23 +2,26 @@ use kira::sound::static_sound::StaticSoundData;
 
 use super::{LaserDataFrame, MAX_LIGHTS, MAX_PROJECTORS};
 
+#[derive(Clone)]
 pub struct Show {
     pub song: Option<Song>,
     pub frames: Vec<Frame>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Song {
     pub name: String,
     pub stream: Option<StaticSoundData>,
 }
 
+#[derive(Clone)]
 pub struct Frame {
     pub timestamp: u64,
     pub lights: Vec<Option<bool>>,
     pub lasers: Vec<Option<Laser>>,
 }
 
+#[derive(Clone)]
 pub struct Laser {
     // Laser conf
     pub home: bool,

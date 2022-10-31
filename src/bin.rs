@@ -106,7 +106,7 @@ async fn main() -> Result<(), Error> {
                         live_tail.log_now(module_path!(), "INFO", "Audio command received");
                         match audio_manager {
                             Ok(_) => {
-                                audio_channel_tx.send(audio_file_contents).await;
+                                audio_channel_tx.send(audio_file_contents).await.unwrap();
                             }
                             Err(_) => {
                                 live_tail.log_now(
@@ -145,6 +145,17 @@ async fn main() -> Result<(), Error> {
     println!("Starting shows...");
     let tx_clone = tx.clone();
     let shows = ShowManager::load_shows(tx_clone);
+
+    // Start playing the first show
+    let mut manager = ShowManager {
+        current_show: Some(shows[0].clone()),
+        start_time: None,
+        shows: Some(shows),
+        message_queue: Option<mpsc::Sender<MessageKind>>,
+
+    };
+
+    manager.start_show();
 
     // Debug the shows that were found
     println!("Found {} shows", shows.len());

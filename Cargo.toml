@@ -29,7 +29,7 @@ rillrate = "0.41.0"
 # Embedded
 rppal = { version = "0.13.1", optional = true }
 packed_struct = "0.10.0"
-kira = "0.7.0"
+kira = "^0.7.1"
 
 # Embed the audio files
 rust-embed = { version = "6.4.1", features = ["debug-embed"] }

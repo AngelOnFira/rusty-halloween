@@ -41,7 +41,7 @@ impl Audio {
             while let Some(sound) = receiver.recv().await {
                 if let Some(manager) = audio_manager.manager.as_mut() {
                     if let Some(stream) = &sound.stream {
-                        manager.play(stream.clone());
+                        manager.play(stream.clone()).unwrap();
                     }
                 }
             }

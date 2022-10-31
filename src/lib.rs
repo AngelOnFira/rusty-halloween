@@ -34,7 +34,7 @@ fn handle_error(conn: io::Result<LocalSocketStream>) -> Option<LocalSocketStream
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum InternalMessage {
     /// Files that just have hex to be dumped to SPI
     Vision { vision_file_contents: String },
@@ -47,7 +47,7 @@ pub enum InternalMessage {
 }
 
 /// Messages that should be processed in the queue
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum MessageKind {
     // ExternalMessage(PicoMessage),
     InternalMessage(InternalMessage),
