@@ -3,7 +3,10 @@ use interprocess::local_socket::LocalSocketStream;
 use prelude::prelude::Song;
 use projector::FrameSendPack;
 
-use std::{io::{self}, sync::Arc};
+use std::{
+    io::{self},
+    sync::Arc,
+};
 
 pub mod audio;
 pub mod config;

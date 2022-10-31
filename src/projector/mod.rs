@@ -88,15 +88,15 @@ impl ProjectorController {
                     log::warn!("ACTION: {:?}", action);
                     this.apply();
 
-                    message_queue_clone.blocking_send(MessageKind::InternalMessage(
-                        InternalMessage::Vision {
+                    message_queue_clone
+                        .blocking_send(MessageKind::InternalMessage(InternalMessage::Vision {
                             vision_file_contents: std::str::from_utf8(
                                 &VisionAsset::get(&vision).unwrap().data,
                             )
                             .unwrap()
                             .to_string(),
-                        },
-                    )).unwrap();
+                        }))
+                        .unwrap();
                 }
                 Ok(())
             });
@@ -114,7 +114,8 @@ impl ProjectorController {
                 .unwrap()
                 .to_string(),
             }))
-            .await.unwrap();
+            .await
+            .unwrap();
 
         Ok(ProjectorController {
             #[cfg(feature = "pi")]
