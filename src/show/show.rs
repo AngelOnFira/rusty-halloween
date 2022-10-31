@@ -25,7 +25,7 @@ pub struct Frame {
 pub struct Laser {
     // Laser conf
     pub home: bool,
-    pub speed_profile: bool,
+    pub speed_profile: u8,
     // Laser
     pub data_frame: Vec<LaserDataFrame>,
 }
@@ -69,7 +69,7 @@ impl Show {
                         if laser.is_number() {
                             return Some(Laser {
                                 home: true,
-                                speed_profile: false,
+                                speed_profile: 1,
                                 // TODO: This shouldn't be just a single frame
                                 data_frame: vec![LaserDataFrame {
                                     x_pos: 0,
@@ -85,12 +85,7 @@ impl Show {
 
                         // Laser config data
                         let home = laser_config["home"].as_bool().unwrap_or(false);
-                        let speed_profile = match laser_config["speed-profile"].as_i8().unwrap_or(0)
-                        {
-                            0 => false,
-                            1 => true,
-                            _ => panic!("Invalid speed profile"),
-                        };
+                        let speed_profile = laser_config["speed-profile"].as_u8().unwrap_or(1);
 
                         // Laser data
                         let laser_frames: Vec<LaserDataFrame> = laser["points"]

@@ -1,4 +1,8 @@
-use crate::{prelude::Audio, MessageKind};
+use crate::{
+    prelude::{pack::HeaderPack, Audio, FrameSendPack, MessageSendPack},
+    proto_schema::schema::Header,
+    InternalMessage, MessageKind,
+};
 use rillrate::prime::{Click, ClickOpts};
 use rust_embed::RustEmbed;
 use std::{cmp::max, sync::Arc, time::Duration};
@@ -7,7 +11,7 @@ use tokio::{
     time::{sleep, Instant},
 };
 
-use super::{show::Show, ShowAsset};
+use super::{prelude::Laser, show::Show, ShowAsset};
 
 pub struct ShowManager {
     pub current_show: Option<Show>,
@@ -62,7 +66,7 @@ impl ShowManager {
                     file_json[&timestamp][&laser_config_name]["home"] =
                         json::JsonValue::Boolean(laser.home);
                     file_json[&timestamp][&laser_config_name]["speed-profile"] =
-                        json::JsonValue::Boolean(laser.speed_profile);
+                        json::JsonValue::Number(laser.speed_profile.into());
 
                     file_json[&timestamp][&laser_name] = json::JsonValue::new_array();
 
@@ -157,7 +161,31 @@ impl ShowManager {
                 }
 
                 // Send all the lasers data
-                // ...
+                curr_frame.lasers.iter().enumerate().for_each(|(i, laser)| {
+                    if let Some(laser) = laser {
+                        self.message_queue
+                            .as_mut()
+                            .unwrap()
+                            .try_send(MessageKind::InternalMessage(InternalMessage::Projector(
+                                MessageSendPack {
+                                    header: HeaderPack {
+                                        projector_id: (i as u8).into(),
+                                        point_count: (laser.data_frame.len() as u8).into(),
+                                        home: false,
+                                        enable: false,
+                                        configuration_mode: false,
+                                        draw_boundary: false,
+                                        oneshot: false,
+                                        speed_profile: laser.speed_profile.into(),
+                                        ..Default::default()
+                                    },
+                                    draw_instructions: Vec::new(),
+                                }
+                                .into(),
+                            )))
+                            .unwrap();
+                    }
+                });
 
                 if self.current_show.as_ref().unwrap().frames.len() == 0 {
                     break;

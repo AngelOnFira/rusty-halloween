@@ -13,8 +13,8 @@ use tokio::sync::mpsc;
 #[cfg(feature = "pi")]
 use rppal::spi::{Bus, SlaveSelect, Spi};
 
-mod helpers;
-mod pack;
+pub mod helpers;
+pub mod pack;
 
 pub struct ProjectorController {
     #[cfg(feature = "pi")]
