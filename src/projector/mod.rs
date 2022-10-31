@@ -104,19 +104,6 @@ impl ProjectorController {
             clicks.push(click);
         }
 
-        // Send an initial draw command
-        message_queue
-            .clone()
-            .send(MessageKind::InternalMessage(InternalMessage::Vision {
-                vision_file_contents: std::str::from_utf8(
-                    &VisionAsset::get("happy.txt").unwrap().data,
-                )
-                .unwrap()
-                .to_string(),
-            }))
-            .await
-            .unwrap();
-
         Ok(ProjectorController {
             #[cfg(feature = "pi")]
             spi,

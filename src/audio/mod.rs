@@ -39,6 +39,7 @@ impl Audio {
         // Start the audio manager thread
         tokio::spawn(async move {
             while let Some(sound) = receiver.recv().await {
+                println!("Playing sound: {}", sound.name);
                 if let Some(manager) = audio_manager.manager.as_mut() {
                     if let Some(stream) = &sound.stream {
                         manager.play(stream.clone()).unwrap();

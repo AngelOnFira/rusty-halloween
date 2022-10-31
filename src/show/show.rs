@@ -26,6 +26,7 @@ pub struct Laser {
     // Laser conf
     pub home: bool,
     pub speed_profile: u8,
+    pub enable: bool,
     // Laser
     pub data_frame: Vec<LaserDataFrame>,
 }
@@ -68,8 +69,9 @@ impl Show {
                         // If the laser is set to zero, reset it
                         if laser.is_number() {
                             return Some(Laser {
-                                home: true,
-                                speed_profile: 1,
+                                home: false,
+                                speed_profile: 0,
+                                enable: true,
                                 // TODO: This shouldn't be just a single frame
                                 data_frame: vec![LaserDataFrame {
                                     x_pos: 0,
@@ -85,7 +87,7 @@ impl Show {
 
                         // Laser config data
                         let home = laser_config["home"].as_bool().unwrap_or(false);
-                        let speed_profile = laser_config["speed-profile"].as_u8().unwrap_or(1);
+                        let speed_profile = laser_config["speed-profile"].as_u8().unwrap_or(0);
 
                         // Laser data
                         let laser_frames: Vec<LaserDataFrame> = laser["points"]
@@ -116,6 +118,7 @@ impl Show {
                         Some(Laser {
                             home,
                             speed_profile,
+                            enable: true,
                             data_frame: laser_frames,
                         })
                     }

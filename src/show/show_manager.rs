@@ -2,9 +2,16 @@ use crate::{
     prelude::{pack::HeaderPack, Audio, MessageSendPack},
     InternalMessage, MessageKind,
 };
+use packed_struct::debug_fmt;
 use rillrate::prime::{Click, ClickOpts};
 use rust_embed::RustEmbed;
-use std::{cmp::max, sync::Arc, time::Duration};
+use std::{
+    cmp::max,
+    collections::VecDeque,
+    sync::{Arc, Mutex},
+    thread,
+    time::Duration,
+};
 use tokio::{
     sync::mpsc,
     time::{sleep, Instant},
@@ -14,10 +21,23 @@ use super::{show::Show, ShowAsset};
 
 pub struct ShowManager {
     pub current_show: Option<Show>,
+    pub show_queue: Vec<ShowElement>,
     pub start_time: Option<Instant>,
     pub shows: Vec<Show>,
     pub message_queue: Option<mpsc::Sender<MessageKind>>,
 }
+
+#[derive(Debug)]
+pub enum ShowElement {
+    Home, // Wait 15 seconds after, then assume the show can start
+    Show { show_id: usize },
+    // Disable {duration: Duration},
+    NullOut, // Send header with 0 frames, then 50 frames of 00000000, wait 3 seconds before homing again
+    // BoundaryCheck,
+    Idle { time: u64 },
+}
+
+const HOME_SLEEP_TIME: u64 = 4;
 
 impl ShowManager {
     pub fn new(shows: Vec<Show>, sender: Option<mpsc::Sender<MessageKind>>) -> Self {
@@ -26,6 +46,7 @@ impl ShowManager {
             start_time: None,
             message_queue: sender,
             shows: shows,
+            show_queue: Vec::new(),
         }
     }
 
@@ -37,6 +58,7 @@ impl ShowManager {
             message_queue: Some(message_queue),
             shows: ShowManager::load_shows(message_queue_clone),
             start_time: None,
+            show_queue: Vec::new(),
         }
     }
 
@@ -110,72 +132,51 @@ impl ShowManager {
         ShowManager::load_show(show_file_contents, message_queue)
     }
 
-    pub async fn start_show(mut self, id: u64) {
-        // Set the show from the id
-        self.current_show = Some(self.shows[id as usize].clone());
+    pub async fn start_show_worker(mut self, mut receiver: mpsc::Receiver<Vec<ShowElement>>) {
+        let show_job_queue: Arc<Mutex<VecDeque<ShowElement>>> =
+            Arc::new(Mutex::new(VecDeque::new()));
 
-        // Set the timer
-        self.start_time = Some(Instant::now());
-
-        // Start the song
-        if let Some(song) = &self.current_show.as_ref().unwrap().song {
-            if let Some(message_queue) = self.message_queue.as_ref() {
-                message_queue
-                    .try_send(MessageKind::InternalMessage(
-                        crate::InternalMessage::Audio {
-                            audio_file_contents: Arc::new(song.clone()),
-                        },
-                    ))
-                    .unwrap();
+        // Start a thread to add jobs to the queue
+        let show_job_queue_clone = show_job_queue.clone();
+        let queue_handle = tokio::spawn(async move {
+            while let Some(show_job_list) = receiver.recv().await {
+                let mut show_job_queue = show_job_queue_clone.lock().unwrap();
+                show_job_queue.extend(show_job_list);
             }
-        }
+        });
 
-        // Start the show thread
-        tokio::spawn(async move {
+        // Start the show worker thread
+        let show_job_queue_clone = show_job_queue.clone();
+        let worker_handle = tokio::spawn(async move {
             loop {
-                // Get the next frame
-                let curr_frame = self.current_show.as_mut().unwrap().frames.remove(0);
+                // Get the next element in the queue
+                let mut show_job_queue = show_job_queue_clone.lock().unwrap();
+                let next_show_element = show_job_queue.pop_front();
 
-                // Sleep until the current frame is ready
-                let curr_time = self.start_time.unwrap().elapsed().as_millis() as i64;
-                let sleep_time = max(curr_frame.timestamp as i64 - curr_time, 0);
-                sleep(Duration::from_millis(sleep_time as u64)).await;
-
-                // Execute the current frame
-
-                // Send all the lights data
-                for (i, light) in curr_frame.lights.iter().enumerate() {
-                    if let Some(light) = light {
-                        self.message_queue
-                            .as_mut()
-                            .unwrap()
-                            .try_send(MessageKind::InternalMessage(
-                                crate::InternalMessage::Light {
-                                    light_id: i as u8 + 1,
-                                    enable: *light,
-                                },
-                            ))
-                            .unwrap();
-                    }
+                // If there isn't a next element, wait for one
+                if next_show_element.is_none() {
+                    drop(show_job_queue);
+                    thread::sleep(Duration::from_millis(100));
+                    continue;
                 }
 
-                // Send all the lasers data
-                curr_frame.lasers.iter().enumerate().for_each(|(i, laser)| {
-                    if let Some(laser) = laser {
+                match next_show_element.unwrap() {
+                    ShowElement::Home => {
+                        // Send a home command
                         self.message_queue
                             .as_mut()
                             .unwrap()
                             .try_send(MessageKind::InternalMessage(InternalMessage::Projector(
                                 MessageSendPack {
                                     header: HeaderPack {
-                                        projector_id: (i as u8).into(),
-                                        point_count: (laser.data_frame.len() as u8).into(),
-                                        home: false,
-                                        enable: false,
+                                        projector_id: 16.into(),
+                                        point_count: 0.into(),
+                                        home: true,
+                                        enable: true,
                                         configuration_mode: false,
                                         draw_boundary: false,
                                         oneshot: false,
-                                        speed_profile: laser.speed_profile.into(),
+                                        speed_profile: 0.into(),
                                         ..Default::default()
                                     },
                                     draw_instructions: Vec::new(),
@@ -183,14 +184,130 @@ impl ShowManager {
                                 .into(),
                             )))
                             .unwrap();
-                    }
-                });
 
-                if self.current_show.as_ref().unwrap().frames.len() == 0 {
-                    break;
+                        // Sleep for 15 seconds
+                        thread::sleep(Duration::from_secs(HOME_SLEEP_TIME));
+                    }
+                    ShowElement::Show { show_id } => {
+                        // Set the show from the id
+                        self.current_show = Some(self.shows[show_id].clone());
+
+                        // Set the timer
+                        self.start_time = Some(Instant::now());
+
+                        // Start the song
+                        if let Some(song) = &self.current_show.as_ref().unwrap().song {
+                            if let Some(message_queue) = self.message_queue.as_ref() {
+                                message_queue
+                                    .try_send(MessageKind::InternalMessage(
+                                        InternalMessage::Audio {
+                                            audio_file_contents: Arc::new(song.clone()),
+                                        },
+                                    ))
+                                    .unwrap();
+                            }
+                        }
+
+                        loop {
+                            // Get the next frame
+                            let curr_frame = self.current_show.as_mut().unwrap().frames.remove(0);
+
+                            println!("Getting frame {}", curr_frame.timestamp);
+
+                            // Sleep until the current frame is ready
+                            let curr_time = self.start_time.unwrap().elapsed().as_millis() as i64;
+                            let sleep_time = max(curr_frame.timestamp as i64 - curr_time, 0);
+                            thread::sleep(Duration::from_millis(sleep_time as u64));
+
+                            // Execute the current frame
+
+                            // Send all the lights data
+                            for (i, light) in curr_frame.lights.iter().enumerate() {
+                                if let Some(light) = light {
+                                    self.message_queue
+                                        .as_mut()
+                                        .unwrap()
+                                        .try_send(MessageKind::InternalMessage(
+                                            InternalMessage::Light {
+                                                light_id: i as u8 + 1,
+                                                enable: *light,
+                                            },
+                                        ))
+                                        .unwrap();
+                                }
+                            }
+
+                            // Send all the lasers data
+                            curr_frame.lasers.iter().enumerate().for_each(|(i, laser)| {
+                                if let Some(laser) = laser {
+                                    self.message_queue
+                                        .as_mut()
+                                        .unwrap()
+                                        .try_send(MessageKind::InternalMessage(
+                                            InternalMessage::Projector(
+                                                MessageSendPack {
+                                                    header: HeaderPack {
+                                                        projector_id: (i as u8).into(),
+                                                        point_count: (laser.data_frame.len() as u8)
+                                                            .into(),
+                                                        home: false,
+                                                        enable: true,
+                                                        configuration_mode: false,
+                                                        draw_boundary: false,
+                                                        oneshot: false,
+                                                        speed_profile: laser.speed_profile.into(),
+                                                        ..Default::default()
+                                                    },
+                                                    draw_instructions: Vec::new(),
+                                                }
+                                                .into(),
+                                            ),
+                                        ))
+                                        .unwrap();
+                                }
+                            });
+
+                            if self.current_show.as_ref().unwrap().frames.len() == 0 {
+                                break;
+                            }
+                        }
+                    }
+                    ShowElement::NullOut => {
+                        // Send a null out command
+                        self.message_queue
+                            .as_mut()
+                            .unwrap()
+                            .try_send(MessageKind::InternalMessage(InternalMessage::Projector(
+                                MessageSendPack {
+                                    header: HeaderPack {
+                                        projector_id: 16.into(),
+                                        point_count: 0.into(),
+                                        home: false,
+                                        enable: true,
+                                        configuration_mode: false,
+                                        draw_boundary: false,
+                                        oneshot: false,
+                                        speed_profile: 0.into(),
+                                        ..Default::default()
+                                    },
+                                    draw_instructions: Vec::new(),
+                                }
+                                .into(),
+                            )))
+                            .unwrap();
+
+                        // Sleep for 3 seconds
+                        thread::sleep(Duration::from_secs(3));
+                    }
+                    ShowElement::Idle { time } => {
+                        // Sleep for the given time
+                        thread::sleep(Duration::from_secs(time));
+                    }
                 }
             }
         });
+
+        let _ = tokio::join!(queue_handle, worker_handle);
     }
 
     pub fn load_shows(message_queue: mpsc::Sender<MessageKind>) -> Vec<Show> {

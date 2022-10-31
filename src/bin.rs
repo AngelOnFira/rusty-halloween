@@ -6,6 +6,7 @@ use rusty_halloween::prelude::*;
 use rusty_halloween::InternalMessage;
 use rusty_halloween::MessageKind;
 
+use rusty_halloween::show::prelude::ShowElement;
 use rusty_halloween::show::prelude::ShowManager;
 use rusty_halloween::structure::FileStructure;
 use tokio::sync::mpsc;
@@ -34,21 +35,21 @@ async fn main() -> Result<(), Error> {
     let _listener = LocalSocketListener::bind("/tmp/pico.sock")?;
 
     // Message queue
-    let (tx, mut rx) = mpsc::channel(100);
+    let (message_queue_tx, mut message_queue_rx) = mpsc::channel(100);
 
     // Start the dashboard
     println!("Starting dashboard...");
-    Dashboard::init(tx.clone()).await?;
+    Dashboard::init(message_queue_tx.clone()).await?;
 
     // Initialize the lights
     println!("Starting lights...");
-    let tx_clone = tx.clone();
+    let tx_clone = message_queue_tx.clone();
     #[allow(unused_variables, unused_mut)]
     let mut light_controller = LightController::init(&config, tx_clone).await?;
 
     // Initialize the projector
     println!("Starting projector...");
-    let tx_clone = tx.clone();
+    let tx_clone = message_queue_tx.clone();
     #[allow(unused_variables, unused_mut)]
     let mut projector_controller = ProjectorController::init(tx_clone).await?;
 
@@ -73,8 +74,10 @@ async fn main() -> Result<(), Error> {
             LiveTailOpts::default(),
         );
 
-        while let Some(message) = rx.recv().await {
+        while let Some(message) = message_queue_rx.recv().await {
             // TODO: Catch errors to not crash the thread
+
+            println!("Received message!");
 
             // Update the pulse
             pulse.push(1);
@@ -143,29 +146,29 @@ async fn main() -> Result<(), Error> {
 
     // Get the shows on disk
     println!("Starting shows...");
-    let tx_clone = tx.clone();
+    let tx_clone = message_queue_tx.clone();
     let shows = ShowManager::load_shows(tx_clone);
 
     // Start playing the first show
-    let tx_clone = tx.clone();
+    let tx_clone = message_queue_tx.clone();
     let manager = ShowManager::new(shows, Some(tx_clone));
 
-    manager.start_show(0).await;
+    let (show_worker_channel_tx, show_worker_channel_rx) = mpsc::channel(100);
+    let worker_handle = tokio::spawn(async move {
+        manager.start_show_worker(show_worker_channel_rx).await;
+    });
 
-    // Initialize the show
-    let _tx_clone = tx.clone();
-    // let show = ShowManager::load_show_file("halloween.json".to_string(), tx_clone);
-    // tokio::spawn(async move {
-    //     show.start_show().await;
-    // });
+    let queue_handle = tokio::spawn(async move {
+        // Send first show
+        show_worker_channel_tx
+            .send(vec![ShowElement::Home, ShowElement::Show { show_id: 0 }])
+            .await
+            .unwrap();
+    });
 
-    //     // Join the handle
-    //     handle.await?;
+    let _ = tokio::join!(handle, worker_handle, queue_handle);
 
-    // let _ = tokio::join!(show.start_show(), handle);
-    let _ = tokio::join!(handle);
-
-    // let _tx_clone = tx.clone();
+    // let _tx_clone = message_queue_tx.clone();
 
     // // TODO: Rewrite this to change directly to internal message type first
     // for mut conn in listener.incoming().filter_map(handle_error) {
