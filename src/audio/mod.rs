@@ -55,6 +55,9 @@ impl Audio {
         #[allow(unused_variables)]
         let sound_path = format!("src/audio/assets/{}", name);
 
+        // Print that this song is loading
+        println!("Loading song: {}", name);
+
         // Try to load it from the embedded file
         if let Some(sound_data) = AudioAsset::get(name) {
             let sound_player = StaticSoundData::from_cursor(

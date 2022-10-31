@@ -5,15 +5,9 @@ use crate::{
 use packed_struct::debug_fmt;
 use rillrate::prime::{Click, ClickOpts};
 use rust_embed::RustEmbed;
-use std::{
-    cmp::max,
-    collections::VecDeque,
-    sync::{Arc, Mutex},
-    thread,
-    time::Duration,
-};
+use std::{cmp::max, collections::VecDeque, sync::Arc, thread, time::Duration};
 use tokio::{
-    sync::mpsc,
+    sync::{mpsc, Mutex},
     time::{sleep, Instant},
 };
 
@@ -27,7 +21,7 @@ pub struct ShowManager {
     pub message_queue: Option<mpsc::Sender<MessageKind>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ShowElement {
     Home, // Wait 15 seconds after, then assume the show can start
     Show { show_id: usize },
@@ -37,7 +31,7 @@ pub enum ShowElement {
     Idle { time: u64 },
 }
 
-const HOME_SLEEP_TIME: u64 = 4;
+const HOME_SLEEP_TIME: u64 = 15;
 
 impl ShowManager {
     pub fn new(shows: Vec<Show>, sender: Option<mpsc::Sender<MessageKind>>) -> Self {
@@ -140,7 +134,7 @@ impl ShowManager {
         let show_job_queue_clone = show_job_queue.clone();
         let queue_handle = tokio::spawn(async move {
             while let Some(show_job_list) = receiver.recv().await {
-                let mut show_job_queue = show_job_queue_clone.lock().unwrap();
+                let mut show_job_queue = show_job_queue_clone.lock().await;
                 show_job_queue.extend(show_job_list);
             }
         });
@@ -150,13 +144,13 @@ impl ShowManager {
         let worker_handle = tokio::spawn(async move {
             loop {
                 // Get the next element in the queue
-                let mut show_job_queue = show_job_queue_clone.lock().unwrap();
-                let next_show_element = show_job_queue.pop_front();
+                let mut show_job_queue = show_job_queue_clone.lock().await;
+                let next_show_element = show_job_queue.pop_front().to_owned();
 
                 // If there isn't a next element, wait for one
                 if next_show_element.is_none() {
                     drop(show_job_queue);
-                    thread::sleep(Duration::from_millis(100));
+                    sleep(Duration::from_millis(100)).await;
                     continue;
                 }
 
@@ -166,10 +160,10 @@ impl ShowManager {
                         self.message_queue
                             .as_mut()
                             .unwrap()
-                            .try_send(MessageKind::InternalMessage(InternalMessage::Projector(
+                            .send(MessageKind::InternalMessage(InternalMessage::Projector(
                                 MessageSendPack {
                                     header: HeaderPack {
-                                        projector_id: 16.into(),
+                                        projector_id: 15.into(),
                                         point_count: 0.into(),
                                         home: true,
                                         enable: true,
@@ -183,10 +177,11 @@ impl ShowManager {
                                 }
                                 .into(),
                             )))
+                            .await
                             .unwrap();
 
                         // Sleep for 15 seconds
-                        thread::sleep(Duration::from_secs(HOME_SLEEP_TIME));
+                        sleep(Duration::from_secs(HOME_SLEEP_TIME)).await;
                     }
                     ShowElement::Show { show_id } => {
                         // Set the show from the id
@@ -209,20 +204,14 @@ impl ShowManager {
                         }
 
                         loop {
-                            println!(
-                                "Capacity: {}",
-                                self.message_queue.as_ref().unwrap().capacity()
-                            );
 
                             // Get the next frame
                             let curr_frame = self.current_show.as_mut().unwrap().frames.remove(0);
 
-                            println!("Getting frame {}", curr_frame.timestamp);
-
                             // Sleep until the current frame is ready
                             let curr_time = self.start_time.unwrap().elapsed().as_millis() as i64;
                             let sleep_time = max(curr_frame.timestamp as i64 - curr_time, 0);
-                            thread::sleep(Duration::from_millis(sleep_time as u64));
+                            sleep(Duration::from_millis(sleep_time as u64)).await;
 
                             // Execute the current frame
 
@@ -232,23 +221,24 @@ impl ShowManager {
                                     self.message_queue
                                         .as_mut()
                                         .unwrap()
-                                        .try_send(MessageKind::InternalMessage(
+                                        .send(MessageKind::InternalMessage(
                                             InternalMessage::Light {
                                                 light_id: i as u8 + 1,
                                                 enable: *light,
                                             },
                                         ))
+                                        .await
                                         .unwrap();
                                 }
                             }
 
                             // Send all the lasers data
-                            curr_frame.lasers.iter().enumerate().for_each(|(i, laser)| {
+                            for (i, laser) in curr_frame.lasers.iter().enumerate() {
                                 if let Some(laser) = laser {
                                     self.message_queue
                                         .as_mut()
                                         .unwrap()
-                                        .try_send(MessageKind::InternalMessage(
+                                        .send(MessageKind::InternalMessage(
                                             InternalMessage::Projector(
                                                 MessageSendPack {
                                                     header: HeaderPack {
@@ -268,9 +258,10 @@ impl ShowManager {
                                                 .into(),
                                             ),
                                         ))
+                                        .await
                                         .unwrap();
                                 }
-                            });
+                            }
 
                             if self.current_show.as_ref().unwrap().frames.len() == 0 {
                                 break;
@@ -282,7 +273,7 @@ impl ShowManager {
                         self.message_queue
                             .as_mut()
                             .unwrap()
-                            .try_send(MessageKind::InternalMessage(InternalMessage::Projector(
+                            .send(MessageKind::InternalMessage(InternalMessage::Projector(
                                 MessageSendPack {
                                     header: HeaderPack {
                                         projector_id: 16.into(),
@@ -299,14 +290,15 @@ impl ShowManager {
                                 }
                                 .into(),
                             )))
+                            .await
                             .unwrap();
 
                         // Sleep for 3 seconds
-                        thread::sleep(Duration::from_secs(3));
+                        sleep(Duration::from_secs(3)).await;
                     }
                     ShowElement::Idle { time } => {
                         // Sleep for the given time
-                        thread::sleep(Duration::from_secs(time));
+                        sleep(Duration::from_secs(time)).await;
                     }
                 }
             }

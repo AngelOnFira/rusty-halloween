@@ -28,9 +28,9 @@ async fn main() -> Result<(), Error> {
         std::fs::remove_file("/tmp/pico.sock")?;
     }
 
-    // Set up the local audio storage
-    println!("Starting audio system...");
-    FileStructure::verify();
+    // // Set up the local audio storage
+    // println!("Starting audio system...");
+    // FileStructure::verify();
 
     let _listener = LocalSocketListener::bind("/tmp/pico.sock")?;
 
@@ -76,8 +76,6 @@ async fn main() -> Result<(), Error> {
 
         while let Some(message) = message_queue_rx.recv().await {
             // TODO: Catch errors to not crash the thread
-
-            println!("Received message!");
 
             // Update the pulse
             pulse.push(1);
@@ -164,6 +162,12 @@ async fn main() -> Result<(), Error> {
     println!("Starting queue worker...");
 
     let queue_handle = tokio::spawn(async move {
+        // Send startup command
+        show_worker_channel_tx
+            .send(vec![ShowElement::Idle { time: 5 }])
+            .await
+            .unwrap();
+
         // Send first show
         show_worker_channel_tx
             .send(vec![ShowElement::Home, ShowElement::Show { show_id: 0 }])
@@ -172,7 +176,6 @@ async fn main() -> Result<(), Error> {
     });
 
     println!("Joining...");
-
 
     let _ = tokio::join!(handle, worker_handle, queue_handle);
 

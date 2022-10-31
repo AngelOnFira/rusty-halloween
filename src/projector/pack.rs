@@ -57,7 +57,11 @@ pub struct HeaderPack {
 impl CheckSum for HeaderPack {
     fn checksum_pack(&mut self) -> [u8; 4] {
         self.checksum = self.calculate_checksum(self.pack().unwrap());
-        self.pack().unwrap()
+        let pack = self.pack().unwrap();
+
+        dbg!(&pack);
+
+        pack
     }
 }
 
