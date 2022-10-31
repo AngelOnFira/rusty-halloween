@@ -156,7 +156,7 @@ impl ShowManager {
                 // If there isn't a next element, wait for one
                 if next_show_element.is_none() {
                     drop(show_job_queue);
-                    sleep(Duration::from_millis(100)).await;
+                    thread::sleep(Duration::from_millis(100));
                     continue;
                 }
 
