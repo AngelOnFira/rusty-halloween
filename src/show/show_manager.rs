@@ -1,6 +1,5 @@
 use crate::{
-    prelude::{pack::HeaderPack, Audio, FrameSendPack, MessageSendPack},
-    proto_schema::schema::Header,
+    prelude::{pack::HeaderPack, Audio, MessageSendPack},
     InternalMessage, MessageKind,
 };
 use rillrate::prime::{Click, ClickOpts};
@@ -11,7 +10,7 @@ use tokio::{
     time::{sleep, Instant},
 };
 
-use super::{prelude::Laser, show::Show, ShowAsset};
+use super::{show::Show, ShowAsset};
 
 pub struct ShowManager {
     pub current_show: Option<Show>,
