@@ -62,12 +62,7 @@ impl ProjectorController {
     pub async fn init(message_queue: mpsc::Sender<MessageKind>) -> Result<Self, anyhow::Error> {
         // Set up SPI
         #[cfg(feature = "pi")]
-        let spi = Spi::new(
-            Bus::Spi0,
-            SlaveSelect::Ss0,
-            BAUD,
-            rppal::spi::Mode::Mode0,
-        )?;
+        let spi = Spi::new(Bus::Spi0, SlaveSelect::Ss0, BAUD, rppal::spi::Mode::Mode0)?;
 
         let mut clicks = Vec::new();
 
@@ -101,7 +96,7 @@ impl ProjectorController {
                             .unwrap()
                             .to_string(),
                         },
-                    ))?;
+                    ));
                 }
                 Ok(())
             });
@@ -119,7 +114,7 @@ impl ProjectorController {
                 .unwrap()
                 .to_string(),
             }))
-            .await?;
+            .await;
 
         Ok(ProjectorController {
             #[cfg(feature = "pi")]

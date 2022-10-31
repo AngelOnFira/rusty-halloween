@@ -12,10 +12,10 @@ fn main() {
 
     // Create a show
     let show = Show {
-        song: Song {
+        song: Some(Song {
             name: "song3.mp3".to_string(),
             stream: None,
-        },
+        }),
         frames: frames,
     };
 

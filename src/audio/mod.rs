@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fmt::format, io::Cursor, path::Path, collections::HashMap};
+use std::{borrow::Cow, collections::HashMap, fmt::format, io::Cursor, path::Path, sync::Arc};
 
 use anyhow::Error;
 use kira::{
@@ -15,7 +15,6 @@ use crate::prelude::prelude::Song;
 
 pub struct Audio {
     manager: Option<AudioManager<CpalBackend>>,
-    song_cache: HashMap<String, StaticSoundData>
 }
 
 // #[cfg(feature="embed_audio")]
@@ -24,7 +23,7 @@ pub struct Audio {
 struct AudioAsset;
 
 impl Audio {
-    pub fn new(mut receiver: mpsc::Receiver<String>) -> Result<(), Error> {
+    pub fn new(mut receiver: mpsc::Receiver<Arc<Song>>) -> Result<(), Error> {
         // TODO: Gracefully handle audio not being available
         let mut audio_manager =
             match AudioManager::<CpalBackend>::new(AudioManagerSettings::default()) {
@@ -40,7 +39,11 @@ impl Audio {
         // Start the audio manager thread
         tokio::spawn(async move {
             while let Some(sound) = receiver.recv().await {
-                audio_manager.play_sound(&sound).unwrap();
+                if let Some(manager) = audio_manager.manager.as_mut() {
+                    if let Some(stream) = &sound.stream {
+                        manager.play(stream.clone());
+                    }
+                }
             }
         });
 

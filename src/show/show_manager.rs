@@ -4,7 +4,7 @@ use crate::{
 };
 use rillrate::prime::{Click, ClickOpts};
 use rust_embed::RustEmbed;
-use std::{cmp::max, time::Duration};
+use std::{cmp::max, sync::Arc, time::Duration};
 use tokio::{
     sync::mpsc,
     time::{sleep, Instant},
@@ -103,16 +103,15 @@ impl ShowManager {
         self.start_time = Some(Instant::now());
 
         // Start the song
-        if let Some(song) = self.current_show.unwrap().song {
+        if let Some(song) = &self.current_show.as_ref().unwrap().song {
             self.message_queue
                 .as_ref()
                 .unwrap()
                 .try_send(MessageKind::InternalMessage(
                     crate::InternalMessage::Audio {
-                        audio_file_contents: song,
+                        audio_file_contents: Arc::new(song.clone()),
                     },
-                ))
-                .unwrap();
+                ));
         }
 
         // Start the show thread
@@ -131,16 +130,12 @@ impl ShowManager {
                 // Send all the lights data
                 for (i, light) in curr_frame.lights.iter().enumerate() {
                     if let Some(light) = light {
-                        self.message_queue
-                            .as_mut()
-                            .unwrap()
-                            .try_send(MessageKind::InternalMessage(
-                                crate::InternalMessage::Light {
-                                    light_id: i as u8 + 1,
-                                    enable: *light,
-                                },
-                            ))
-                            .unwrap();
+                        self.message_queue.as_mut().unwrap().try_send(
+                            MessageKind::InternalMessage(crate::InternalMessage::Light {
+                                light_id: i as u8 + 1,
+                                enable: *light,
+                            }),
+                        );
                     }
                 }
 

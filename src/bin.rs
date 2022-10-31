@@ -79,8 +79,6 @@ async fn main() -> Result<(), Error> {
             // Update the pulse
             pulse.push(1);
 
-            println!("Message: {:?}", message);
-
             // Handle the message
             match message {
                 MessageKind::InternalMessage(internal_message) => match internal_message {
@@ -108,7 +106,7 @@ async fn main() -> Result<(), Error> {
                         live_tail.log_now(module_path!(), "INFO", "Audio command received");
                         match audio_manager {
                             Ok(_) => {
-                                audio_channel_tx.send(audio_file_contents).await.unwrap();
+                                audio_channel_tx.send(audio_file_contents).await;
                             }
                             Err(_) => {
                                 live_tail.log_now(

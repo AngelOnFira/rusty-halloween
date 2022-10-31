@@ -73,7 +73,7 @@ impl LightController {
                     };
 
                     message_queue_clone
-                        .blocking_send(MessageKind::InternalMessage(light_message))?;
+                        .blocking_send(MessageKind::InternalMessage(light_message));
 
                     this.apply(action);
                 }
