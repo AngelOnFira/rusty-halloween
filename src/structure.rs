@@ -43,7 +43,7 @@ impl FileStructure {
             if !Path::new(&name).exists() {
                 std::fs::write(
                     name,
-                    ShowManager::new().save_show(Show {
+                    ShowManager::new(Vec::new(), None).save_show(Show {
                         song: Some(Song {
                             name: format!("{}.mp3", sound),
                             stream: None,

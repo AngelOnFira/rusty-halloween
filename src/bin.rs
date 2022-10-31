@@ -147,18 +147,10 @@ async fn main() -> Result<(), Error> {
     let shows = ShowManager::load_shows(tx_clone);
 
     // Start playing the first show
-    let mut manager = ShowManager {
-        current_show: Some(shows[0].clone()),
-        start_time: None,
-        shows: Some(shows),
-        message_queue: Option<mpsc::Sender<MessageKind>>,
+    let tx_clone = tx.clone();
+    let manager = ShowManager::new(shows, Some(tx_clone));
 
-    };
-
-    manager.start_show();
-
-    // Debug the shows that were found
-    println!("Found {} shows", shows.len());
+    manager.start_show(0).await;
 
     // Initialize the show
     let _tx_clone = tx.clone();

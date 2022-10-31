@@ -20,7 +20,7 @@ fn main() {
     };
 
     // Write the show to a json file
-    let data = ShowManager::new().save_show(show);
+    let data = ShowManager::new(Vec::new(), None).save_show(show);
 
     // Save the show to a file
     std::fs::write("src/show/assets/halloween.json", data).unwrap();

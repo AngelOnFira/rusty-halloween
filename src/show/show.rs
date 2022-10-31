@@ -2,7 +2,7 @@ use kira::sound::static_sound::StaticSoundData;
 
 use super::{LaserDataFrame, MAX_LIGHTS, MAX_PROJECTORS};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Show {
     pub song: Option<Song>,
     pub frames: Vec<Frame>,
@@ -14,14 +14,14 @@ pub struct Song {
     pub stream: Option<StaticSoundData>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Frame {
     pub timestamp: u64,
     pub lights: Vec<Option<bool>>,
     pub lasers: Vec<Option<Laser>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Laser {
     // Laser conf
     pub home: bool,
@@ -38,7 +38,7 @@ impl Show {
         let mut frames = Vec::new();
 
         // Get every frame
-        for (timestamp, frame) in file_json["timestamps"].entries() {
+        for (timestamp, frame) in file_json.entries() {
             let timestamp = timestamp.parse().unwrap();
 
             // Get all of the lights of this frame
@@ -59,7 +59,7 @@ impl Show {
                 .into_iter()
                 .map(|i| {
                     let laser_name = format!("laser-{}", i);
-                    let laser_config_name = format!("laser-{}-config", i);
+
                     if frame[&laser_name].is_null() {
                         None
                     } else {
@@ -81,14 +81,19 @@ impl Show {
                             });
                         }
 
-                        let laser_config = &frame[&laser_config_name];
+                        let laser_config = &laser["config"];
 
                         // Laser config data
-                        let home = laser_config["home"].as_bool().unwrap();
-                        let speed_profile = laser_config["speed-profile"].as_bool().unwrap();
+                        let home = laser_config["home"].as_bool().unwrap_or(false);
+                        let speed_profile = match laser_config["speed-profile"].as_i8().unwrap_or(0)
+                        {
+                            0 => false,
+                            1 => true,
+                            _ => panic!("Invalid speed profile"),
+                        };
 
                         // Laser data
-                        let laser_frames: Vec<LaserDataFrame> = laser
+                        let laser_frames: Vec<LaserDataFrame> = laser["points"]
                             .members()
                             .map(|frame| {
                                 let frame = frame.to_owned();

@@ -15,17 +15,17 @@ use super::{show::Show, ShowAsset};
 pub struct ShowManager {
     pub current_show: Option<Show>,
     pub start_time: Option<Instant>,
-    pub shows: Option<Vec<Show>>,
+    pub shows: Vec<Show>,
     pub message_queue: Option<mpsc::Sender<MessageKind>>,
 }
 
 impl ShowManager {
-    pub fn new(shows: Vec<Show>) -> Self {
+    pub fn new(shows: Vec<Show>, sender: Option<mpsc::Sender<MessageKind>>) -> Self {
         Self {
             current_show: None,
             start_time: None,
-            message_queue: None,
-            shows: Some(shows),
+            message_queue: sender,
+            shows: shows,
         }
     }
 
@@ -35,7 +35,7 @@ impl ShowManager {
         ShowManager {
             current_show: Some(Show::load_show(show_file_contents)),
             message_queue: Some(message_queue),
-            shows: Some(ShowManager::load_shows(message_queue_clone)),
+            shows: ShowManager::load_shows(message_queue_clone),
             start_time: None,
         }
     }
@@ -110,24 +110,24 @@ impl ShowManager {
         ShowManager::load_show(show_file_contents, message_queue)
     }
 
-    pub async fn start_show(&mut self, id: u64) {
+    pub async fn start_show(mut self, id: u64) {
         // Set the show from the id
-        self.current_show = self.shows.as_ref().unwrap()[id as usize].clone();
+        self.current_show = Some(self.shows[id as usize].clone());
 
         // Set the timer
         self.start_time = Some(Instant::now());
 
         // Start the song
         if let Some(song) = &self.current_show.as_ref().unwrap().song {
-            self.message_queue
-                .as_ref()
-                .unwrap()
-                .try_send(MessageKind::InternalMessage(
-                    crate::InternalMessage::Audio {
-                        audio_file_contents: Arc::new(song.clone()),
-                    },
-                ))
-                .unwrap();
+            if let Some(message_queue) = self.message_queue.as_ref() {
+                message_queue
+                    .try_send(MessageKind::InternalMessage(
+                        crate::InternalMessage::Audio {
+                            audio_file_contents: Arc::new(song.clone()),
+                        },
+                    ))
+                    .unwrap();
+            }
         }
 
         // Start the show thread
@@ -158,12 +158,6 @@ impl ShowManager {
                             .unwrap();
                     }
                 }
-
-                // Print the message queue size
-                println!(
-                    "Message queue size: {}",
-                    self.message_queue.as_ref().unwrap().capacity()
-                );
 
                 // Send all the lasers data
                 // ...
