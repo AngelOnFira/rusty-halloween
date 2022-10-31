@@ -154,9 +154,14 @@ async fn main() -> Result<(), Error> {
     let manager = ShowManager::new(shows, Some(tx_clone));
 
     let (show_worker_channel_tx, show_worker_channel_rx) = mpsc::channel(100);
+
+    println!("Starting show worker...");
+
     let worker_handle = tokio::spawn(async move {
         manager.start_show_worker(show_worker_channel_rx).await;
     });
+
+    println!("Starting queue worker...");
 
     let queue_handle = tokio::spawn(async move {
         // Send first show
@@ -165,6 +170,9 @@ async fn main() -> Result<(), Error> {
             .await
             .unwrap();
     });
+
+    println!("Joining...");
+
 
     let _ = tokio::join!(handle, worker_handle, queue_handle);
 
