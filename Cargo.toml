@@ -35,7 +35,7 @@ kira = "^0.7.1"
 rust-embed = { version = "6.4.1", features = ["debug-embed"] }
 
 # Async
-tokio = { version = "1.21.2", features = ["full"] }
+tokio = { version = "1.23.1", features = ["full"] }
 
 # Logging
 env_logger = "0.9.1"
