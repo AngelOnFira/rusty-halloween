@@ -4,6 +4,12 @@ version = "0.1.6"
 edition = "2021"
 default-run = "rusty-halloween"
 
+[workspace]
+members = [
+    "pico-projector",
+    "common",
+]
+
 [lib]
 name = "rusty_halloween"
 path = "src/lib.rs"
@@ -11,6 +17,10 @@ path = "src/lib.rs"
 [[bin]]
 name = "rusty-halloween"
 path = "src/bin.rs"
+
+[[bin]]
+name = "rusty-projector"
+path = "projector/bin.rs"
 
 [features]
 default = []
