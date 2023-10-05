@@ -13,6 +13,11 @@ use tokio::sync::mpsc;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    // Send the data test to uart
+    UARTProjectorController::init().await?;
+
+    return Ok(());
+
     println!("Starting Tokio console...");
     #[cfg(not(feature = "pi"))]
     console_subscriber::init();
@@ -92,7 +97,7 @@ async fn main() -> Result<(), Error> {
                             #[cfg(feature = "pi")]
                             {
                                 if let Err(e) =
-                                    projector_controller.send_file(&vision_file_contents)
+                                    projector_controller.spi_send_file(&vision_file_contents)
                                 {
                                     error!("Failed to send projector command: {}", e);
                                 }
@@ -128,7 +133,8 @@ async fn main() -> Result<(), Error> {
                         if cfg!(feature = "pi") {
                             #[cfg(feature = "pi")]
                             {
-                                if let Err(e) = projector_controller.send_projector(frame_send_pack)
+                                if let Err(e) =
+                                    projector_controller.spi_send_projector(frame_send_pack)
                                 {
                                     error!("Failed to send projector command: {}", e);
                                 }
