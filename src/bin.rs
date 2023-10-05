@@ -51,7 +51,7 @@ async fn main() -> Result<(), Error> {
     println!("Starting projector...");
     let tx_clone = message_queue_tx.clone();
     #[allow(unused_variables, unused_mut)]
-    let mut projector_controller = ProjectorController::init(tx_clone).await?;
+    let mut projector_controller = SPIProjectorController::init(tx_clone).await?;
 
     // Initialize the audio
     println!("Starting audio...");

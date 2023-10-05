@@ -1,6 +1,7 @@
 /target
 /shows
 .DS_Store
+/exports
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -70,7 +71,7 @@ instance/
 .webassets-cache
 
 # Scrapy stuff:
-.scrapy
+.scrapyrusty-halloween
 
 # Sphinx documentation
 docs/_build/

@@ -1,5 +1,5 @@
 # base pre-built cross image
-FROM ghcr.io/cross-rs/armv7-unknown-linux-gnueabihf:latest
+FROM ghcr.io/cross-rs/armv7-unknown-linux-gnueabihf:0.2.5
 
 # add our foreign architecture and install our dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends apt-utils

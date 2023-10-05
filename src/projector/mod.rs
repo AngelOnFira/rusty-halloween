@@ -16,7 +16,7 @@ use rppal::spi::{Bus, SlaveSelect, Spi};
 pub mod helpers;
 pub mod pack;
 
-pub struct ProjectorController {
+pub struct SPIProjectorController {
     #[cfg(feature = "pi")]
     pub spi: Spi,
     #[allow(dead_code)]
@@ -58,7 +58,7 @@ impl From<MessageSendPack> for FrameSendPack {
 #[folder = "src/projector/visions/assets"]
 struct VisionAsset;
 
-impl ProjectorController {
+impl SPIProjectorController {
     pub async fn init(message_queue: mpsc::Sender<MessageKind>) -> Result<Self, anyhow::Error> {
         // Set up SPI
         #[cfg(feature = "pi")]
@@ -104,7 +104,7 @@ impl ProjectorController {
             clicks.push(click);
         }
 
-        Ok(ProjectorController {
+        Ok(SPIProjectorController {
             #[cfg(feature = "pi")]
             spi,
             clicks,
@@ -153,13 +153,13 @@ impl ProjectorController {
             draw_instructions,
         };
 
-        self.send_projector(message_pack)?;
+        self.spi_send_projector(message_pack)?;
 
         Ok(())
     }
 
     #[allow(dead_code)]
-    pub fn send_projector(
+    pub fn spi_send_projector(
         &mut self,
         #[allow(unused_variables)] projector_command: FrameSendPack,
     ) -> Result<(), anyhow::Error> {
@@ -183,7 +183,7 @@ impl ProjectorController {
     }
 
     #[allow(dead_code)]
-    pub fn send_file(&mut self, file_string: &str) -> Result<(), anyhow::Error> {
+    pub fn spi_send_file(&mut self, file_string: &str) -> Result<(), anyhow::Error> {
         #[allow(unused_variables)]
         let frames = file_string
             .lines()

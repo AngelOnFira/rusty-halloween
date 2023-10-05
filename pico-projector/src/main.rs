@@ -275,7 +275,7 @@ fn init_config() {
     if unsafe { config_saved }[LOAD_CONFIG] != 0 && false {
         info!("Loading defaults");
         load_default_config();
-        write_config();
+        // write_config();
     }
 }
 
