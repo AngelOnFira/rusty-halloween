@@ -52,11 +52,14 @@ async fn main() -> Result<(), Error> {
     #[allow(unused_variables, unused_mut)]
     let mut light_controller = LightController::init(&config, tx_clone).await?;
 
-    // // Initialize the projector
-    // println!("Starting projector...");
-    // let tx_clone = message_queue_tx.clone();
-    // #[allow(unused_variables, unused_mut)]
-    // let mut projector_controller = SPIProjectorController::init(tx_clone).await?;
+    #[cfg(feature = "spi")]
+    let mut projector_controller = {
+        // Initialize the projector
+        println!("Starting projector...");
+        let tx_clone = message_queue_tx.clone();
+        #[allow(unused_variables, unused_mut)]
+        let mut projector_controller = SPIProjectorController::init(tx_clone).await?;
+    };
 
     // Initialize the audio
     println!("Starting audio...");
@@ -94,8 +97,8 @@ async fn main() -> Result<(), Error> {
                     } => {
                         live_tail.log_now(module_path!(), "INFO", "Vision command received");
                         if cfg!(feature = "pi") {
-                            #[cfg(feature = "pi")]
                             {
+                                #[cfg(feature = "spi")]
                                 if let Err(e) =
                                     projector_controller.spi_send_file(&vision_file_contents)
                                 {
@@ -131,8 +134,8 @@ async fn main() -> Result<(), Error> {
                     InternalMessage::Projector(frame_send_pack) => {
                         live_tail.log_now(module_path!(), "INFO", "Projector command received");
                         if cfg!(feature = "pi") {
-                            #[cfg(feature = "pi")]
                             {
+                                #[cfg(feature = "spi")]
                                 if let Err(e) =
                                     projector_controller.spi_send_projector(frame_send_pack)
                                 {

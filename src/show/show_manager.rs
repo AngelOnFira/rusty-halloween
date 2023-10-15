@@ -19,6 +19,7 @@ pub struct ShowManager {
     pub start_time: Option<Instant>,
     pub shows: Vec<Show>,
     pub message_queue: Option<mpsc::Sender<MessageKind>>,
+    // pub transition_show:
 }
 
 #[derive(Debug, Clone)]
@@ -223,7 +224,7 @@ impl ShowManager {
                                         .unwrap()
                                         .send(MessageKind::InternalMessage(
                                             InternalMessage::Light {
-                                                light_id: i as u8,
+                                                light_id: i as u8 + 1,
                                                 enable: *light,
                                             },
                                         ))

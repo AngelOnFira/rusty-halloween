@@ -59,7 +59,7 @@ impl CheckSum for HeaderPack {
         self.checksum = self.calculate_checksum(self.pack().unwrap());
         let pack = self.pack().unwrap();
 
-        dbg!(&pack);
+        // dbg!(&pack);
 
         pack
     }
