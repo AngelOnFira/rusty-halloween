@@ -2,6 +2,7 @@ use crate::{
     prelude::{pack::HeaderPack, Audio, MessageSendPack},
     InternalMessage, MessageKind,
 };
+use log::error;
 use packed_struct::debug_fmt;
 use rillrate::prime::{Click, ClickOpts};
 use rust_embed::RustEmbed;
@@ -28,7 +29,7 @@ pub type ShowMap = HashMap<SongName, UnloadedShow>;
 
 pub struct ShowManager {
     pub current_show: Option<LoadedShow>,
-    pub next_show: Option<LoadedShow>,
+    pub next_show: Arc<Mutex<Option<LoadedShow>>>,
     /// This stores what is going to happen next
     ///
     /// TODO: Add a way to add transitions between songs for the audio to
@@ -79,7 +80,7 @@ impl ShowManager {
     pub fn new(shows: ShowMap, sender: mpsc::Sender<MessageKind>) -> Self {
         Self {
             current_show: None,
-            next_show: None,
+            next_show: Arc::new(Mutex::new(None)),
             start_time: None,
             message_queue: sender,
             shows,
@@ -349,8 +350,17 @@ async fn show_task_loop(
             ShowElement::PrepareShow {
                 song_name: show_name,
             } => {
-                // Set the show from the id
-                show_manager.current_show = show_manager.shows.get(show_name);
+                // Set the show from the name
+                let unloaded_show = match show_manager.shows.get(&show_name) {
+                    Some(show) => show.clone(),
+                    None => {
+                        error!("Show {} not found", show_name);
+                        continue;
+                    }
+                };
+
+                // Turn it into a loaded show
+                let loaded_show = unloaded_show.load_show().await;
             }
             ShowElement::NextShow => {
                 // Set the timer
@@ -362,7 +372,20 @@ async fn show_task_loop(
                 // appearing for TIMEOUT seconds. If it doesn't appear, then
                 // log that the song wasn't loaded in time, and continue to the
                 // next instruction.
-                
+                let mut timer = Instant::now();
+                loop {
+                    if show_manager.next_show.lock().await.is_some() {
+                        break;
+                    }
+
+                    if timer.elapsed().as_secs() > TIMEOUT {
+                        error!("There was no next show loaded in time");
+                        break;
+                    }
+
+                    sleep(Duration::from_millis(100)).await;
+                }
+
 
                 // Start the song
                 let song = &show_manager.current_show.song;

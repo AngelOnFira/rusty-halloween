@@ -1,8 +1,11 @@
-use std::path::Path;
+use std::{
+    path::Path,
+    sync::{Arc, Mutex},
+};
 
 use kira::sound::static_sound::StaticSoundData;
 
-use crate::audio::Audio;
+use crate::{audio::Audio, prelude::{LoadedSong, LoadingSong}};
 
 use super::{LaserDataFrame, MAX_LIGHTS, MAX_PROJECTORS};
 
@@ -18,16 +21,10 @@ pub struct UnloadedShow {
     pub frames: Vec<Frame>,
 }
 
-#[derive(Clone, Debug)]
-pub struct LoadedShow {
-    pub song: Song,
-    pub frames: Vec<Frame>,
-}
-
 /// Turn an unloaded show into a loaded show. This will be async because it
 /// needs to load the song from disk.
 impl UnloadedShow {
-    pub async fn load_show(self) -> LoadedShow {
+    pub async fn load_show(self) -> LoadingShow {
         // Load the song
         let song = Audio::get_sound(&self.name).unwrap();
 
@@ -39,10 +36,22 @@ impl UnloadedShow {
 }
 
 #[derive(Clone, Debug)]
-pub struct Song {
+pub struct LoadedShow {
+    pub song: LoadedSong,
     pub name: String,
-    pub stream: StaticSoundData,
+    pub frames: Vec<Frame>,
 }
+
+/// A partly-loaded show is a show that might have a song loaded, but it might
+/// not be ready to play yet.
+#[derive(Clone, Debug)]
+pub struct LoadingShow {
+    pub song: LoadingSong,
+    pub name: String,
+    pub frames: Vec<Frame>,
+}
+
+
 
 /// A frame consists of a timestamp since the beginning of this show, a list of
 /// commands for the lights, and a list of commands for the lasers.

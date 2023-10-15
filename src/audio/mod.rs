@@ -1,4 +1,9 @@
-use std::{borrow::Cow, io::Cursor, path::Path, sync::Arc};
+use std::{
+    borrow::Cow,
+    io::Cursor,
+    path::Path,
+    sync::{Arc, Mutex},
+};
 
 use anyhow::Error;
 use kira::{
@@ -11,10 +16,20 @@ use kira::{
 use rust_embed::RustEmbed;
 use tokio::sync::mpsc;
 
-use crate::prelude::prelude::Song;
-
 pub struct Audio {
     manager: Option<AudioManager<CpalBackend>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct LoadingSong {
+    pub name: String,
+    pub stream: Arc<Mutex<StaticSoundData>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct LoadedSong {
+    pub name: String,
+    pub stream: StaticSoundData,
 }
 
 // #[cfg(feature="embed_audio")]
@@ -49,7 +64,7 @@ impl Audio {
         Ok(())
     }
 
-    pub fn get_sound(name: &str) -> Result<Song, Box<dyn std::error::Error>> {
+    pub fn get_sound(name: &str) -> Result<Arc<Mutex<Option<Song>>>, Box<dyn std::error::Error>> {
         #[allow(unused_variables)]
         let sound_path = format!("src/audio/assets/{}", name);
 
@@ -63,10 +78,10 @@ impl Audio {
                 StaticSoundSettings::default(),
             )?;
 
-            return Ok(Song {
+            return Ok(Arc::new(Mutex::new(Some(Song {
                 name: name.to_string(),
                 stream: sound_player,
-            });
+            }))));
         }
 
         // Try to load it from the filesystem at
@@ -75,13 +90,25 @@ impl Audio {
 
         let sound_path = Path::new(&sound_path);
         if sound_path.exists() {
-            let sound_player =
-                StaticSoundData::from_file(sound_path, StaticSoundSettings::default())?;
+            let song_future = Arc::new(Mutex::new(None));
 
-            return Ok(Song {
-                name: name.to_string(),
-                stream: sound_player,
+            let song_future_clone = song_future.clone();
+
+            // Start loading it in a new thread
+            tokio::spawn(async move {
+                // Load the song
+                let sound_player =
+                    StaticSoundData::from_file(sound_path, StaticSoundSettings::default()).unwrap();
+
+                song_future_clone.lock().unwrap().replace(Song {
+                    name: name.to_string(),
+                    stream: sound_player,
+                });
             });
+
+            // Return an empty song for now, this will be filled in later once
+            // it's loaded on the other thread
+            return Ok(song_future);
         }
 
         // Return "Sound not found" error
