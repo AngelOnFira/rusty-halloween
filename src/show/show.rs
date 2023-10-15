@@ -1,19 +1,59 @@
 use kira::sound::static_sound::StaticSoundData;
 
+use crate::audio::Audio;
+
 use super::{LaserDataFrame, MAX_LIGHTS, MAX_PROJECTORS};
 
+/// A show contains a song and a list of frames. The song won't be loaded in
+/// until it is the next one up. This is to save memory. A show should be
+/// clonable from the show dictionary with ease.
 #[derive(Clone, Debug)]
-pub struct Show {
-    pub song: Option<Song>,
+pub enum Show {}
+
+#[derive(Clone, Debug)]
+pub struct LoadedShow {
+    pub song: Song,
     pub frames: Vec<Frame>,
 }
+
+/// Turn an unloaded show into a loaded show. This will be async because it
+/// needs to load the song from disk.
+impl UnloadedShow {
+    pub async fn load_show(self) -> LoadedShow {
+        // Load the song
+        let song = Song {
+            name: "test".to_string(),
+            stream: None,
+        };
+                let song = Audio::get_sound(&song_file_name).unwrap();
+
+
+        LoadedShow {
+            song,
+            frames: self.frames,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct UnloadedShow {
+    pub frames: Vec<Frame>,
+}
+
+// #[derive(Clone, Debug)]
+// pub struct Show {
+//     pub song: Option<Song>,
+//     pub frames: Vec<Frame>,
+// }
 
 #[derive(Clone, Debug)]
 pub struct Song {
     pub name: String,
-    pub stream: Option<StaticSoundData>,
+    pub stream: StaticSoundData,
 }
 
+/// A frame consists of a timestamp since the beginning of this show, a list of
+/// commands for the lights, and a list of commands for the lasers.
 #[derive(Clone, Debug)]
 pub struct Frame {
     pub timestamp: u64,
@@ -31,8 +71,8 @@ pub struct Laser {
     pub data_frame: Vec<LaserDataFrame>,
 }
 
-impl Show {
-    pub fn load_show(show_file_contents: String) -> Self {
+impl UnloadedShow {
+    pub fn load_show_file(show_file_contents: String) -> Self {
         // Load as json
         let file_json = json::parse(&show_file_contents).unwrap();
 
@@ -135,12 +175,10 @@ impl Show {
         // Sort frames by timestamp
         frames.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
 
-        Show { song: None, frames }
+        UnloadedShow { frames }
     }
-}
 
-// Show frame patterns
-impl Show {
+    // Show frame patterns
     pub fn row_flashing() -> Vec<Frame> {
         (0..1_000)
             .into_iter()

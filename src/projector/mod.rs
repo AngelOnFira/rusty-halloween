@@ -219,7 +219,7 @@ pub struct UARTProjectorController {
     pub uart: Uart,
 }
 
-const UART_BAUD: u32 = 115_200;
+const UART_BAUD: u32 = 56_000;
 
 impl UARTProjectorController {
     pub async fn init() -> Result<Self, anyhow::Error> {
@@ -236,12 +236,14 @@ impl UARTProjectorController {
         // for i in range(46):
         //     ser.write(b'\x00\x00\x00\x00')
 
-        let mut data = vec![0xF0, 0x4C, 0x00, 0x01, 0x32, 0x19, 0x38, 0x01, 0x96, 0x19, 0x38, 0x00, 0x96, 0x4B, 0x38, 0x01, 0x32, 0x4B, 0x38, 0x00];
+        let mut data = vec![
+            0xF0, 0x4C, 0x00, 0x01, 0x32, 0x19, 0x38, 0x01, 0x96, 0x19, 0x38, 0x00, 0x96, 0x4B,
+            0x38, 0x01, 0x32, 0x4B, 0x38, 0x00,
+        ];
 
         for _ in 0..46 {
             data.push(0);
         }
-
 
         // Send some data
         #[cfg(feature = "pi")]

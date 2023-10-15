@@ -5,21 +5,38 @@ use crate::{
 use packed_struct::debug_fmt;
 use rillrate::prime::{Click, ClickOpts};
 use rust_embed::RustEmbed;
-use std::{cmp::max, collections::VecDeque, sync::Arc, thread, time::Duration};
+use std::{
+    cmp::max,
+    collections::{HashMap, VecDeque},
+    sync::Arc,
+    thread,
+    time::Duration,
+};
 use tokio::{
     sync::{mpsc, Mutex},
     time::{sleep, Instant},
 };
 
-use super::{show::Show, ShowAsset};
+use super::{
+    prelude::{LoadedShow, UnloadedShow},
+    show::Show,
+    ShowAsset,
+};
+
+type SongName = String;
+type ShowMap = HashMap<SongName, UnloadedShow>;
 
 pub struct ShowManager {
-    pub current_show: Option<Show>,
+    pub current_show: Option<LoadedShow>,
+    pub next_show: Option<LoadedShow>,
+    /// This stores what is going to happen next
+    ///
+    /// TODO: Add a way to add transitions between songs for the audio to
+    /// overlap
     pub show_queue: Vec<ShowElement>,
     pub start_time: Option<Instant>,
-    pub shows: Vec<Show>,
+    pub shows: ShowMap,
     pub message_queue: Option<mpsc::Sender<MessageKind>>,
-    // pub transition_show:
 }
 
 #[derive(Debug, Clone)]
@@ -30,17 +47,19 @@ pub enum ShowElement {
     NullOut, // Send header with 0 frames, then 50 frames of 00000000, wait 3 seconds before homing again
     // BoundaryCheck,
     Idle { time: u64 },
+    Transition { show_id: usize },
 }
 
 const HOME_SLEEP_TIME: u64 = 15;
 
 impl ShowManager {
-    pub fn new(shows: Vec<Show>, sender: Option<mpsc::Sender<MessageKind>>) -> Self {
+    pub fn new(shows: ShowMap, sender: Option<mpsc::Sender<MessageKind>>) -> Self {
         Self {
             current_show: None,
+            next_show: None,
             start_time: None,
             message_queue: sender,
-            shows: shows,
+            shows,
             show_queue: Vec::new(),
         }
     }
@@ -49,7 +68,8 @@ impl ShowManager {
         let message_queue_clone = message_queue.clone();
 
         ShowManager {
-            current_show: Some(Show::load_show(show_file_contents)),
+            current_show: Some(UnloadedShow::load_show_file(show_file_contents)),
+            next_show: None,
             message_queue: Some(message_queue),
             shows: ShowManager::load_shows(message_queue_clone),
             start_time: None,
@@ -57,7 +77,7 @@ impl ShowManager {
         }
     }
 
-    pub fn save_show(&self, show: Show) -> String {
+    pub fn save_show(&self, show: UnloadedShow) -> String {
         let mut file_json = json::JsonValue::new_object();
 
         for frame in show.frames {
@@ -127,6 +147,9 @@ impl ShowManager {
         ShowManager::load_show(show_file_contents, message_queue)
     }
 
+    /// This function starts a thread that will manage the show. It will keep a
+    /// list of upcoming shows to play, and it will send messages to the other
+    /// worker threads for the projector, lights, and audio.
     pub async fn start_show_worker(mut self, mut receiver: mpsc::Receiver<Vec<ShowElement>>) {
         let show_job_queue: Arc<Mutex<VecDeque<ShowElement>>> =
             Arc::new(Mutex::new(VecDeque::new()));
@@ -192,20 +215,16 @@ impl ShowManager {
                         self.start_time = Some(Instant::now());
 
                         // Start the song
-                        if let Some(song) = &self.current_show.as_ref().unwrap().song {
-                            if let Some(message_queue) = self.message_queue.as_ref() {
-                                message_queue
-                                    .try_send(MessageKind::InternalMessage(
-                                        InternalMessage::Audio {
-                                            audio_file_contents: Arc::new(song.clone()),
-                                        },
-                                    ))
-                                    .unwrap();
-                            }
+                        let song = &self.current_show.as_ref().unwrap().song;
+                        if let Some(message_queue) = self.message_queue.as_ref() {
+                            message_queue
+                                .try_send(MessageKind::InternalMessage(InternalMessage::Audio {
+                                    audio_file_contents: Arc::new(song.clone()),
+                                }))
+                                .unwrap();
                         }
 
                         loop {
-
                             // Get the next frame
                             let curr_frame = self.current_show.as_mut().unwrap().frames.remove(0);
 
@@ -301,6 +320,7 @@ impl ShowManager {
                         // Sleep for the given time
                         sleep(Duration::from_secs(time)).await;
                     }
+                    ShowElement::Transition { show_id } => todo!(),
                 }
             }
         });
@@ -378,7 +398,6 @@ impl ShowManager {
                     .unwrap()
                     .clone();
 
-                let song = Audio::get_sound(&song_file_name).unwrap();
 
                 // Create a show for each one of these files
                 let shows = instructions_files
@@ -389,9 +408,8 @@ impl ShowManager {
                             let file_contents = std::fs::read_to_string(file.path()).unwrap();
 
                             // Load the frames
-                            let mut show = Show::load_show(file_contents);
+                            let mut show = UnloadedShow::load_show_file(file_contents);
 
-                            show.song = Some(song.clone());
 
                             // Set up the buttons on the dashboard
                             let click = Click::new(
@@ -417,7 +435,7 @@ impl ShowManager {
                 shows
             })
             .flatten()
-            .collect::<Vec<Show>>();
+            .collect::<Vec<UnloadedShow>>();
 
         shows
     }
