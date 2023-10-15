@@ -134,6 +134,47 @@ const XIP_BASE: u32 = 0x10000000;
 static mut config_saved: [u32; (STORAGE_OFFSET + XIP_BASE) as usize] =
     [0; (STORAGE_OFFSET + XIP_BASE) as usize];
 
+
+// PicoStepper devices[2];
+static mut devices: [PicoStepper; 2] = [PicoStepper::new(); 2];
+// int positions[2];
+static mut positions: [i32; 2] = [0; 2];
+
+// PicoStepper YAxis;
+static mut YAxis: PicoStepper = PicoStepper::new();
+// PicoStepper XAxis;
+static mut XAxis: PicoStepper = PicoStepper::new();
+
+// volatile uint8_t dma_chan;
+static mut dma_chan: u8 = 0;
+// volatile PIO pio;
+static mut pio: PIO = PIO::new();
+// volatile uint8_t sm;
+static mut sm: u8 = 0;
+
+// volatile bool xfrReceived = false;
+static mut xfrReceived: bool = false;
+// volatile uint8_t buffer_id = 0;
+static mut buffer_id: u8 = 0;
+
+// uint32_t *projector_buffer;
+static mut projector_buffer: [u32; TRANSFER_SIZE as usize] = [0; TRANSFER_SIZE as usize];
+// uint32_t *buffer_one;
+static mut buffer_one: [u32; TRANSFER_SIZE as usize] = [0; TRANSFER_SIZE as usize];
+// uint32_t *buffer_two;
+static mut buffer_two: [u32; TRANSFER_SIZE as usize] = [0; TRANSFER_SIZE as usize];
+
+// uint32_t config_buffer[FLASH_PAGE_SIZE/sizeof(uint32_t)];
+static mut config_buffer: [u32; (FLASH_PAGE_SIZE / 4) as usize] = [0; (FLASH_PAGE_SIZE / 4) as usize];
+// uint32_t *config_saved = (uint32_t *)(STORAGE_OFFSET + XIP_BASE);
+// bool use_config = false;
+static mut use_config: bool = false;
+// volatile uint8_t speed_profile = 0;
+static mut speed_profile: u8 = 0;
+
+// volatile bool receiving;
+static mut receiving: bool = false;
+
 #[entry]
 fn main() -> ! {
     info!("Program start");
@@ -204,14 +245,20 @@ fn main() -> ! {
     init_config();
 
     // printf("Config loaded\n");
+    info!("Config loaded");
     // init_buffers();
+    init_buffers();
     // printf("Buffers initialized\n");
+    info!("Buffers initialized");
 
     // sleep_ms(5000);
-    // printf("%d\n", NUMSTEPS);
 
-    // // Set DMA interrupt priority
+    // printf("%d\n", NUMSTEPS);
+    info!("{}", NUMSTEPS);
+
+    // Set DMA interrupt priority
     // bus_ctrl_hw->priority = BUSCTRL_BUS_PRIORITY_DMA_W_BITS | BUSCTRL_BUS_PRIORITY_DMA_R_BITS;
+    bus_ctrl_hw
 
     // if(!DEBUG){
     //     init_steppers();
@@ -255,41 +302,20 @@ fn main() -> ! {
     // return -1;
 }
 
-// // Load the stored config, or initialize it if needed
-// void init_config(){
-//     if(config_saved[LOAD_CONFIG] != true && false){
-//         printf("Loading defaults\n");
-//         load_default_config();
-//         write_config();
-//     }
-
-//     //load_config();
-//     load_default_config();
-
-//     for(uint8_t idx = 0; idx < 8; idx++){
-//         printf("Config at %d: %X\n", idx, config_buffer[idx]);
-//     }
-// }
-
+// Load the stored config, or initialize it if needed
 fn init_config() {
-    if unsafe { config_saved }[LOAD_CONFIG] != 0 && false {
-        info!("Loading defaults");
-        load_default_config();
-        // write_config();
+    // if unsafe { config_saved }[LOAD_CONFIG] != 0 && false {
+    //     info!("Loading defaults");
+    //     load_default_config();
+    //     // write_config();
+    // load_default_config();
+
+    for idx in 0..8 {
+        info!("Config at {}: {}", idx, unsafe { config_saved[idx] });
     }
 }
 
-// // Load default config settings from defined values
-// void load_default_config(){
-//     config_buffer[LOAD_CONFIG] = true;
-//     config_buffer[ACCELERATION_CONFIG] = ACCELERATION;
-//     config_buffer[TRANSFER_SIZE_CONFIG] = TRANSFER_SIZE;
-//     config_buffer[MAX_SPEED_CONFIG] = MAXSPEED;
-//     config_buffer[MIN_SPEED_CONFIG] = MINSPEED;
-//     config_buffer[X_HOME_CONFIG] = X_HOME_POS;
-//     config_buffer[Y_HOME_CONFIG] = Y_HOME_POS;
-//     config_buffer[PROJECTOR_ID_CONFIG] = PROJECTOR_ID;
-// }
+// Load default config settings from defined values
 fn load_default_config() {
     unsafe {
         config_saved[LOAD_CONFIG] = 1;
@@ -301,4 +327,10 @@ fn load_default_config() {
         config_saved[Y_HOME_CONFIG] = Y_HOME_POS;
         config_saved[PROJECTOR_ID_CONFIG] = PROJECTOR_ID;
     }
+}
+
+// Initialize buffers by allocating space as needed
+fn init_buffers() {
+    // Nothing needs to be done here?
+    // I think Aidan is big dum
 }

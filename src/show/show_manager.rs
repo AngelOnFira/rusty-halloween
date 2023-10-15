@@ -223,7 +223,7 @@ impl ShowManager {
                                         .unwrap()
                                         .send(MessageKind::InternalMessage(
                                             InternalMessage::Light {
-                                                light_id: i as u8 + 1,
+                                                light_id: i as u8,
                                                 enable: *light,
                                             },
                                         ))

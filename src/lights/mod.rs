@@ -59,7 +59,7 @@ impl LightController {
 
             // Set up a dashboard button to enable this light
             let switch = Switch::new(
-                format!("app.dashboard.Lights.Light-{} (pin {})", i + 1, pin.0),
+                format!("app.dashboard.Lights.Light-{} (pin {})", i, pin.0),
                 SwitchOpts::default().label("Click Me!"),
             );
             let this = switch.clone();
