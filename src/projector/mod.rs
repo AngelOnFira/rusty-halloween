@@ -3,7 +3,6 @@ use std::path::Path;
 use self::pack::{DrawPack, HeaderPack};
 
 use crate::projector::pack::CheckSum;
-use crate::proto_schema::schema::Projector;
 use crate::{InternalMessage, MessageKind};
 
 use rillrate::prime::{Click, ClickOpts};
@@ -111,53 +110,6 @@ impl SPIProjectorController {
             spi,
             clicks,
         })
-    }
-
-    #[allow(dead_code)]
-    pub fn projector_to_frames(
-        &mut self,
-        projector_command: Projector,
-    ) -> Result<(), anyhow::Error> {
-        // Create the header from the message
-        let header_command = projector_command.header;
-        let header = HeaderPack {
-            projector_id: (header_command.projector_id as u8).into(),
-            point_count: (header_command.point_count as u8).into(),
-            home: header_command.home,
-            enable: header_command.enable,
-            configuration_mode: header_command.configuration_mode,
-            draw_boundary: header_command.draw_boundary,
-            oneshot: header_command.oneshot,
-            speed_profile: (header_command.speed_profile as u8).into(),
-            checksum: header_command.checksum,
-            ..HeaderPack::default()
-        }
-        .checksum_pack();
-
-        let mut draw_instructions = Vec::new();
-        for draw_command in projector_command.draw_instructions {
-            let draw_pack = DrawPack {
-                x: (draw_command.xCoOrd as u16).into(),
-                y: (draw_command.yCoOrd as u16).into(),
-                red: (draw_command.red as u8).into(),
-                green: (draw_command.green as u8).into(),
-                blue: (draw_command.blue as u8).into(),
-                checksum: draw_command.checksum,
-                ..DrawPack::default()
-            }
-            .checksum_pack();
-            draw_instructions.push(draw_pack);
-        }
-
-        // Create a message pack
-        let message_pack = FrameSendPack {
-            header,
-            draw_instructions,
-        };
-
-        self.spi_send_projector(message_pack)?;
-
-        Ok(())
     }
 
     #[allow(dead_code)]

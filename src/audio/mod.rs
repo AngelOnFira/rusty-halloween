@@ -41,9 +41,7 @@ impl Audio {
             while let Some(sound) = receiver.recv().await {
                 println!("Playing sound: {}", sound.name);
                 if let Some(manager) = audio_manager.manager.as_mut() {
-                    if let Some(stream) = &sound.stream {
-                        manager.play(stream.clone()).unwrap();
-                    }
+                    manager.play(sound.stream).unwrap();
                 }
             }
         });
@@ -67,7 +65,7 @@ impl Audio {
 
             return Ok(Song {
                 name: name.to_string(),
-                stream: Some(sound_player),
+                stream: sound_player,
             });
         }
 
@@ -82,7 +80,7 @@ impl Audio {
 
             return Ok(Song {
                 name: name.to_string(),
-                stream: Some(sound_player),
+                stream: sound_player,
             });
         }
 
@@ -102,9 +100,7 @@ impl Audio {
         let sound_data = Audio::get_sound(name)?;
 
         if let Some(manager) = self.manager.as_mut() {
-            if let Some(stream) = sound_data.stream {
-                manager.play(stream)?;
-            }
+            manager.play(sound_data.stream)?;
         }
 
         Ok(())

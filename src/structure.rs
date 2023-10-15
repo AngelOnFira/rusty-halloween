@@ -1,13 +1,13 @@
 use std::{
     fs::{self, File},
     io::Write,
-    path::Path,
+    path::Path, collections::HashMap,
 };
 
-use crate::prelude::{
+use crate::{prelude::{
     prelude::{Show, ShowManager, Song},
     Audio,
-};
+}, show::prelude::UnloadedShow};
 
 pub struct FileStructure {}
 
@@ -43,12 +43,9 @@ impl FileStructure {
             if !Path::new(&name).exists() {
                 std::fs::write(
                     name,
-                    ShowManager::new(Vec::new(), None).save_show(Show {
-                        song: Some(Song {
-                            name: format!("{}.mp3", sound),
-                            stream: None,
-                        }),
-                        frames: Show::row_flashing(),
+                    ShowManager::new(HashMap::new(), None).save_show(UnloadedShow {
+                        name: format!("{}.mp3", sound),
+                        frames: UnloadedShow::row_flashing(),
                     }),
                 )
                 .unwrap();

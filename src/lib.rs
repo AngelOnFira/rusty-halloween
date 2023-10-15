@@ -13,7 +13,6 @@ pub mod config;
 pub mod dashboard;
 pub mod lights;
 pub mod projector;
-pub mod proto_schema;
 pub mod show;
 pub mod structure;
 
@@ -23,7 +22,6 @@ pub mod prelude {
     pub use crate::dashboard::*;
     pub use crate::lights::*;
     pub use crate::projector::*;
-    pub use crate::proto_schema::*;
     pub use crate::show::*;
 }
 

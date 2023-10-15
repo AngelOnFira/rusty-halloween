@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use kira::sound::static_sound::StaticSoundData;
 
 use crate::audio::Audio;
@@ -11,6 +13,12 @@ use super::{LaserDataFrame, MAX_LIGHTS, MAX_PROJECTORS};
 pub enum Show {}
 
 #[derive(Clone, Debug)]
+pub struct UnloadedShow {
+    pub name: String,
+    pub frames: Vec<Frame>,
+}
+
+#[derive(Clone, Debug)]
 pub struct LoadedShow {
     pub song: Song,
     pub frames: Vec<Frame>,
@@ -21,12 +29,7 @@ pub struct LoadedShow {
 impl UnloadedShow {
     pub async fn load_show(self) -> LoadedShow {
         // Load the song
-        let song = Song {
-            name: "test".to_string(),
-            stream: None,
-        };
-                let song = Audio::get_sound(&song_file_name).unwrap();
-
+        let song = Audio::get_sound(&self.name).unwrap();
 
         LoadedShow {
             song,
@@ -34,17 +37,6 @@ impl UnloadedShow {
         }
     }
 }
-
-#[derive(Clone, Debug)]
-pub struct UnloadedShow {
-    pub frames: Vec<Frame>,
-}
-
-// #[derive(Clone, Debug)]
-// pub struct Show {
-//     pub song: Option<Song>,
-//     pub frames: Vec<Frame>,
-// }
 
 #[derive(Clone, Debug)]
 pub struct Song {
@@ -72,9 +64,13 @@ pub struct Laser {
 }
 
 impl UnloadedShow {
-    pub fn load_show_file(show_file_contents: String) -> Self {
+    pub fn load_show_file(show_file_path: &Path) -> Self {
+        // Load the file as a string
+        let show_file_path = show_file_path.to_str().unwrap();
+        let show_file = std::fs::read_to_string(show_file_path).unwrap();
+
         // Load as json
-        let file_json = json::parse(&show_file_contents).unwrap();
+        let file_json = json::parse(&show_file).unwrap();
 
         let mut frames = Vec::new();
 
@@ -175,7 +171,10 @@ impl UnloadedShow {
         // Sort frames by timestamp
         frames.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
 
-        UnloadedShow { frames }
+        UnloadedShow {
+            name: show_file_path.to_string(),
+            frames,
+        }
     }
 
     // Show frame patterns

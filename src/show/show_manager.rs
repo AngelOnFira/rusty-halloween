@@ -23,11 +23,12 @@ use super::{
     ShowAsset,
 };
 
-type SongName = String;
-type ShowMap = HashMap<SongName, UnloadedShow>;
+pub type SongName = String;
+pub type ShowMap = HashMap<SongName, UnloadedShow>;
+
 
 pub struct ShowManager {
-    pub current_show: Option<LoadedShow>,
+    pub current_show: LoadedShow,
     pub next_show: Option<LoadedShow>,
     /// This stores what is going to happen next
     ///
@@ -37,6 +38,14 @@ pub struct ShowManager {
     pub start_time: Option<Instant>,
     pub shows: ShowMap,
     pub message_queue: Option<mpsc::Sender<MessageKind>>,
+}
+
+/// There are several states to be in:
+/// - There is a show playing
+/// - A show just ended and another is starting right away
+/// - A show just ended and there is a break before the next one
+pub enum ShowState {
+    
 }
 
 #[derive(Debug, Clone)]
@@ -68,7 +77,7 @@ impl ShowManager {
         let message_queue_clone = message_queue.clone();
 
         ShowManager {
-            current_show: Some(UnloadedShow::load_show_file(show_file_contents)),
+            current_show: UnloadedShow::load_show_file(show_file_contents),
             next_show: None,
             message_queue: Some(message_queue),
             shows: ShowManager::load_shows(message_queue_clone),
@@ -209,13 +218,13 @@ impl ShowManager {
                     }
                     ShowElement::Show { show_id } => {
                         // Set the show from the id
-                        self.current_show = Some(self.shows[show_id].clone());
+                        self.current_show = self.shows[show_id].clone();
 
                         // Set the timer
                         self.start_time = Some(Instant::now());
 
                         // Start the song
-                        let song = &self.current_show.as_ref().unwrap().song;
+                        let song = &self.current_show.song;
                         if let Some(message_queue) = self.message_queue.as_ref() {
                             message_queue
                                 .try_send(MessageKind::InternalMessage(InternalMessage::Audio {
@@ -226,7 +235,7 @@ impl ShowManager {
 
                         loop {
                             // Get the next frame
-                            let curr_frame = self.current_show.as_mut().unwrap().frames.remove(0);
+                            let curr_frame = self.current_show.frames.remove(0);
 
                             // Sleep until the current frame is ready
                             let curr_time = self.start_time.unwrap().elapsed().as_millis() as i64;
@@ -283,7 +292,7 @@ impl ShowManager {
                                 }
                             }
 
-                            if self.current_show.as_ref().unwrap().frames.len() == 0 {
+                            if self.current_show.frames.len() == 0 {
                                 break;
                             }
                         }
@@ -326,7 +335,7 @@ impl ShowManager {
         });
     }
 
-    pub fn load_shows(message_queue: mpsc::Sender<MessageKind>) -> Vec<Show> {
+    pub fn load_shows(message_queue: mpsc::Sender<MessageKind>) -> ShowMap {
         // Find all folders in the shows folder
         let shows = std::fs::read_dir("shows").unwrap();
 
@@ -398,18 +407,13 @@ impl ShowManager {
                     .unwrap()
                     .clone();
 
-
                 // Create a show for each one of these files
                 let shows = instructions_files
                     .into_iter()
                     .filter_map(|file| {
                         if let Ok(file) = file {
-                            // Load the show file
-                            let file_contents = std::fs::read_to_string(file.path()).unwrap();
-
                             // Load the frames
-                            let mut show = UnloadedShow::load_show_file(file_contents);
-
+                            let mut show = UnloadedShow::load_show_file(&file.path());
 
                             // Set up the buttons on the dashboard
                             let click = Click::new(
@@ -425,17 +429,17 @@ impl ShowManager {
                                 Ok(())
                             });
 
-                            return Some(show);
+                            return Some((file.file_name().to_str().unwrap().to_string(), show));
                         }
 
                         None
                     })
-                    .collect::<Vec<_>>();
+                    .collect::<ShowMap>();
 
                 shows
             })
             .flatten()
-            .collect::<Vec<UnloadedShow>>();
+            .collect::<ShowMap>();
 
         shows
     }
