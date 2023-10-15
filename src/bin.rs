@@ -16,7 +16,7 @@ async fn main() -> Result<(), Error> {
     // Send the data test to uart
     UARTProjectorController::init().await?;
 
-    return Ok(());
+    // return Ok(());
 
     println!("Starting Tokio console...");
     #[cfg(not(feature = "pi"))]
@@ -52,11 +52,11 @@ async fn main() -> Result<(), Error> {
     #[allow(unused_variables, unused_mut)]
     let mut light_controller = LightController::init(&config, tx_clone).await?;
 
-    // Initialize the projector
-    println!("Starting projector...");
-    let tx_clone = message_queue_tx.clone();
-    #[allow(unused_variables, unused_mut)]
-    let mut projector_controller = SPIProjectorController::init(tx_clone).await?;
+    // // Initialize the projector
+    // println!("Starting projector...");
+    // let tx_clone = message_queue_tx.clone();
+    // #[allow(unused_variables, unused_mut)]
+    // let mut projector_controller = SPIProjectorController::init(tx_clone).await?;
 
     // Initialize the audio
     println!("Starting audio...");
