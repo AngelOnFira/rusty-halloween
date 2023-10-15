@@ -158,7 +158,7 @@ async fn main() -> Result<(), Error> {
 
     // Start playing the first show
     let tx_clone = message_queue_tx.clone();
-    let manager = ShowManager::new(shows, Some(tx_clone));
+    let manager = ShowManager::new(shows, tx_clone);
 
     let (show_worker_channel_tx, show_worker_channel_rx) = mpsc::channel(100);
 
@@ -179,7 +179,10 @@ async fn main() -> Result<(), Error> {
 
         // Send first show
         show_worker_channel_tx
-            .send(vec![ShowElement::Home, ShowElement::Show { show_id: 0 }])
+            .send(vec![
+                ShowElement::Home,
+                ShowElement::PrepareShow { song_name: 0 },
+            ])
             .await
             .unwrap();
     });

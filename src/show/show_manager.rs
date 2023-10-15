@@ -26,9 +26,8 @@ use super::{
 pub type SongName = String;
 pub type ShowMap = HashMap<SongName, UnloadedShow>;
 
-
 pub struct ShowManager {
-    pub current_show: LoadedShow,
+    pub current_show: Option<LoadedShow>,
     pub next_show: Option<LoadedShow>,
     /// This stores what is going to happen next
     ///
@@ -37,32 +36,47 @@ pub struct ShowManager {
     pub show_queue: Vec<ShowElement>,
     pub start_time: Option<Instant>,
     pub shows: ShowMap,
-    pub message_queue: Option<mpsc::Sender<MessageKind>>,
+    pub message_queue: mpsc::Sender<MessageKind>,
 }
 
 /// There are several states to be in:
 /// - There is a show playing
 /// - A show just ended and another is starting right away
 /// - A show just ended and there is a break before the next one
-pub enum ShowState {
-    
-}
+///
+/// Regardless, there is a chance that there is not a "song" that is currently
+/// loaded in the current_show
+pub enum ShowState {}
 
 #[derive(Debug, Clone)]
 pub enum ShowElement {
-    Home, // Wait 15 seconds after, then assume the show can start
-    Show { show_id: usize },
+    /// Wait 15 seconds after, then assume the show can start
+    Home,
+    /// Start loading a show into the next show slot. This will take place on a
+    /// separate thread
+    PrepareShow {
+        song_name: SongName,
+    },
+    /// Pull the next show into the current show and start it. This will wait
+    /// until the new song is loaded
+    NextShow,
     // Disable {duration: Duration},
-    NullOut, // Send header with 0 frames, then 50 frames of 00000000, wait 3 seconds before homing again
+    // Send header with 0 frames, then 50 frames of 00000000, wait 3 seconds
+    // before homing again
+    NullOut,
     // BoundaryCheck,
-    Idle { time: u64 },
-    Transition { show_id: usize },
+    Idle {
+        time: u64,
+    },
+    Transition {
+        show_id: usize,
+    },
 }
 
 const HOME_SLEEP_TIME: u64 = 15;
 
 impl ShowManager {
-    pub fn new(shows: ShowMap, sender: Option<mpsc::Sender<MessageKind>>) -> Self {
+    pub fn new(shows: ShowMap, sender: mpsc::Sender<MessageKind>) -> Self {
         Self {
             current_show: None,
             next_show: None,
@@ -73,18 +87,18 @@ impl ShowManager {
         }
     }
 
-    pub fn load_show(show_file_contents: String, message_queue: mpsc::Sender<MessageKind>) -> Self {
-        let message_queue_clone = message_queue.clone();
+    // pub fn load_show(show_file_contents: String, message_queue: mpsc::Sender<MessageKind>) -> Self {
+    //     let message_queue_clone = message_queue.clone();
 
-        ShowManager {
-            current_show: UnloadedShow::load_show_file(show_file_contents),
-            next_show: None,
-            message_queue: Some(message_queue),
-            shows: ShowManager::load_shows(message_queue_clone),
-            start_time: None,
-            show_queue: Vec::new(),
-        }
-    }
+    //     ShowManager {
+    //         current_show: UnloadedShow::load_show_file(show_file_contents),
+    //         next_show: None,
+    //         message_queue: Some(message_queue),
+    //         shows: ShowManager::load_shows(message_queue_clone),
+    //         start_time: None,
+    //         show_queue: Vec::new(),
+    //     }
+    // }
 
     pub fn save_show(&self, show: UnloadedShow) -> String {
         let mut file_json = json::JsonValue::new_object();
@@ -143,18 +157,18 @@ impl ShowManager {
         file_json.pretty(4)
     }
 
-    pub fn load_show_file(
-        show_file_path: String,
-        message_queue: mpsc::Sender<MessageKind>,
-    ) -> Self {
-        // let show_file_contents = std::fs::read_to_string(show_file_path).unwrap();
-        let show_file_contents: String =
-            std::str::from_utf8(&ShowAsset::get(&show_file_path).unwrap().data)
-                .unwrap()
-                .to_string();
+    // pub fn load_show_file(
+    //     show_file_path: String,
+    //     message_queue: mpsc::Sender<MessageKind>,
+    // ) -> Self {
+    //     // let show_file_contents = std::fs::read_to_string(show_file_path).unwrap();
+    //     let show_file_contents: String =
+    //         std::str::from_utf8(&ShowAsset::get(&show_file_path).unwrap().data)
+    //             .unwrap()
+    //             .to_string();
 
-        ShowManager::load_show(show_file_contents, message_queue)
-    }
+    //     ShowManager::load_show(show_file_contents, message_queue)
+    // }
 
     /// This function starts a thread that will manage the show. It will keep a
     /// list of upcoming shows to play, and it will send messages to the other
@@ -174,165 +188,8 @@ impl ShowManager {
 
         // Start the show worker thread
         let show_job_queue_clone = show_job_queue.clone();
-        let worker_handle = tokio::spawn(async move {
-            loop {
-                // Get the next element in the queue
-                let mut show_job_queue = show_job_queue_clone.lock().await;
-                let next_show_element = show_job_queue.pop_front().to_owned();
-
-                // If there isn't a next element, wait for one
-                if next_show_element.is_none() {
-                    drop(show_job_queue);
-                    sleep(Duration::from_millis(100)).await;
-                    continue;
-                }
-
-                match next_show_element.unwrap() {
-                    ShowElement::Home => {
-                        // Send a home command
-                        self.message_queue
-                            .as_mut()
-                            .unwrap()
-                            .send(MessageKind::InternalMessage(InternalMessage::Projector(
-                                MessageSendPack {
-                                    header: HeaderPack {
-                                        projector_id: 15.into(),
-                                        point_count: 0.into(),
-                                        home: true,
-                                        enable: true,
-                                        configuration_mode: false,
-                                        draw_boundary: false,
-                                        oneshot: false,
-                                        speed_profile: 0.into(),
-                                        ..Default::default()
-                                    },
-                                    draw_instructions: Vec::new(),
-                                }
-                                .into(),
-                            )))
-                            .await
-                            .unwrap();
-
-                        // Sleep for 15 seconds
-                        sleep(Duration::from_secs(HOME_SLEEP_TIME)).await;
-                    }
-                    ShowElement::Show { show_id } => {
-                        // Set the show from the id
-                        self.current_show = self.shows[show_id].clone();
-
-                        // Set the timer
-                        self.start_time = Some(Instant::now());
-
-                        // Start the song
-                        let song = &self.current_show.song;
-                        if let Some(message_queue) = self.message_queue.as_ref() {
-                            message_queue
-                                .try_send(MessageKind::InternalMessage(InternalMessage::Audio {
-                                    audio_file_contents: Arc::new(song.clone()),
-                                }))
-                                .unwrap();
-                        }
-
-                        loop {
-                            // Get the next frame
-                            let curr_frame = self.current_show.frames.remove(0);
-
-                            // Sleep until the current frame is ready
-                            let curr_time = self.start_time.unwrap().elapsed().as_millis() as i64;
-                            let sleep_time = max(curr_frame.timestamp as i64 - curr_time, 0);
-                            sleep(Duration::from_millis(sleep_time as u64)).await;
-
-                            // Execute the current frame
-
-                            // Send all the lights data
-                            for (i, light) in curr_frame.lights.iter().enumerate() {
-                                if let Some(light) = light {
-                                    self.message_queue
-                                        .as_mut()
-                                        .unwrap()
-                                        .send(MessageKind::InternalMessage(
-                                            InternalMessage::Light {
-                                                light_id: i as u8 + 1,
-                                                enable: *light,
-                                            },
-                                        ))
-                                        .await
-                                        .unwrap();
-                                }
-                            }
-
-                            // Send all the lasers data
-                            for (i, laser) in curr_frame.lasers.iter().enumerate() {
-                                if let Some(laser) = laser {
-                                    self.message_queue
-                                        .as_mut()
-                                        .unwrap()
-                                        .send(MessageKind::InternalMessage(
-                                            InternalMessage::Projector(
-                                                MessageSendPack {
-                                                    header: HeaderPack {
-                                                        projector_id: (i as u8).into(),
-                                                        point_count: (laser.data_frame.len() as u8)
-                                                            .into(),
-                                                        home: false,
-                                                        enable: true,
-                                                        configuration_mode: false,
-                                                        draw_boundary: false,
-                                                        oneshot: false,
-                                                        speed_profile: laser.speed_profile.into(),
-                                                        ..Default::default()
-                                                    },
-                                                    draw_instructions: Vec::new(),
-                                                }
-                                                .into(),
-                                            ),
-                                        ))
-                                        .await
-                                        .unwrap();
-                                }
-                            }
-
-                            if self.current_show.frames.len() == 0 {
-                                break;
-                            }
-                        }
-                    }
-                    ShowElement::NullOut => {
-                        // Send a null out command
-                        self.message_queue
-                            .as_mut()
-                            .unwrap()
-                            .send(MessageKind::InternalMessage(InternalMessage::Projector(
-                                MessageSendPack {
-                                    header: HeaderPack {
-                                        projector_id: 16.into(),
-                                        point_count: 0.into(),
-                                        home: false,
-                                        enable: true,
-                                        configuration_mode: false,
-                                        draw_boundary: false,
-                                        oneshot: false,
-                                        speed_profile: 0.into(),
-                                        ..Default::default()
-                                    },
-                                    draw_instructions: Vec::new(),
-                                }
-                                .into(),
-                            )))
-                            .await
-                            .unwrap();
-
-                        // Sleep for 3 seconds
-                        sleep(Duration::from_secs(3)).await;
-                    }
-                    ShowElement::Idle { time } => {
-                        // Sleep for the given time
-                        sleep(Duration::from_secs(time)).await;
-                    }
-                    ShowElement::Transition { show_id } => todo!(),
-                }
-            }
-        });
+        let worker_handle =
+            tokio::spawn(async move { show_task_loop(self, show_job_queue_clone).await });
     }
 
     pub fn load_shows(message_queue: mpsc::Sender<MessageKind>) -> ShowMap {
@@ -442,5 +299,168 @@ impl ShowManager {
             .collect::<ShowMap>();
 
         shows
+    }
+}
+
+async fn show_task_loop(
+    show_manager: ShowManager,
+    show_job_queue_clone: Arc<Mutex<VecDeque<ShowElement>>>,
+) {
+    loop {
+        // Get the next element in the queue
+        let mut show_job_queue = show_job_queue_clone.lock().await;
+        let next_show_element = show_job_queue.pop_front().to_owned();
+
+        // If there isn't a next element, wait for one
+        if next_show_element.is_none() {
+            drop(show_job_queue);
+            sleep(Duration::from_millis(100)).await;
+            continue;
+        }
+
+        match next_show_element.unwrap() {
+            ShowElement::Home => {
+                // Send a home command
+                show_manager
+                    .message_queue
+                    .send(MessageKind::InternalMessage(InternalMessage::Projector(
+                        MessageSendPack {
+                            header: HeaderPack {
+                                projector_id: 15.into(),
+                                point_count: 0.into(),
+                                home: true,
+                                enable: true,
+                                configuration_mode: false,
+                                draw_boundary: false,
+                                oneshot: false,
+                                speed_profile: 0.into(),
+                                ..Default::default()
+                            },
+                            draw_instructions: Vec::new(),
+                        }
+                        .into(),
+                    )))
+                    .await
+                    .unwrap();
+
+                // Sleep for 15 seconds
+                sleep(Duration::from_secs(HOME_SLEEP_TIME)).await;
+            }
+            ShowElement::PrepareShow {
+                song_name: show_name,
+            } => {
+                // Set the show from the id
+                show_manager.current_show = show_manager.shows.get(show_name);
+            }
+            ShowElement::NextShow => {
+                // Set the timer
+                show_manager.start_time = Some(Instant::now());
+
+                const TIMEOUT: u64 = 10;
+
+                // Load the song. If there is no song loaded, wait on it
+                // appearing for TIMEOUT seconds. If it doesn't appear, then
+                // log that the song wasn't loaded in time, and continue to the
+                // next instruction.
+                
+
+                // Start the song
+                let song = &show_manager.current_show.song;
+                if let Some(message_queue) = show_manager.message_queue.as_ref() {
+                    message_queue
+                        .try_send(MessageKind::InternalMessage(InternalMessage::Audio {
+                            audio_file_contents: Arc::new(song.clone()),
+                        }))
+                        .unwrap();
+                }
+
+                loop {
+                    // Get the next frame
+                    let current_show = show_manager.current_show.unwrap();
+                    let curr_frame = show_manager.current_show.frames.remove(0);
+
+                    // Sleep until the current frame is ready
+                    let curr_time = show_manager.start_time.unwrap().elapsed().as_millis() as i64;
+                    let sleep_time = max(curr_frame.timestamp as i64 - curr_time, 0);
+                    sleep(Duration::from_millis(sleep_time as u64)).await;
+
+                    // Execute the current frame
+
+                    // Send all the lights data
+                    for (i, light) in curr_frame.lights.iter().enumerate() {
+                        if let Some(light) = light {
+                            show_manager.message_queue
+                                .send(MessageKind::InternalMessage(InternalMessage::Light {
+                                    light_id: i as u8 + 1,
+                                    enable: *light,
+                                }))
+                                .await
+                                .unwrap();
+                        }
+                    }
+
+                    // Send all the lasers data
+                    for (i, laser) in curr_frame.lasers.iter().enumerate() {
+                        if let Some(laser) = laser {
+                            show_manager.message_queue
+                                .send(MessageKind::InternalMessage(InternalMessage::Projector(
+                                    MessageSendPack {
+                                        header: HeaderPack {
+                                            projector_id: (i as u8).into(),
+                                            point_count: (laser.data_frame.len() as u8).into(),
+                                            home: false,
+                                            enable: true,
+                                            configuration_mode: false,
+                                            draw_boundary: false,
+                                            oneshot: false,
+                                            speed_profile: laser.speed_profile.into(),
+                                            ..Default::default()
+                                        },
+                                        draw_instructions: Vec::new(),
+                                    }
+                                    .into(),
+                                )))
+                                .await
+                                .unwrap();
+                        }
+                    }
+
+                    if show_manager.current_show.frames.len() == 0 {
+                        break;
+                    }
+                }
+            }
+            ShowElement::NullOut => {
+                // Send a null out command
+                show_manager.message_queue
+                    .send(MessageKind::InternalMessage(InternalMessage::Projector(
+                        MessageSendPack {
+                            header: HeaderPack {
+                                projector_id: 16.into(),
+                                point_count: 0.into(),
+                                home: false,
+                                enable: true,
+                                configuration_mode: false,
+                                draw_boundary: false,
+                                oneshot: false,
+                                speed_profile: 0.into(),
+                                ..Default::default()
+                            },
+                            draw_instructions: Vec::new(),
+                        }
+                        .into(),
+                    )))
+                    .await
+                    .unwrap();
+
+                // Sleep for 3 seconds
+                sleep(Duration::from_secs(3)).await;
+            }
+            ShowElement::Idle { time } => {
+                // Sleep for the given time
+                sleep(Duration::from_secs(time)).await;
+            }
+            ShowElement::Transition { show_id } => todo!(),
+        }
     }
 }
