@@ -19,7 +19,7 @@ use tokio::{
 };
 
 use super::{
-    prelude::{LoadedShow, UnloadedShow},
+    prelude::{LoadedShow, LoadingShow, UnloadedShow},
     show::Show,
     ShowAsset,
 };
@@ -29,7 +29,7 @@ pub type ShowMap = HashMap<SongName, UnloadedShow>;
 
 pub struct ShowManager {
     pub current_show: Option<LoadedShow>,
-    pub next_show: Arc<Mutex<Option<LoadedShow>>>,
+    pub next_show: Option<LoadingShow>,
     /// This stores what is going to happen next
     ///
     /// TODO: Add a way to add transitions between songs for the audio to
@@ -80,7 +80,7 @@ impl ShowManager {
     pub fn new(shows: ShowMap, sender: mpsc::Sender<MessageKind>) -> Self {
         Self {
             current_show: None,
-            next_show: Arc::new(Mutex::new(None)),
+            next_show: None,
             start_time: None,
             message_queue: sender,
             shows,
@@ -368,13 +368,22 @@ async fn show_task_loop(
 
                 const TIMEOUT: u64 = 10;
 
+                // If there isn't a next_show, then log that there isn't one and
+                // continue to the next instruction
+                if show_manager.next_show.is_none() {
+                    error!("There is no next show to play");
+                    continue;
+                }
+
+                let next_show = show_manager.next_show.take().unwrap();
+
                 // Load the song. If there is no song loaded, wait on it
                 // appearing for TIMEOUT seconds. If it doesn't appear, then
                 // log that the song wasn't loaded in time, and continue to the
                 // next instruction.
                 let mut timer = Instant::now();
                 loop {
-                    if show_manager.next_show.lock().await.is_some() {
+                    if next_show.is_ready() {
                         break;
                     }
 
@@ -386,6 +395,17 @@ async fn show_task_loop(
                     sleep(Duration::from_millis(100)).await;
                 }
 
+                // Turn this into a loaded show
+                let loaded_show = match next_show.get_loaded_show() {
+                    Ok(show) => show,
+                    Err(_) => {
+                        error!("The next show is not ready to play");
+                        continue;
+                    }
+                };
+
+                // Set the current show
+                show_manager.current_show = Some(loaded_show.clone());
 
                 // Start the song
                 let song = &show_manager.current_show.song;
@@ -412,7 +432,8 @@ async fn show_task_loop(
                     // Send all the lights data
                     for (i, light) in curr_frame.lights.iter().enumerate() {
                         if let Some(light) = light {
-                            show_manager.message_queue
+                            show_manager
+                                .message_queue
                                 .send(MessageKind::InternalMessage(InternalMessage::Light {
                                     light_id: i as u8 + 1,
                                     enable: *light,
@@ -425,7 +446,8 @@ async fn show_task_loop(
                     // Send all the lasers data
                     for (i, laser) in curr_frame.lasers.iter().enumerate() {
                         if let Some(laser) = laser {
-                            show_manager.message_queue
+                            show_manager
+                                .message_queue
                                 .send(MessageKind::InternalMessage(InternalMessage::Projector(
                                     MessageSendPack {
                                         header: HeaderPack {
@@ -455,7 +477,8 @@ async fn show_task_loop(
             }
             ShowElement::NullOut => {
                 // Send a null out command
-                show_manager.message_queue
+                show_manager
+                    .message_queue
                     .send(MessageKind::InternalMessage(InternalMessage::Projector(
                         MessageSendPack {
                             header: HeaderPack {

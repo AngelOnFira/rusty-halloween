@@ -5,7 +5,10 @@ use std::{
 
 use kira::sound::static_sound::StaticSoundData;
 
-use crate::{audio::Audio, prelude::{LoadedSong, LoadingSong}};
+use crate::{
+    audio::Audio,
+    prelude::{LoadedSong, LoadingSong},
+};
 
 use super::{LaserDataFrame, MAX_LIGHTS, MAX_PROJECTORS};
 
@@ -28,18 +31,12 @@ impl UnloadedShow {
         // Load the song
         let song = Audio::get_sound(&self.name).unwrap();
 
-        LoadedShow {
+        LoadingShow {
             song,
+            name: self.name,
             frames: self.frames,
         }
     }
-}
-
-#[derive(Clone, Debug)]
-pub struct LoadedShow {
-    pub song: LoadedSong,
-    pub name: String,
-    pub frames: Vec<Frame>,
 }
 
 /// A partly-loaded show is a show that might have a song loaded, but it might
@@ -51,7 +48,33 @@ pub struct LoadingShow {
     pub frames: Vec<Frame>,
 }
 
+impl LoadingShow {
+    pub fn is_ready(&self) -> bool {
+        self.song.stream.lock().unwrap().is_some()
+    }
 
+    pub fn get_loaded_show(self) -> Result<LoadedShow, ()> {
+        // Verify that the song is loaded
+        match self.song.stream.lock().unwrap().clone() {
+            Some(stream) => Ok(LoadedShow {
+                song: LoadedSong {
+                    name: self.song.name,
+                    stream,
+                },
+                name: self.name,
+                frames: self.frames,
+            }),
+            None => Err(()),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct LoadedShow {
+    pub song: LoadedSong,
+    pub name: String,
+    pub frames: Vec<Frame>,
+}
 
 /// A frame consists of a timestamp since the beginning of this show, a list of
 /// commands for the lights, and a list of commands for the lasers.

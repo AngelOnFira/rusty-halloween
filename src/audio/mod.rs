@@ -23,7 +23,7 @@ pub struct Audio {
 #[derive(Clone, Debug)]
 pub struct LoadingSong {
     pub name: String,
-    pub stream: Arc<Mutex<StaticSoundData>>,
+    pub stream: Arc<Mutex<Option<StaticSoundData>>>,
 }
 
 #[derive(Clone, Debug)]
