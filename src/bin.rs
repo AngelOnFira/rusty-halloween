@@ -6,6 +6,7 @@ use rusty_halloween::prelude::*;
 use rusty_halloween::InternalMessage;
 use rusty_halloween::MessageKind;
 
+use rusty_halloween::show::prelude::ShowChoice;
 use rusty_halloween::show::prelude::ShowElement;
 use rusty_halloween::show::prelude::ShowManager;
 use rusty_halloween::structure::FileStructure;
@@ -181,7 +182,7 @@ async fn main() -> Result<(), Error> {
         show_worker_channel_tx
             .send(vec![
                 ShowElement::Home,
-                ShowElement::PrepareShow { song_name: 0 },
+                ShowElement::PrepareShow (ShowChoice::Random),
             ])
             .await
             .unwrap();

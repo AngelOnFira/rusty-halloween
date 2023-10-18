@@ -65,9 +65,7 @@ impl Audio {
         Ok(())
     }
 
-    pub fn get_sound(
-        name: &str,
-    ) -> Result<Arc<Mutex<Option<LoadingSong>>>, Box<dyn std::error::Error>> {
+    pub fn get_sound(name: &str) -> Result<LoadingSong, Box<dyn std::error::Error>> {
         #[allow(unused_variables)]
         let sound_path = format!("src/audio/assets/{}", name);
 
@@ -81,21 +79,23 @@ impl Audio {
                 StaticSoundSettings::default(),
             )?;
 
-            return Ok(Arc::new(Mutex::new(Some(LoadedSong {
+            return Ok(LoadingSong {
                 name: name.to_string(),
-                stream: sound_player,
-            }))));
+                stream: Arc::new(Mutex::new(Some(sound_player))),
+            });
         }
 
         // Try to load it from the filesystem at
         // shows/<song_name>/<song_name>.mp3
         let sound_path = format!("shows/{}/{}.mp3", name, name);
 
-        let sound_path = Path::new(&sound_path);
-        if sound_path.exists() {
-            let song_future = Arc::new(Mutex::new(None));
+        if Path::new(&sound_path).exists() {
+            let song_stream = Arc::new(Mutex::new(None));
 
-            let song_future_clone = song_future.clone();
+            let song_future = LoadingSong {
+                name: name.to_string(),
+                stream: song_stream.clone(),
+            };
 
             // Start loading it in a new thread
             tokio::spawn(async move {
@@ -103,10 +103,8 @@ impl Audio {
                 let sound_player =
                     StaticSoundData::from_file(sound_path, StaticSoundSettings::default()).unwrap();
 
-                song_future_clone.lock().unwrap().replace(LoadedSong {
-                    name: name.to_string(),
-                    stream: sound_player,
-                });
+                // Save the song to the stream
+                *song_stream.lock().unwrap() = Some(sound_player);
             });
 
             // Return an empty song for now, this will be filled in later once

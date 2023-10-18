@@ -24,8 +24,8 @@ use super::{
     ShowAsset,
 };
 
-pub type SongName = String;
-pub type ShowMap = HashMap<SongName, UnloadedShow>;
+pub type ShowName = String;
+pub type ShowMap = HashMap<ShowName, UnloadedShow>;
 
 pub struct ShowManager {
     pub current_show: Option<LoadedShow>,
@@ -55,9 +55,7 @@ pub enum ShowElement {
     Home,
     /// Start loading a show into the next show slot. This will take place on a
     /// separate thread
-    PrepareShow {
-        song_name: SongName,
-    },
+    PrepareShow(ShowChoice),
     /// Pull the next show into the current show and start it. This will wait
     /// until the new song is loaded
     NextShow,
@@ -72,6 +70,12 @@ pub enum ShowElement {
     Transition {
         show_id: usize,
     },
+}
+
+#[derive(Debug, Clone)]
+pub enum ShowChoice {
+    Name(ShowName),
+    Random,
 }
 
 const HOME_SLEEP_TIME: u64 = 15;
@@ -101,7 +105,7 @@ impl ShowManager {
     //     }
     // }
 
-    pub fn save_show(&self, show: UnloadedShow) -> String {
+    pub fn save_show(show: UnloadedShow) -> String {
         let mut file_json = json::JsonValue::new_object();
 
         for frame in show.frames {
@@ -304,7 +308,7 @@ impl ShowManager {
 }
 
 async fn show_task_loop(
-    show_manager: ShowManager,
+    mut show_manager: ShowManager,
     show_job_queue_clone: Arc<Mutex<VecDeque<ShowElement>>>,
 ) {
     loop {
@@ -347,20 +351,23 @@ async fn show_task_loop(
                 // Sleep for 15 seconds
                 sleep(Duration::from_secs(HOME_SLEEP_TIME)).await;
             }
-            ShowElement::PrepareShow {
-                song_name: show_name,
-            } => {
-                // Set the show from the name
-                let unloaded_show = match show_manager.shows.get(&show_name) {
-                    Some(show) => show.clone(),
-                    None => {
-                        error!("Show {} not found", show_name);
-                        continue;
-                    }
-                };
+            ShowElement::PrepareShow(choice) => {
+                match choice {
+                    ShowChoice::Name(show_name) => {
+                        // Set the show from the name
+                        let unloaded_show = match show_manager.shows.get(&show_name) {
+                            Some(show) => show.clone(),
+                            None => {
+                                error!("Show {} not found", show_name);
+                                continue;
+                            }
+                        };
 
-                // Turn it into a loaded show
-                let loaded_show = unloaded_show.load_show().await;
+                        // Turn it into a loaded show
+                        let loaded_show = unloaded_show.load_show().await;
+                    }
+                    ShowChoice::Random => todo!(),
+                }
             }
             ShowElement::NextShow => {
                 // Set the timer
@@ -381,7 +388,7 @@ async fn show_task_loop(
                 // appearing for TIMEOUT seconds. If it doesn't appear, then
                 // log that the song wasn't loaded in time, and continue to the
                 // next instruction.
-                let mut timer = Instant::now();
+                let timer = Instant::now();
                 loop {
                     if next_show.is_ready() {
                         break;
@@ -408,22 +415,25 @@ async fn show_task_loop(
                 show_manager.current_show = Some(loaded_show);
 
                 // Get the show
-                let show = show_manager.current_show.as_ref().unwrap();
+                let current_show = show_manager.current_show.as_ref().unwrap();
 
                 // Start the song
-                let song = &show.song;
-                if let Some(message_queue) = show_manager.message_queue.as_ref() {
-                    message_queue
-                        .try_send(MessageKind::InternalMessage(InternalMessage::Audio {
-                            audio_file_contents: Arc::new(song),
-                        }))
-                        .unwrap();
-                }
+                let song = current_show.song.clone();
+                show_manager
+                    .message_queue
+                    .try_send(MessageKind::InternalMessage(InternalMessage::Audio {
+                        audio_file_contents: song,
+                    }))
+                    .unwrap();
+
+                let mut frames_iter = current_show.frames.iter();
 
                 loop {
                     // Get the next frame
-                    let current_show = show.unwrap();
-                    let curr_frame = show.frames.remove(0);
+                    let curr_frame = match frames_iter.next() {
+                        Some(frame) => frame,
+                        None => break,
+                    };
 
                     // Sleep until the current frame is ready
                     let curr_time = show_manager.start_time.unwrap().elapsed().as_millis() as i64;
@@ -471,10 +481,6 @@ async fn show_task_loop(
                                 .await
                                 .unwrap();
                         }
-                    }
-
-                    if show_manager.current_show.frames.len() == 0 {
-                        break;
                     }
                 }
             }

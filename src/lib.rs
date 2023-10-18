@@ -43,7 +43,7 @@ pub enum InternalMessage {
     Light { light_id: u8, enable: bool },
     /// Play an audio file
     Audio {
-        audio_file_contents: Arc<LoadedSong>,
+        audio_file_contents: LoadedSong,
     },
     /// Direct projector frames
     Projector(FrameSendPack),

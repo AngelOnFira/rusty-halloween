@@ -1,4 +1,4 @@
-use rusty_halloween::show::prelude::{Show, ShowManager, Song};
+use rusty_halloween::show::prelude::{Show, ShowManager, UnloadedShow};
 
 const BPM: f32 = 166.0;
 
@@ -8,19 +8,16 @@ fn main() {
     // Thread random
     let _rng = rand::thread_rng();
 
-    let frames = Show::row_flashing();
+    let frames = UnloadedShow::row_flashing();
 
     // Create a show
-    let show = Show {
-        song: Some(Song {
-            name: "song3.mp3".to_string(),
-            stream: None,
-        }),
+    let show = UnloadedShow {
+        name: "song3.mp3".to_string(),
         frames: frames,
     };
 
     // Write the show to a json file
-    let data = ShowManager::new(Vec::new(), None).save_show(show);
+    let data = ShowManager::save_show(show);
 
     // Save the show to a file
     std::fs::write("src/show/assets/halloween.json", data).unwrap();
