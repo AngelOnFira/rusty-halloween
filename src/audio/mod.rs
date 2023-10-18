@@ -105,6 +105,8 @@ impl Audio {
 
                 // Save the song to the stream
                 *song_stream.lock().unwrap() = Some(sound_player);
+
+                println!("Finished loading song");
             });
 
             // Return an empty song for now, this will be filled in later once

@@ -4,8 +4,8 @@ use crate::{
 };
 use log::error;
 
+use rand::seq::IteratorRandom;
 use rillrate::prime::{Click, ClickOpts};
-use rust_embed::RustEmbed;
 use std::{
     cmp::max,
     collections::{HashMap, VecDeque},
@@ -306,16 +306,33 @@ async fn show_task_loop(
     mut show_manager: ShowManager,
     show_job_queue_clone: Arc<Mutex<VecDeque<ShowElement>>>,
 ) {
+    let mut now: Option<Instant> = None;
     loop {
         // Get the next element in the queue
         let mut show_job_queue = show_job_queue_clone.lock().await;
         let next_show_element = show_job_queue.pop_front().to_owned();
 
-        // If there isn't a next element, wait for one
+        // If there isn't a next element, wait for one. If we've slept for more
+        // than 5 seconds, add an instruction to prepare a random show.
         if next_show_element.is_none() {
             drop(show_job_queue);
+
+            // If 5 seconds has elapsed, add a random show to the queue
+            if now.is_none() {
+                now = Some(Instant::now());
+            } else if now.unwrap().elapsed().as_secs() > 5 {
+                show_job_queue_clone
+                    .lock()
+                    .await
+                    .push_back(ShowElement::PrepareShow(ShowChoice::Random));
+            }
+
+            // Either way, it's fine to sleep for a bit
             sleep(Duration::from_millis(100)).await;
             continue;
+        } else {
+            // Reset the timer
+            now = None;
         }
 
         match next_show_element.unwrap() {
@@ -358,10 +375,29 @@ async fn show_task_loop(
                             }
                         };
 
-                        // Turn it into a loaded show
-                        let _loaded_show = unloaded_show.load_show().await;
+                        // Turn it into a loading show
+                        let loading_show = unloaded_show.load_show().await;
+
+                        // Set the next show
+                        show_manager.next_show = Some(loading_show);
                     }
-                    ShowChoice::Random => todo!(),
+                    ShowChoice::Random => {
+                        // Pick a random show from the show manager list
+                        let unloaded_show =
+                            match show_manager.shows.values().choose(&mut rand::thread_rng()) {
+                                Some(show) => show.clone(),
+                                None => {
+                                    error!("There are no shows to play");
+                                    continue;
+                                }
+                            };
+
+                        // Turn it into a loading show
+                        let loading_show = unloaded_show.load_show().await;
+
+                        // Set the next show
+                        show_manager.next_show = Some(loading_show);
+                    }
                 }
             }
             ShowElement::NextShow => {
