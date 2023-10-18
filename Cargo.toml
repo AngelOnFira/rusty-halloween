@@ -34,7 +34,7 @@ protobuf = "3.2.0"
 
 # Dashboard
 notify = "=5.0.0-pre.14"
-rillrate = "0.41.0"
+# rillrate = "0.41.0"
 
 # Embedded
 rppal = { version = "0.13.1", optional = true }
@@ -54,7 +54,8 @@ anyhow = "1.0.65"
 ron = "0.8.0"
 serde = { version = "1.0.145", features = ["derive"] }
 pi-pinout = "0.1.3"
-rill-protocol = "0.41.0"
+# rill-protocol = "0.41.0"
 json = "0.12.4"
 rand = "0.8.5"
 console-subscriber = "0.1.8"
+chrono = "0.4.31"

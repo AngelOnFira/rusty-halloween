@@ -5,7 +5,7 @@ use self::pack::{DrawPack, HeaderPack};
 use crate::projector::pack::CheckSum;
 use crate::{InternalMessage, MessageKind};
 
-use rillrate::prime::{Click, ClickOpts};
+// use rillrate::prime::{Click, ClickOpts};
 use rust_embed::RustEmbed;
 use tokio::sync::mpsc;
 
@@ -20,8 +20,8 @@ pub mod pack;
 pub struct SPIProjectorController {
     #[cfg(feature = "pi")]
     pub spi: Spi,
-    #[allow(dead_code)]
-    clicks: Vec<Click>,
+    // #[allow(dead_code)]
+    // clicks: Vec<Click>,
 }
 
 type Frame = [u8; 4];
@@ -65,50 +65,50 @@ impl SPIProjectorController {
         #[cfg(feature = "pi")]
         let spi = Spi::new(Bus::Spi0, SlaveSelect::Ss0, BAUD, rppal::spi::Mode::Mode0)?;
 
-        let mut clicks = Vec::new();
+        // let mut clicks = Vec::new();
 
         // Load each vision
         for vision in VisionAsset::iter() {
-            let click = Click::new(
-                format!(
-                    "app.dashboard.Visions.{}",
-                    Path::new(&vision.to_string())
-                        .file_stem()
-                        .unwrap()
-                        .to_str()
-                        .unwrap()
-                ),
-                ClickOpts::default().label("Play"),
-            );
+            // let click = Click::new(
+            //     format!(
+            //         "app.dashboard.Visions.{}",
+            //         Path::new(&vision.to_string())
+            //             .file_stem()
+            //             .unwrap()
+            //             .to_str()
+            //             .unwrap()
+            //     ),
+            //     ClickOpts::default().label("Play"),
+            // );
 
-            let this = click.clone();
+            // let this = click.clone();
 
-            let message_queue_clone = message_queue.clone();
-            click.sync_callback(move |envelope| {
-                if let Some(action) = envelope.action {
-                    log::warn!("ACTION: {:?}", action);
-                    this.apply();
+            // let message_queue_clone = message_queue.clone();
+            // click.sync_callback(move |envelope| {
+            //     if let Some(action) = envelope.action {
+            //         log::warn!("ACTION: {:?}", action);
+            //         this.apply();
 
-                    message_queue_clone
-                        .blocking_send(MessageKind::InternalMessage(InternalMessage::Vision {
-                            vision_file_contents: std::str::from_utf8(
-                                &VisionAsset::get(&vision).unwrap().data,
-                            )
-                            .unwrap()
-                            .to_string(),
-                        }))
-                        .unwrap();
-                }
-                Ok(())
-            });
+            //         message_queue_clone
+            //             .blocking_send(MessageKind::InternalMessage(InternalMessage::Vision {
+            //                 vision_file_contents: std::str::from_utf8(
+            //                     &VisionAsset::get(&vision).unwrap().data,
+            //                 )
+            //                 .unwrap()
+            //                 .to_string(),
+            //             }))
+            //             .unwrap();
+            //     }
+            //     Ok(())
+            // });
 
-            clicks.push(click);
+            // clicks.push(click);
         }
 
         Ok(SPIProjectorController {
             #[cfg(feature = "pi")]
             spi,
-            clicks,
+            // clicks,
         })
     }
 

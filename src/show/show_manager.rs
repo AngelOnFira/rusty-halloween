@@ -5,7 +5,7 @@ use crate::{
 use log::error;
 
 use rand::seq::IteratorRandom;
-use rillrate::prime::{Click, ClickOpts};
+// use rillrate::prime::{Click, ClickOpts};
 use std::{
     cmp::max,
     collections::{HashMap, VecDeque},
@@ -272,19 +272,19 @@ impl ShowManager {
                             // Load the frames
                             let show = UnloadedShow::load_show_file(&file.path());
 
-                            // Set up the buttons on the dashboard
-                            let click = Click::new(
-                                format!("app.dashboard.Shows.{}", name),
-                                ClickOpts::default().label("Start"),
-                            );
-                            let this = click.clone();
+                            // // Set up the buttons on the dashboard
+                            // let click = Click::new(
+                            //     format!("app.dashboard.Shows.{}", name),
+                            //     ClickOpts::default().label("Start"),
+                            // );
+                            // let this = click.clone();
 
-                            let _message_queue_clone = message_queue.clone();
-                            click.sync_callback(move |_envelope| {
-                                // Start loading that song
-                                this.apply();
-                                Ok(())
-                            });
+                            // let _message_queue_clone = message_queue.clone();
+                            // click.sync_callback(move |_envelope| {
+                            //     // Start loading that song
+                            //     this.apply();
+                            //     Ok(())
+                            // });
 
                             return Some((file.file_name().to_str().unwrap().to_string(), show));
                         }
