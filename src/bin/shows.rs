@@ -1,4 +1,4 @@
-use rusty_halloween::show::prelude::{Show, ShowManager, UnloadedShow};
+use rusty_halloween::show::prelude::{ShowManager, UnloadedShow};
 
 const BPM: f32 = 166.0;
 

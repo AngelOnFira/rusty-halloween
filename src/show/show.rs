@@ -1,9 +1,4 @@
-use std::{
-    path::Path,
-    sync::{Arc, Mutex},
-};
-
-use kira::sound::static_sound::StaticSoundData;
+use std::path::Path;
 
 use crate::{
     audio::Audio,

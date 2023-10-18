@@ -1,16 +1,15 @@
 use crate::{
-    prelude::{pack::HeaderPack, Audio, MessageSendPack},
+    prelude::{pack::HeaderPack, MessageSendPack},
     InternalMessage, MessageKind,
 };
 use log::error;
-use packed_struct::debug_fmt;
+
 use rillrate::prime::{Click, ClickOpts};
 use rust_embed::RustEmbed;
 use std::{
     cmp::max,
     collections::{HashMap, VecDeque},
     sync::Arc,
-    thread,
     time::Duration,
 };
 use tokio::{
@@ -18,11 +17,7 @@ use tokio::{
     time::{sleep, Instant},
 };
 
-use super::{
-    prelude::{LoadedShow, LoadingShow, UnloadedShow},
-    show::Show,
-    ShowAsset,
-};
+use super::prelude::{LoadedShow, LoadingShow, UnloadedShow};
 
 pub type ShowName = String;
 pub type ShowMap = HashMap<ShowName, UnloadedShow>;
@@ -178,13 +173,13 @@ impl ShowManager {
     /// This function starts a thread that will manage the show. It will keep a
     /// list of upcoming shows to play, and it will send messages to the other
     /// worker threads for the projector, lights, and audio.
-    pub async fn start_show_worker(mut self, mut receiver: mpsc::Receiver<Vec<ShowElement>>) {
+    pub async fn start_show_worker(self, mut receiver: mpsc::Receiver<Vec<ShowElement>>) {
         let show_job_queue: Arc<Mutex<VecDeque<ShowElement>>> =
             Arc::new(Mutex::new(VecDeque::new()));
 
         // Start a thread to add jobs to the queue
         let show_job_queue_clone = show_job_queue.clone();
-        let queue_handle = tokio::spawn(async move {
+        let _queue_handle = tokio::spawn(async move {
             while let Some(show_job_list) = receiver.recv().await {
                 let mut show_job_queue = show_job_queue_clone.lock().await;
                 show_job_queue.extend(show_job_list);
@@ -193,7 +188,7 @@ impl ShowManager {
 
         // Start the show worker thread
         let show_job_queue_clone = show_job_queue.clone();
-        let worker_handle =
+        let _worker_handle =
             tokio::spawn(async move { show_task_loop(self, show_job_queue_clone).await });
     }
 
@@ -243,7 +238,7 @@ impl ShowManager {
 
                 // Get all that that have a file format .mp3, keep only the path
                 // of the first one
-                let song_file_name = files
+                let _song_file_name = files
                     .into_iter()
                     .filter(|file| {
                         file.as_ref()
@@ -275,7 +270,7 @@ impl ShowManager {
                     .filter_map(|file| {
                         if let Ok(file) = file {
                             // Load the frames
-                            let mut show = UnloadedShow::load_show_file(&file.path());
+                            let show = UnloadedShow::load_show_file(&file.path());
 
                             // Set up the buttons on the dashboard
                             let click = Click::new(
@@ -364,7 +359,7 @@ async fn show_task_loop(
                         };
 
                         // Turn it into a loaded show
-                        let loaded_show = unloaded_show.load_show().await;
+                        let _loaded_show = unloaded_show.load_show().await;
                     }
                     ShowChoice::Random => todo!(),
                 }
@@ -515,7 +510,7 @@ async fn show_task_loop(
                 // Sleep for the given time
                 sleep(Duration::from_secs(time)).await;
             }
-            ShowElement::Transition { show_id } => todo!(),
+            ShowElement::Transition { show_id: _ } => todo!(),
         }
     }
 }

@@ -1,15 +1,11 @@
 use std::{
-    collections::HashMap,
     fs::{self, File},
     io::Write,
     path::Path,
 };
 
 use crate::{
-    prelude::{
-        prelude::{Show, ShowManager},
-        Audio,
-    },
+    prelude::{prelude::ShowManager, Audio},
     show::prelude::UnloadedShow,
 };
 
