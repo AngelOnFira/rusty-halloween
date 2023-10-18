@@ -69,7 +69,8 @@ impl LoadingShow {
     }
 }
 
-#[derive(Clone, Debug)]
+// This is clone because the song is behind an Arc
+#[derive(Debug)]
 pub struct LoadedShow {
     pub song: LoadedSong,
     pub name: String,

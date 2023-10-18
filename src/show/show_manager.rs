@@ -405,22 +405,25 @@ async fn show_task_loop(
                 };
 
                 // Set the current show
-                show_manager.current_show = Some(loaded_show.clone());
+                show_manager.current_show = Some(loaded_show);
+
+                // Get the show
+                let show = show_manager.current_show.as_ref().unwrap();
 
                 // Start the song
-                let song = &show_manager.current_show.song;
+                let song = &show.song;
                 if let Some(message_queue) = show_manager.message_queue.as_ref() {
                     message_queue
                         .try_send(MessageKind::InternalMessage(InternalMessage::Audio {
-                            audio_file_contents: Arc::new(song.clone()),
+                            audio_file_contents: Arc::new(song),
                         }))
                         .unwrap();
                 }
 
                 loop {
                     // Get the next frame
-                    let current_show = show_manager.current_show.unwrap();
-                    let curr_frame = show_manager.current_show.frames.remove(0);
+                    let current_show = show.unwrap();
+                    let curr_frame = show.frames.remove(0);
 
                     // Sleep until the current frame is ready
                     let curr_time = show_manager.start_time.unwrap().elapsed().as_millis() as i64;

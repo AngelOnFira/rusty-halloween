@@ -26,9 +26,10 @@ pub struct LoadingSong {
     pub stream: Arc<Mutex<Option<StaticSoundData>>>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone)]
 pub struct LoadedSong {
     pub name: String,
+    // We can clone this since inside it uses an Arc to share the data
     pub stream: StaticSoundData,
 }
 
@@ -38,7 +39,7 @@ pub struct LoadedSong {
 struct AudioAsset;
 
 impl Audio {
-    pub fn new(mut receiver: mpsc::Receiver<Arc<Song>>) -> Result<(), Error> {
+    pub fn new(mut receiver: mpsc::Receiver<LoadedSong>) -> Result<(), Error> {
         // TODO: Gracefully handle audio not being available
         let mut audio_manager =
             match AudioManager::<CpalBackend>::new(AudioManagerSettings::default()) {
@@ -64,7 +65,9 @@ impl Audio {
         Ok(())
     }
 
-    pub fn get_sound(name: &str) -> Result<Arc<Mutex<Option<Song>>>, Box<dyn std::error::Error>> {
+    pub fn get_sound(
+        name: &str,
+    ) -> Result<Arc<Mutex<Option<LoadingSong>>>, Box<dyn std::error::Error>> {
         #[allow(unused_variables)]
         let sound_path = format!("src/audio/assets/{}", name);
 
@@ -78,7 +81,7 @@ impl Audio {
                 StaticSoundSettings::default(),
             )?;
 
-            return Ok(Arc::new(Mutex::new(Some(Song {
+            return Ok(Arc::new(Mutex::new(Some(LoadedSong {
                 name: name.to_string(),
                 stream: sound_player,
             }))));
@@ -100,7 +103,7 @@ impl Audio {
                 let sound_player =
                     StaticSoundData::from_file(sound_path, StaticSoundSettings::default()).unwrap();
 
-                song_future_clone.lock().unwrap().replace(Song {
+                song_future_clone.lock().unwrap().replace(LoadedSong {
                     name: name.to_string(),
                     stream: sound_player,
                 });
@@ -121,16 +124,6 @@ impl Audio {
     pub fn get_sound_file(name: &str) -> Cow<[u8]> {
         let sound_data = AudioAsset::get(&format!("{}.mp3", name)).unwrap();
         sound_data.data
-    }
-
-    pub fn play_sound(&mut self, name: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let sound_data = Audio::get_sound(name)?;
-
-        if let Some(manager) = self.manager.as_mut() {
-            manager.play(sound_data.stream)?;
-        }
-
-        Ok(())
     }
 
     pub fn get_embedded_sounds() -> Vec<String> {

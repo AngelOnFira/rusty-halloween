@@ -1,6 +1,6 @@
 use interprocess::local_socket::LocalSocketStream;
 
-use prelude::prelude::Song;
+use prelude::LoadedSong;
 use projector::FrameSendPack;
 
 use std::{
@@ -42,7 +42,9 @@ pub enum InternalMessage {
     /// Change a light over GPIO
     Light { light_id: u8, enable: bool },
     /// Play an audio file
-    Audio { audio_file_contents: Arc<Song> },
+    Audio {
+        audio_file_contents: Arc<LoadedSong>,
+    },
     /// Direct projector frames
     Projector(FrameSendPack),
 }
