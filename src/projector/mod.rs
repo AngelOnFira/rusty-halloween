@@ -16,6 +16,9 @@ use rppal::uart::{Parity, Uart};
 
 pub mod helpers;
 pub mod pack;
+pub mod spi;
+pub mod uart;
+
 
 pub struct SPIProjectorController {
     #[cfg(feature = "pi")]

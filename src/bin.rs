@@ -13,6 +13,8 @@ use rusty_halloween::InternalMessage;
 use rusty_halloween::MessageKind;
 
 use rusty_halloween::show::prelude::ShowChoice;
+use rusty_halloween::projector::spi::SPIProjectorController;
+use rusty_halloween::projector::uart::UARTProjectorController;
 use rusty_halloween::show::prelude::ShowElement;
 use rusty_halloween::show::prelude::ShowManager;
 
