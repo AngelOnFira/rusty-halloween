@@ -171,7 +171,7 @@ async fn main() -> Result<(), Error> {
                     InternalMessage::Light { light_id, enable } => {
                         // live_tail.log_now(module_path!(), "INFO", "Light
                         // command received");
-                        #[cfg(feature = "spi")]
+                        #[cfg(feature = "pi")]
                         light_controller.set_pin(light_id, enable);
                     }
                     #[allow(unused_variables)]

@@ -1,10 +1,10 @@
 (
     lights: [
         Light(
-            pin: Physical(PhysicalPin(8)),
+            pin: Physical(PhysicalPin(28)),
         ),
         Light(
-            pin: Physical(PhysicalPin(10)),
+            pin: Physical(PhysicalPin(27)),
         ),
         Light(
             pin: Physical(PhysicalPin(16)),

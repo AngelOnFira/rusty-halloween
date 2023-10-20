@@ -19,7 +19,7 @@ pub struct UARTProjectorController {
     pub uart: Uart,
 }
 
-const UART_BAUD: u32 = 115_200;
+const UART_BAUD: u32 = 57_600;
 
 impl UARTProjectorController {
     pub async fn init(message_queue: mpsc::Sender<MessageKind>) -> Result<Self, anyhow::Error> {
@@ -62,47 +62,23 @@ impl UARTProjectorController {
     ) -> Result<(), anyhow::Error> {
         #[cfg(feature = "pi")]
         {
+            let mut data = Vec::new();
+
             // Send the header
-            self.uart.write(&projector_command.header)?;
+            data.extend_from_slice(&projector_command.header);
 
             // Send each draw instruction
             for draw_pack in &projector_command.draw_instructions {
-                self.uart.write(draw_pack)?;
+                data.extend_from_slice(draw_pack);
             }
 
             // Send extra frames to get to 51 total frames
             for _ in 0..(51 - projector_command.draw_instructions.len() - 1) {
-                self.uart.write(&[0, 0, 0, 0])?;
-            }
-        }
-
-        Ok(())
-    }
-
-    #[allow(dead_code)]
-    pub fn uart_send_file(&mut self, file_string: &str) -> Result<(), anyhow::Error> {
-        #[allow(unused_variables)]
-        let frames = file_string
-            .lines()
-            .map(|s| u32::to_be_bytes(u32::from_str_radix(s, 16).unwrap()))
-            .collect::<Vec<[u8; 4]>>();
-
-        // Create frames in the proto format
-
-        #[cfg(feature = "pi")]
-        {
-            // Send the header
-            self.uart.write(&frames[0])?;
-
-            // Send each draw instruction
-            for frame in frames[1..].iter() {
-                self.uart.write(frame)?;
+                data.extend_from_slice(&[0, 0, 0, 0]);
             }
 
-            // Send any extra frames required to get to 51 total frames
-            for _ in 0..(51 - frames.len()) {
-                self.uart.write(&[0, 0, 0, 0])?;
-            }
+            // Send the data buffer
+            self.uart.write(&data)?;
         }
 
         Ok(())

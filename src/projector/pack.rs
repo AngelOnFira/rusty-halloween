@@ -59,7 +59,7 @@ impl CheckSum for HeaderPack {
         self.checksum = self.calculate_checksum(self.pack().unwrap());
         let pack = self.pack().unwrap();
 
-        // dbg!(&pack);
+        println!("{:#?}", &self);
 
         pack
     }
@@ -95,6 +95,7 @@ pub struct DrawPack {
 impl CheckSum for DrawPack {
     fn checksum_pack(&mut self) -> [u8; 4] {
         self.checksum = self.calculate_checksum(self.pack().unwrap());
+        println!("{:#?}", &self);
         self.pack().unwrap()
     }
 }

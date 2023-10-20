@@ -9,14 +9,11 @@ use crate::{InternalMessage, MessageKind};
 use rust_embed::RustEmbed;
 use tokio::sync::mpsc;
 
-pub mod helpers;
 pub mod pack;
 pub mod spi;
 pub mod uart;
 
 type Frame = [u8; 4];
-
-
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct FrameSendPack {
@@ -30,17 +27,34 @@ pub struct MessageSendPack {
     pub draw_instructions: Vec<DrawPack>,
 }
 
+impl MessageSendPack {
+    pub fn home_message() -> Self {
+        MessageSendPack {
+            header: HeaderPack {
+                projector_id: 15.into(),
+                home: true,
+                enable: true,
+                ..Default::default()
+            },
+            draw_instructions: Vec::new(),
+        }
+    }
+}
+
 /// Change from a MessageSendPack to a FrameSendPack
 impl From<MessageSendPack> for FrameSendPack {
     fn from(mut msg: MessageSendPack) -> FrameSendPack {
-        FrameSendPack {
+        println!("{:#?}", &msg);
+        let pack = FrameSendPack {
             header: msg.header.checksum_pack(),
             draw_instructions: msg
                 .draw_instructions
                 .into_iter()
                 .map(|mut x| x.checksum_pack())
                 .collect(),
-        }
+        };
+        println!("{:#?}", &pack);
+        pack
     }
 }
 
