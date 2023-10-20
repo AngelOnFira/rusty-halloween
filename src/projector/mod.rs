@@ -9,28 +9,14 @@ use crate::{InternalMessage, MessageKind};
 use rust_embed::RustEmbed;
 use tokio::sync::mpsc;
 
-#[cfg(feature = "pi")]
-use rppal::spi::{Bus, SlaveSelect, Spi};
-#[cfg(feature = "pi")]
-use rppal::uart::{Parity, Uart};
-
 pub mod helpers;
 pub mod pack;
 pub mod spi;
 pub mod uart;
 
-
-pub struct SPIProjectorController {
-    #[cfg(feature = "pi")]
-    pub spi: Spi,
-    // #[allow(dead_code)]
-    // clicks: Vec<Click>,
-}
-
 type Frame = [u8; 4];
 
-#[cfg(feature = "pi")]
-const BAUD: u32 = 9_600;
+
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct FrameSendPack {

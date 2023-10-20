@@ -97,6 +97,12 @@ async fn main() -> Result<(), Error> {
         warn!("Projectors are not supported on this platform");
     }
 
+    // Initialize the projector
+    println!("Starting projector...");
+    let tx_clone = message_queue_tx.clone();
+    #[allow(unused_variables, unused_mut)]
+    let mut projector_controller = UARTProjectorController::init(tx_clone).await?;
+
     // Initialize the audio
     info!("Starting audio...");
     let (audio_channel_tx, audio_channel_rx) = mpsc::channel(100);
@@ -136,7 +142,7 @@ async fn main() -> Result<(), Error> {
                             {
                                 #[cfg(feature = "spi")]
                                 if let Err(e) =
-                                    projector_controller.spi_send_file(&vision_file_contents)
+                                    projector_controller.uart_send_file(&vision_file_contents)
                                 {
                                     error!("Failed to send projector command: {}", e);
                                 }
@@ -175,7 +181,7 @@ async fn main() -> Result<(), Error> {
                             {
                                 #[cfg(feature = "spi")]
                                 if let Err(e) =
-                                    projector_controller.spi_send_projector(frame_send_pack)
+                                    projector_controller.uart_send_projector(frame_send_pack)
                                 {
                                     error!("Failed to send projector command: {}", e);
                                 }
