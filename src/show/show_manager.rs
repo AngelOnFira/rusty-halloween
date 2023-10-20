@@ -2,7 +2,7 @@ use crate::{
     prelude::{pack::HeaderPack, MessageSendPack},
     InternalMessage, MessageKind,
 };
-use log::error;
+use log::{error, info};
 
 use rand::seq::IteratorRandom;
 // use rillrate::prime::{Click, ClickOpts};
@@ -209,7 +209,7 @@ impl ShowManager {
             })
             .collect::<Vec<String>>();
 
-        println!("Found shows: {:?}", names);
+        info!("Found shows: {:?}", names);
 
         // For each one, load the show and song
         let shows = names
@@ -320,7 +320,9 @@ async fn show_task_loop(
             // If 5 seconds has elapsed, add a random show to the queue
             if now.is_none() {
                 now = Some(Instant::now());
-            } else if now.unwrap().elapsed().as_secs() > 5 {
+            } else if now.unwrap().elapsed().as_secs() > 2 {
+                info!("Adding a random show to the queue");
+
                 show_job_queue_clone
                     .lock()
                     .await

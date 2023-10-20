@@ -4,6 +4,7 @@ use env_logger::Builder;
 use interprocess::local_socket::LocalSocketListener;
 use log::error;
 use log::info;
+use log::warn;
 use log::LevelFilter;
 use std::io::Write;
 // use rillrate::prime::{LiveTail, LiveTailOpts, Pulse, PulseOpts};
@@ -33,8 +34,10 @@ async fn main() -> Result<(), Error> {
         .filter(None, LevelFilter::Info)
         .init();
 
+    info!("Starting UART controller...");
+
     // Send the data test to uart
-    UARTProjectorController::init().await?;
+    // UARTProjectorController::init().await?;
 
     // return Ok(());
 
@@ -76,7 +79,7 @@ async fn main() -> Result<(), Error> {
     };
 
     if !cfg!(feature = "pi") {
-        error!("Lights are not supported on this platform");
+        warn!("Lights are not supported on this platform");
     }
 
     #[cfg(feature = "spi")]
@@ -89,7 +92,7 @@ async fn main() -> Result<(), Error> {
     };
 
     if !cfg!(feature = "pi") {
-        error!("Projectors are not supported on this platform");
+        warn!("Projectors are not supported on this platform");
     }
 
     // Initialize the audio

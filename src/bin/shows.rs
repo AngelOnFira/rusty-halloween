@@ -3,8 +3,6 @@ use rusty_halloween::show::prelude::{ShowManager, UnloadedShow};
 const BPM: f32 = 166.0;
 
 fn main() {
-    println!("Hello, world!");
-
     // Thread random
     let _rng = rand::thread_rng();
 

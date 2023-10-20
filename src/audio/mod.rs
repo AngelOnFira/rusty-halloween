@@ -13,6 +13,7 @@ use kira::{
         FromFileError,
     },
 };
+use log::{error, info};
 use rust_embed::RustEmbed;
 use tokio::sync::mpsc;
 
@@ -47,7 +48,7 @@ impl Audio {
                     manager: Some(manager),
                 },
                 Err(e) => {
-                    println!("Error initializing audio: {}", e);
+                    error!("Error initializing audio: {}", e);
                     Self { manager: None }
                 }
             };
@@ -55,7 +56,7 @@ impl Audio {
         // Start the audio manager thread
         tokio::spawn(async move {
             while let Some(sound) = receiver.recv().await {
-                println!("Playing sound: {}", sound.name);
+                info!("Playing sound: {}", sound.name);
                 if let Some(manager) = audio_manager.manager.as_mut() {
                     manager.play(sound.stream).unwrap();
                 }
@@ -70,7 +71,7 @@ impl Audio {
         let sound_path = format!("src/audio/assets/{}", name);
 
         // Print that this song is loading
-        println!("Loading song: {}", name);
+        info!("Loading song: {}", name);
 
         // Try to load it from the embedded file
         if let Some(sound_data) = AudioAsset::get(name) {
@@ -87,9 +88,9 @@ impl Audio {
 
         // Try to load it from the filesystem at
         // shows/<song_name>/<song_name>.mp3
-        let sound_path = format!("shows/{}/{}.mp3", name, name);
+        let sound_path_local = format!("shows/{}/{}.mp3", name, name);
 
-        if Path::new(&sound_path).exists() {
+        if Path::new(&sound_path_local).exists() {
             let song_stream = Arc::new(Mutex::new(None));
 
             let song_future = LoadingSong {
@@ -100,18 +101,23 @@ impl Audio {
             // Start loading it in a new thread
             tokio::spawn(async move {
                 // Load the song
-                let sound_player =
-                    StaticSoundData::from_file(sound_path, StaticSoundSettings::default()).unwrap();
+                let sound_player = StaticSoundData::from_file(
+                    Path::new(&sound_path_local),
+                    StaticSoundSettings::default(),
+                )
+                .unwrap();
 
                 // Save the song to the stream
                 *song_stream.lock().unwrap() = Some(sound_player);
 
-                println!("Finished loading song");
+                info!("Finished loading song");
             });
 
             // Return an empty song for now, this will be filled in later once
             // it's loaded on the other thread
             return Ok(song_future);
+        } else {
+            error!("Sound not found: {}", sound_path_local);
         }
 
         // Return "Sound not found" error

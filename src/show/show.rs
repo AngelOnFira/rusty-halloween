@@ -1,5 +1,7 @@
 use std::path::Path;
 
+use log::info;
+
 use crate::{
     audio::Audio,
     prelude::{LoadedSong, LoadingSong},
@@ -24,7 +26,11 @@ pub struct UnloadedShow {
 impl UnloadedShow {
     pub async fn load_show(self) -> LoadingShow {
         // Load the song
-        let song = Audio::get_sound(&self.name).unwrap();
+        info!("Name is {}", self.name);
+        let song = match Audio::get_sound(&self.name) {
+            Ok(song) => song,
+            Err(e) => panic!("Error loading song: {}", e),
+        };
 
         LoadingShow {
             song,
@@ -93,6 +99,15 @@ pub struct Laser {
 
 impl UnloadedShow {
     pub fn load_show_file(show_file_path: &Path) -> Self {
+        // The show name is in shows/<show_name>/instructions.json, extract it
+        let show_name = show_file_path
+            .parent()
+            .unwrap()
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap();
+
         // Load the file as a string
         let show_file_path = show_file_path.to_str().unwrap();
         let show_file = std::fs::read_to_string(show_file_path).unwrap();
@@ -200,7 +215,7 @@ impl UnloadedShow {
         frames.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
 
         UnloadedShow {
-            name: show_file_path.to_string(),
+            name: show_name.to_string(),
             frames,
         }
     }

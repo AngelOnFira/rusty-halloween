@@ -15,7 +15,7 @@ use crate::{
 #[cfg(feature = "pi")]
 pub struct LightController {
     pins: Vec<OutputPin>,
-    switches: Vec<Switch>,
+    // switches: Vec<Switch>,
 }
 
 #[cfg(not(feature = "pi"))]
