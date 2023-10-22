@@ -26,13 +26,18 @@ async fn main() -> Result<(), Error> {
         .format(|buf, record| {
             writeln!(
                 buf,
-                "{} [{}] - {}",
+                "{} [{}] ({}:{}) - {}",
                 Local::now().format("%Y-%m-%dT%H:%M:%S"),
                 record.level(),
+                record.file().unwrap_or("unknown"),
+                record.line().unwrap_or(0),
+                // record.module_path().unwrap_or("unknown"),
                 record.args()
             )
         })
         .filter(None, LevelFilter::Info)
+        .filter(Some("symphonia_core::probe"), LevelFilter::Off)
+        .filter(Some("symphonia_bundle_mp3::demuxer"), LevelFilter::Off)
         .init();
 
     info!("Starting UART controller...");
@@ -48,7 +53,8 @@ async fn main() -> Result<(), Error> {
 
     // Load the config file
     info!("Starting config...");
-    let _config = Config::load()?;
+    #[cfg(feature = "pi")]
+    let config = Config::load()?;
 
     // Make sure the socket is removed if the program exits, check if the file
     // exists first
@@ -97,7 +103,7 @@ async fn main() -> Result<(), Error> {
     }
 
     // Initialize the projector
-    println!("Starting projector...");
+    info!("Starting projector...");
     let tx_clone = message_queue_tx.clone();
     #[allow(unused_variables, unused_mut)]
     let mut projector_controller = UARTProjectorController::init(tx_clone).await?;
@@ -168,20 +174,19 @@ async fn main() -> Result<(), Error> {
                         }
                     }
                     InternalMessage::Light {
-                        light_id: _,
-                        enable: _,
+                        light_id: _light_id,
+                        enable: _enable,
                     } => {
                         // live_tail.log_now(module_path!(), "INFO", "Light
                         // command received");
                         #[cfg(feature = "pi")]
-                        light_controller.set_pin(light_id, enable);
+                        light_controller.set_pin(_light_id, _enable);
                     }
                     #[allow(unused_variables)]
                     InternalMessage::Projector(frame_send_pack) => {
                         // live_tail.log_now(module_path!(), "INFO", "Projector command received");
                         if cfg!(feature = "pi") {
                             {
-                                #[cfg(feature = "spi")]
                                 if let Err(e) =
                                     projector_controller.uart_send_projector(frame_send_pack)
                                 {
