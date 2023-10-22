@@ -12,9 +12,8 @@ use rusty_halloween::prelude::*;
 use rusty_halloween::InternalMessage;
 use rusty_halloween::MessageKind;
 
-use rusty_halloween::show::prelude::ShowChoice;
-use rusty_halloween::projector::spi::SPIProjectorController;
 use rusty_halloween::projector::uart::UARTProjectorController;
+use rusty_halloween::show::prelude::ShowChoice;
 use rusty_halloween::show::prelude::ShowElement;
 use rusty_halloween::show::prelude::ShowManager;
 
@@ -49,7 +48,7 @@ async fn main() -> Result<(), Error> {
 
     // Load the config file
     info!("Starting config...");
-    let config = Config::load()?;
+    let _config = Config::load()?;
 
     // Make sure the socket is removed if the program exits, check if the file
     // exists first
@@ -168,7 +167,10 @@ async fn main() -> Result<(), Error> {
                             }
                         }
                     }
-                    InternalMessage::Light { light_id, enable } => {
+                    InternalMessage::Light {
+                        light_id: _,
+                        enable: _,
+                    } => {
                         // live_tail.log_now(module_path!(), "INFO", "Light
                         // command received");
                         #[cfg(feature = "pi")]

@@ -8,7 +8,7 @@ use rppal::gpio::{Gpio, OutputPin};
 
 use crate::{
     config::{Config, Pin},
-    InternalMessage, MessageKind,
+    MessageKind,
 };
 
 #[allow(dead_code)]
@@ -28,7 +28,7 @@ pub struct LightController {
 impl LightController {
     pub async fn init(
         config: &Config,
-        message_queue: mpsc::Sender<MessageKind>,
+        _message_queue: mpsc::Sender<MessageKind>,
     ) -> Result<Self, Error> {
         #[allow(unused_mut)]
         let mut pins = Vec::new();

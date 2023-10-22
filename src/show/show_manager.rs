@@ -192,7 +192,7 @@ impl ShowManager {
             tokio::spawn(async move { show_task_loop(self, show_job_queue_clone).await });
     }
 
-    pub fn load_shows(message_queue: mpsc::Sender<MessageKind>) -> ShowMap {
+    pub fn load_shows(_message_queue: mpsc::Sender<MessageKind>) -> ShowMap {
         // Find all folders in the shows folder
         let shows = std::fs::read_dir("shows").unwrap();
 
@@ -214,7 +214,7 @@ impl ShowManager {
         // For each one, load the show and song
         let shows = names
             .iter()
-            .map(|name| {
+            .flat_map(|name| {
                 // Get the name of all the files in the folder
                 let files = std::fs::read_dir(format!("shows/{}", name)).unwrap();
 
@@ -265,7 +265,8 @@ impl ShowManager {
                     .clone();
 
                 // Create a show for each one of these files
-                let shows = instructions_files
+
+                instructions_files
                     .into_iter()
                     .filter_map(|file| {
                         if let Ok(file) = file {
@@ -291,11 +292,8 @@ impl ShowManager {
 
                         None
                     })
-                    .collect::<ShowMap>();
-
-                shows
+                    .collect::<ShowMap>()
             })
-            .flatten()
             .collect::<ShowMap>();
 
         shows
@@ -494,25 +492,23 @@ async fn show_task_loop(
                         if let Some(laser) = laser {
                             show_manager
                                 .message_queue
-                                .send(MessageKind::InternalMessage(
-                                    InternalMessage::Projector(
-                                        MessageSendPack::new(
-                                            HeaderPack {
-                                                projector_id: (i as u8).into(),
-                                                point_count: (laser.data_frame.len() as u8)
-                                                    .into(),
-                                                home: false,
-                                                enable: true,
-                                                configuration_mode: false,
-                                                draw_boundary: false,
-                                                oneshot: false,
-                                                speed_profile: laser.speed_profile.into(),
-                                                ..Default::default()
-                                            },
-                                            laser.data_frame.clone())
-                                        .into(),
-                                    ),
-                                ))
+                                .send(MessageKind::InternalMessage(InternalMessage::Projector(
+                                    MessageSendPack::new(
+                                        HeaderPack {
+                                            projector_id: (i as u8).into(),
+                                            point_count: (laser.data_frame.len() as u8).into(),
+                                            home: false,
+                                            enable: true,
+                                            configuration_mode: false,
+                                            draw_boundary: false,
+                                            oneshot: false,
+                                            speed_profile: laser.speed_profile.into(),
+                                            ..Default::default()
+                                        },
+                                        laser.data_frame.clone(),
+                                    )
+                                    .into(),
+                                )))
                                 .await
                                 .unwrap();
                         }

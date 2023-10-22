@@ -1,13 +1,8 @@
-use std::path::Path;
+use crate::MessageKind;
 
-use crate::projector::pack::CheckSum;
-use crate::{InternalMessage, MessageKind};
-
-use rust_embed::RustEmbed;
 use tokio::sync::mpsc;
 
-use super::pack::{DrawPack, HeaderPack};
-use super::{FrameSendPack, VisionAsset};
+use super::FrameSendPack;
 
 #[cfg(feature = "pi")]
 use rppal::spi::{Bus, SlaveSelect, Spi};
@@ -23,7 +18,7 @@ pub struct SPIProjectorController {
 }
 
 impl SPIProjectorController {
-    pub async fn init(message_queue: mpsc::Sender<MessageKind>) -> Result<Self, anyhow::Error> {
+    pub async fn init(_message_queue: mpsc::Sender<MessageKind>) -> Result<Self, anyhow::Error> {
         // Set up SPI
         #[cfg(feature = "pi")]
         let spi = Spi::new(Bus::Spi0, SlaveSelect::Ss0, BAUD, rppal::spi::Mode::Mode0)?;

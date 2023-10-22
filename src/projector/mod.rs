@@ -1,14 +1,10 @@
-use std::path::Path;
-
 use self::pack::{DrawPack, HeaderPack};
 
 use crate::projector::pack::CheckSum;
 use crate::show::LaserDataFrame;
-use crate::{InternalMessage, MessageKind};
 
 // use rillrate::prime::{Click, ClickOpts};
 use rust_embed::RustEmbed;
-use tokio::sync::mpsc;
 
 pub mod pack;
 pub mod spi;
@@ -30,10 +26,7 @@ pub struct MessageSendPack {
 
 impl MessageSendPack {
     pub fn new(header: HeaderPack, draw_instructions: Vec<LaserDataFrame>) -> Self {
-        let draw_instructions = draw_instructions
-            .into_iter()
-            .map(|x| DrawPack::from(x))
-            .collect();
+        let draw_instructions = draw_instructions.into_iter().map(DrawPack::from).collect();
 
         MessageSendPack {
             header,

@@ -1,13 +1,8 @@
-use std::path::Path;
+use crate::MessageKind;
 
-use crate::projector::pack::CheckSum;
-use crate::{InternalMessage, MessageKind};
-
-use rust_embed::RustEmbed;
 use tokio::sync::mpsc;
 
-use super::pack::{DrawPack, HeaderPack};
-use super::{FrameSendPack, VisionAsset};
+use super::FrameSendPack;
 
 #[cfg(feature = "pi")]
 use rppal::uart::{Parity, Uart};
@@ -20,7 +15,7 @@ pub struct UARTProjectorController {
 const UART_BAUD: u32 = 57_600;
 
 impl UARTProjectorController {
-    pub async fn init(message_queue: mpsc::Sender<MessageKind>) -> Result<Self, anyhow::Error> {
+    pub async fn init(_message_queue: mpsc::Sender<MessageKind>) -> Result<Self, anyhow::Error> {
         // Set up UART
         #[cfg(feature = "pi")]
         let uart = Uart::with_path("/dev/serial0", UART_BAUD, Parity::None, 8, 1)?;

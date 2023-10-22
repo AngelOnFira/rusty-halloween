@@ -22,7 +22,7 @@ impl FileStructure {
         // Make sure every embedded song is in its own folder
         Audio::get_embedded_sounds().iter().for_each(|sound| {
             if !Path::new(&format!("shows/{}", sound)).exists() {
-                fs::create_dir(&format!("shows/{}", sound)).unwrap();
+                fs::create_dir(format!("shows/{}", sound)).unwrap();
             }
         });
 

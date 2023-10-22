@@ -123,7 +123,6 @@ impl UnloadedShow {
 
             // Get all of the lights of this frame
             let lights: Vec<Option<bool>> = (0..MAX_LIGHTS)
-                .into_iter()
                 .map(|i| {
                     let light_name = format!("light-{}", i);
                     if frame[&light_name].is_null() {
@@ -136,7 +135,6 @@ impl UnloadedShow {
 
             // Get all the lasers of this frame
             let lasers: Vec<Option<Laser>> = (0..MAX_PROJECTORS)
-                .into_iter()
                 .map(|i| {
                     let laser_name = format!("laser-{}", i);
 
@@ -223,22 +221,18 @@ impl UnloadedShow {
     // Show frame patterns
     pub fn row_flashing() -> Vec<Frame> {
         (0..1_000)
-            .into_iter()
-            .map(|i| {
-                let frame = Frame {
-                    timestamp: i * (60.0 / 166.0 * 1000.0) as u64,
-                    lights: (0..MAX_LIGHTS)
-                        .map(|light| {
-                            if i as usize % MAX_LIGHTS == light {
-                                Some(true)
-                            } else {
-                                Some(false)
-                            }
-                        })
-                        .collect(),
-                    lasers: (0..MAX_PROJECTORS).into_iter().map(|_| None).collect(),
-                };
-                frame
+            .map(|i| Frame {
+                timestamp: i * (60.0 / 166.0 * 1000.0) as u64,
+                lights: (0..MAX_LIGHTS)
+                    .map(|light| {
+                        if i as usize % MAX_LIGHTS == light {
+                            Some(true)
+                        } else {
+                            Some(false)
+                        }
+                    })
+                    .collect(),
+                lasers: (0..MAX_PROJECTORS).map(|_| None).collect(),
             })
             .collect::<Vec<Frame>>()
     }
