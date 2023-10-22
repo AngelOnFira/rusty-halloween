@@ -12,7 +12,7 @@ pub mod prelude {
 #[folder = "src/show/assets"]
 struct ShowAsset;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct LaserDataFrame {
     pub x_pos: u16,
     pub y_pos: u16,

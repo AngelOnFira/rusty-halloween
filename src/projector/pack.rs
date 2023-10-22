@@ -1,5 +1,7 @@
 use packed_struct::{prelude::*, types::bits::Bits};
 
+use crate::show::LaserDataFrame;
+
 /// Trait to calculate checksum before packing the struct
 pub trait CheckSum {
     fn calculate_checksum(&self, message: [u8; 4]) -> bool {
@@ -97,6 +99,19 @@ impl CheckSum for DrawPack {
         self.checksum = self.calculate_checksum(self.pack().unwrap());
         println!("{:#?}", &self);
         self.pack().unwrap()
+    }
+}
+
+impl From<LaserDataFrame> for DrawPack {
+    fn from(laser: LaserDataFrame) -> Self {
+        DrawPack {
+            x: laser.x_pos.into(),
+            y: laser.y_pos.into(),
+            red: laser.r.into(),
+            green: laser.g.into(),
+            blue: laser.b.into(),
+            ..Default::default()
+        }
     }
 }
 

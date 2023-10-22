@@ -3,6 +3,8 @@ use std::path::Path;
 use self::pack::{DrawPack, HeaderPack};
 
 use crate::projector::pack::CheckSum;
+use crate::proto_schema::schema::Projector;
+use crate::show::LaserDataFrame;
 use crate::{InternalMessage, MessageKind};
 
 // use rillrate::prime::{Click, ClickOpts};
@@ -28,6 +30,17 @@ pub struct MessageSendPack {
 }
 
 impl MessageSendPack {
+    pub fn new(header: HeaderPack, draw_instructions: Vec<LaserDataFrame>) -> Self {
+        let draw_instructions = draw_instructions
+            .into_iter()
+            .map(|x| DrawPack::from(x))
+            .collect();
+
+        MessageSendPack {
+            header,
+            draw_instructions,
+        }
+    }
     pub fn home_message() -> Self {
         MessageSendPack {
             header: HeaderPack {
@@ -44,7 +57,7 @@ impl MessageSendPack {
 /// Change from a MessageSendPack to a FrameSendPack
 impl From<MessageSendPack> for FrameSendPack {
     fn from(mut msg: MessageSendPack) -> FrameSendPack {
-        println!("{:#?}", &msg);
+        println!("Message {:#?}", &msg);
         let pack = FrameSendPack {
             header: msg.header.checksum_pack(),
             draw_instructions: msg
@@ -53,7 +66,7 @@ impl From<MessageSendPack> for FrameSendPack {
                 .map(|mut x| x.checksum_pack())
                 .collect(),
         };
-        println!("{:#?}", &pack);
+        println!("Pack {:#?}", &pack);
         pack
     }
 }

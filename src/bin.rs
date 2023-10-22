@@ -185,6 +185,16 @@ async fn main() -> Result<(), Error> {
                                 {
                                     error!("Failed to send projector command: {}", e);
                                 }
+                                // Sleep for half a second for the projector.
+                                // This prevents them from sending information
+                                // too fast, causing them to overlap data and
+                                // freeze.
+                                //
+                                // The calulation for time is 51 frames * 32
+                                // bits per frame / 57600 baud = 0.028 seconds =
+                                // 28 milliseconds per frame, so we sleep for 50
+                                // milliseconds to be safe.
+                                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
                             }
                         } else {
                             error!("Projectors are not supported on this platform");

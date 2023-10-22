@@ -25,7 +25,7 @@ impl UARTProjectorController {
     pub async fn init(message_queue: mpsc::Sender<MessageKind>) -> Result<Self, anyhow::Error> {
         // Set up UART
         #[cfg(feature = "pi")]
-        let mut uart = Uart::with_path("/dev/serial0", UART_BAUD, Parity::None, 8, 1)?;
+        let uart = Uart::with_path("/dev/serial0", UART_BAUD, Parity::None, 8, 1)?;
 
         // ser.write(b'\xF0\x4C\x00\x01')
         // ser.write(b'\x32\x19\x38\x01')

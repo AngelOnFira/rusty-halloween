@@ -494,23 +494,25 @@ async fn show_task_loop(
                         if let Some(laser) = laser {
                             show_manager
                                 .message_queue
-                                .send(MessageKind::InternalMessage(InternalMessage::Projector(
-                                    MessageSendPack {
-                                        header: HeaderPack {
-                                            projector_id: (i as u8).into(),
-                                            point_count: (laser.data_frame.len() as u8).into(),
-                                            home: false,
-                                            enable: true,
-                                            configuration_mode: false,
-                                            draw_boundary: false,
-                                            oneshot: false,
-                                            speed_profile: laser.speed_profile.into(),
-                                            ..Default::default()
-                                        },
-                                        draw_instructions: Vec::new(),
-                                    }
-                                    .into(),
-                                )))
+                                .send(MessageKind::InternalMessage(
+                                    InternalMessage::Projector(
+                                        MessageSendPack::new(
+                                            HeaderPack {
+                                                projector_id: (i as u8).into(),
+                                                point_count: (laser.data_frame.len() as u8)
+                                                    .into(),
+                                                home: false,
+                                                enable: true,
+                                                configuration_mode: false,
+                                                draw_boundary: false,
+                                                oneshot: false,
+                                                speed_profile: laser.speed_profile.into(),
+                                                ..Default::default()
+                                            },
+                                            laser.data_frame.clone())
+                                        .into(),
+                                    ),
+                                ))
                                 .await
                                 .unwrap();
                         }
