@@ -1,16 +1,13 @@
 use std::path::Path;
 
-
 use crate::projector::pack::CheckSum;
-use crate::proto_schema::schema::Projector;
 use crate::{InternalMessage, MessageKind};
 
-use rillrate::prime::{Click, ClickOpts};
 use rust_embed::RustEmbed;
 use tokio::sync::mpsc;
 
-use super::{VisionAsset, FrameSendPack};
-use super::pack::{HeaderPack, DrawPack};
+use super::pack::{DrawPack, HeaderPack};
+use super::{FrameSendPack, VisionAsset};
 
 #[cfg(feature = "pi")]
 use rppal::spi::{Bus, SlaveSelect, Spi};
@@ -21,10 +18,9 @@ const BAUD: u32 = 9_600;
 pub struct SPIProjectorController {
     #[cfg(feature = "pi")]
     pub spi: Spi,
-    #[allow(dead_code)]
-    clicks: Vec<Click>,
+    // #[allow(dead_code)]
+    // clicks: Vec<Click>,
 }
-
 
 impl SPIProjectorController {
     pub async fn init(message_queue: mpsc::Sender<MessageKind>) -> Result<Self, anyhow::Error> {
@@ -32,50 +28,12 @@ impl SPIProjectorController {
         #[cfg(feature = "pi")]
         let spi = Spi::new(Bus::Spi0, SlaveSelect::Ss0, BAUD, rppal::spi::Mode::Mode0)?;
 
-        let mut clicks = Vec::new();
-
-        // Load each vision
-        for vision in VisionAsset::iter() {
-            let click = Click::new(
-                format!(
-                    "app.dashboard.Visions.{}",
-                    Path::new(&vision.to_string())
-                        .file_stem()
-                        .unwrap()
-                        .to_str()
-                        .unwrap()
-                ),
-                ClickOpts::default().label("Play"),
-            );
-
-            let this = click.clone();
-
-            let message_queue_clone = message_queue.clone();
-            click.sync_callback(move |envelope| {
-                if let Some(action) = envelope.action {
-                    log::warn!("ACTION: {:?}", action);
-                    this.apply();
-
-                    message_queue_clone
-                        .blocking_send(MessageKind::InternalMessage(InternalMessage::Vision {
-                            vision_file_contents: std::str::from_utf8(
-                                &VisionAsset::get(&vision).unwrap().data,
-                            )
-                            .unwrap()
-                            .to_string(),
-                        }))
-                        .unwrap();
-                }
-                Ok(())
-            });
-
-            clicks.push(click);
-        }
+        // let mut clicks = Vec::new();
 
         Ok(SPIProjectorController {
             #[cfg(feature = "pi")]
             spi,
-            clicks,
+            // clicks,
         })
     }
 

@@ -1,10 +1,8 @@
 use std::path::Path;
 
 use crate::projector::pack::CheckSum;
-use crate::proto_schema::schema::Projector;
 use crate::{InternalMessage, MessageKind};
 
-use rillrate::prime::{Click, ClickOpts};
 use rust_embed::RustEmbed;
 use tokio::sync::mpsc;
 
