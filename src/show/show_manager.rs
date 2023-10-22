@@ -310,6 +310,14 @@ async fn show_task_loop(
         let mut show_job_queue = show_job_queue_clone.lock().await;
         let next_show_element = show_job_queue.pop_front().to_owned();
 
+        // If nothing is playing, then we should move on to the next song if
+        // there is one in next_show
+        if show_manager.current_show.is_none() {
+            if show_manager.next_show.is_some() {
+                show_job_queue.push_back(ShowElement::NextShow);
+            }
+        }
+
         // If there isn't a next element, wait for one. If we've slept for more
         // than 5 seconds, add an instruction to prepare a random show.
         if next_show_element.is_none() {
@@ -328,6 +336,17 @@ async fn show_task_loop(
                         .lock()
                         .await
                         .push_back(ShowElement::PrepareShow(ShowChoice::Random));
+
+                    info!("{:?}", &show_manager.current_show);
+
+                    // // If there isn't a current show, then we should start the
+                    // // next show right away
+                    // if show_manager.current_show.is_none() {
+                    //     show_job_queue_clone
+                    //         .lock()
+                    //         .await
+                    //         .push_back(ShowElement::NextShow);
+                    // }
                 }
 
                 // Either way, it's fine to sleep for a bit
@@ -335,12 +354,27 @@ async fn show_task_loop(
                 continue;
             }
         } else {
+            // Print the details about the current show manager
+            info!(
+                "Current show: {:?}, Next show: {:?}, Queue {:?}",
+                match show_manager.current_show {
+                    Some(ref show) => show.name.clone(),
+                    None => "None".to_string(),
+                },
+                match show_manager.next_show {
+                    Some(ref show) => show.name.clone(),
+                    None => "None".to_string(),
+                },
+                show_job_queue
+            );
+
             // Reset the timer
             now = None;
 
             match next_show_element.unwrap() {
                 ShowElement::Home => {
                     // Send a home command
+                    info!("Homing the projector");
                     show_manager
                         .message_queue
                         .send(MessageKind::InternalMessage(InternalMessage::Projector(
@@ -363,10 +397,14 @@ async fn show_task_loop(
                         .await
                         .unwrap();
 
-                    // Sleep for 15 seconds
-                    sleep(Duration::from_secs(HOME_SLEEP_TIME)).await;
+                    // Add a 15 second idle command to the beginning of the
+                    // queue
+                    show_job_queue.push_front(ShowElement::Idle {
+                        time: HOME_SLEEP_TIME,
+                    });
                 }
                 ShowElement::PrepareShow(choice) => {
+                    info!("Preparing a show");
                     match choice {
                         ShowChoice::Name(show_name) => {
                             // Set the show from the name
@@ -404,6 +442,8 @@ async fn show_task_loop(
                     }
                 }
                 ShowElement::NextShow => {
+                    info!("Starting the next show");
+
                     // Set the timer
                     show_manager.start_time = Some(Instant::now());
 
@@ -520,6 +560,8 @@ async fn show_task_loop(
                     }
                 }
                 ShowElement::NullOut => {
+                    info!("Nulling out the projector");
+
                     // Send a null out command
                     show_manager
                         .message_queue
@@ -547,8 +589,23 @@ async fn show_task_loop(
                     sleep(Duration::from_secs(3)).await;
                 }
                 ShowElement::Idle { time } => {
-                    // Sleep for the given time
-                    sleep(Duration::from_secs(time)).await;
+                    // Sleep for the given time. Print once a second that we're
+                    // still sleeping.
+                    info!("Idling for {} seconds", time);
+
+                    let mut time_remaining = time;
+
+                    while time_remaining > 0 {
+                        // If we're on the pi, wait a full second, otherwise
+                        // wait 100ms
+                        if !cfg!(feature = "pi") {
+                            sleep(Duration::from_millis(100)).await;
+                        } else {
+                            sleep(Duration::from_secs(1)).await;
+                        }
+                        time_remaining -= 1;
+                        info!("{} seconds remaining", time_remaining);
+                    }
                 }
                 ShowElement::Transition { show_id: _ } => todo!(),
             }
