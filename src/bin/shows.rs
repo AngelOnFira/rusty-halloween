@@ -11,7 +11,7 @@ fn main() {
     // Create a show
     let show = UnloadedShow {
         name: "song3.mp3".to_string(),
-        frames: frames,
+        frames,
     };
 
     // Write the show to a json file

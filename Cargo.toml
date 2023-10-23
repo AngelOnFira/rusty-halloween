@@ -18,10 +18,6 @@ path = "src/lib.rs"
 name = "rusty-halloween"
 path = "src/bin.rs"
 
-[[bin]]
-name = "rusty-projector"
-path = "projector/bin.rs"
-
 [features]
 default = []
 pi = ["dep:rppal"]

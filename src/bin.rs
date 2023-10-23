@@ -12,6 +12,7 @@ use rusty_halloween::prelude::*;
 use rusty_halloween::InternalMessage;
 use rusty_halloween::MessageKind;
 
+use rusty_halloween::projector::uart::UARTProjectorController;
 use rusty_halloween::show::prelude::ShowChoice;
 use rusty_halloween::show::prelude::ShowElement;
 use rusty_halloween::show::prelude::ShowManager;
@@ -25,13 +26,18 @@ async fn main() -> Result<(), Error> {
         .format(|buf, record| {
             writeln!(
                 buf,
-                "{} [{}] - {}",
+                "{} [{}] ({}:{}) - {}",
                 Local::now().format("%Y-%m-%dT%H:%M:%S"),
                 record.level(),
+                record.file().unwrap_or("unknown"),
+                record.line().unwrap_or(0),
+                // record.module_path().unwrap_or("unknown"),
                 record.args()
             )
         })
         .filter(None, LevelFilter::Info)
+        .filter(Some("symphonia_core::probe"), LevelFilter::Off)
+        .filter(Some("symphonia_bundle_mp3::demuxer"), LevelFilter::Off)
         .init();
 
     info!("Starting UART controller...");
@@ -47,6 +53,7 @@ async fn main() -> Result<(), Error> {
 
     // Load the config file
     info!("Starting config...");
+    #[cfg(feature = "pi")]
     let config = Config::load()?;
 
     // Make sure the socket is removed if the program exits, check if the file
@@ -95,6 +102,12 @@ async fn main() -> Result<(), Error> {
         warn!("Projectors are not supported on this platform");
     }
 
+    // Initialize the projector
+    info!("Starting projector...");
+    let tx_clone = message_queue_tx.clone();
+    #[allow(unused_variables, unused_mut)]
+    let mut projector_controller = UARTProjectorController::init(tx_clone).await?;
+
     // Initialize the audio
     info!("Starting audio...");
     let (audio_channel_tx, audio_channel_rx) = mpsc::channel(100);
@@ -134,7 +147,7 @@ async fn main() -> Result<(), Error> {
                             {
                                 #[cfg(feature = "spi")]
                                 if let Err(e) =
-                                    projector_controller.spi_send_file(&vision_file_contents)
+                                    projector_controller.uart_send_file(&vision_file_contents)
                                 {
                                     error!("Failed to send projector command: {}", e);
                                 }
@@ -160,23 +173,35 @@ async fn main() -> Result<(), Error> {
                             }
                         }
                     }
-                    InternalMessage::Light { light_id, enable } => {
+                    InternalMessage::Light {
+                        light_id: _light_id,
+                        enable: _enable,
+                    } => {
                         // live_tail.log_now(module_path!(), "INFO", "Light
                         // command received");
-                        #[cfg(feature = "spi")]
-                        light_controller.set_pin(light_id, enable);
+                        #[cfg(feature = "pi")]
+                        light_controller.set_pin(_light_id, _enable);
                     }
                     #[allow(unused_variables)]
                     InternalMessage::Projector(frame_send_pack) => {
                         // live_tail.log_now(module_path!(), "INFO", "Projector command received");
                         if cfg!(feature = "pi") {
                             {
-                                #[cfg(feature = "spi")]
                                 if let Err(e) =
-                                    projector_controller.spi_send_projector(frame_send_pack)
+                                    projector_controller.uart_send_projector(frame_send_pack)
                                 {
                                     error!("Failed to send projector command: {}", e);
                                 }
+                                // Sleep for half a second for the projector.
+                                // This prevents them from sending information
+                                // too fast, causing them to overlap data and
+                                // freeze.
+                                //
+                                // The calulation for time is 51 frames * 32
+                                // bits per frame / 57600 baud = 0.028 seconds =
+                                // 28 milliseconds per frame, so we sleep for 50
+                                // milliseconds to be safe.
+                                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
                             }
                         } else {
                             error!("Projectors are not supported on this platform");

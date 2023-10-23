@@ -192,7 +192,7 @@ impl ShowManager {
             tokio::spawn(async move { show_task_loop(self, show_job_queue_clone).await });
     }
 
-    pub fn load_shows(message_queue: mpsc::Sender<MessageKind>) -> ShowMap {
+    pub fn load_shows(_message_queue: mpsc::Sender<MessageKind>) -> ShowMap {
         // Find all folders in the shows folder
         let shows = std::fs::read_dir("shows").unwrap();
 
@@ -214,7 +214,7 @@ impl ShowManager {
         // For each one, load the show and song
         let shows = names
             .iter()
-            .map(|name| {
+            .flat_map(|name| {
                 // Get the name of all the files in the folder
                 let files = std::fs::read_dir(format!("shows/{}", name)).unwrap();
 
@@ -265,7 +265,8 @@ impl ShowManager {
                     .clone();
 
                 // Create a show for each one of these files
-                let shows = instructions_files
+
+                instructions_files
                     .into_iter()
                     .filter_map(|file| {
                         if let Ok(file) = file {
@@ -291,11 +292,8 @@ impl ShowManager {
 
                         None
                     })
-                    .collect::<ShowMap>();
-
-                shows
+                    .collect::<ShowMap>()
             })
-            .flatten()
             .collect::<ShowMap>();
 
         shows
@@ -312,243 +310,305 @@ async fn show_task_loop(
         let mut show_job_queue = show_job_queue_clone.lock().await;
         let next_show_element = show_job_queue.pop_front().to_owned();
 
+        // If nothing is playing, then we should move on to the next song if
+        // there is one in next_show
+        if show_manager.current_show.is_none() {
+            if show_manager.next_show.is_some() {
+                show_job_queue.push_back(ShowElement::NextShow);
+            }
+        }
+
         // If there isn't a next element, wait for one. If we've slept for more
         // than 5 seconds, add an instruction to prepare a random show.
         if next_show_element.is_none() {
             drop(show_job_queue);
 
-            // If 5 seconds has elapsed, add a random show to the queue
-            if now.is_none() {
-                now = Some(Instant::now());
-            } else if now.unwrap().elapsed().as_secs() > 2 {
-                info!("Adding a random show to the queue");
+            // If we don't have a next song loaded, then we should see if we
+            // should queue a random one up
+            if show_manager.next_show.is_none() {
+                // If 5 seconds has elapsed, add a random show to the queue
+                if now.is_none() {
+                    now = Some(Instant::now());
+                } else if now.unwrap().elapsed().as_secs() > 5 {
+                    info!("Adding a random show to the queue");
 
-                show_job_queue_clone
-                    .lock()
-                    .await
-                    .push_back(ShowElement::PrepareShow(ShowChoice::Random));
+                    show_job_queue_clone
+                        .lock()
+                        .await
+                        .push_back(ShowElement::PrepareShow(ShowChoice::Random));
+
+                    info!("{:?}", &show_manager.current_show);
+
+                    // // If there isn't a current show, then we should start the
+                    // // next show right away
+                    // if show_manager.current_show.is_none() {
+                    //     show_job_queue_clone
+                    //         .lock()
+                    //         .await
+                    //         .push_back(ShowElement::NextShow);
+                    // }
+                }
+
+                // Either way, it's fine to sleep for a bit
+                sleep(Duration::from_millis(100)).await;
+                continue;
             }
-
-            // Either way, it's fine to sleep for a bit
-            sleep(Duration::from_millis(100)).await;
-            continue;
         } else {
+            // Print the details about the current show manager
+            info!(
+                "Current show: {:?}, Next show: {:?}, Queue {:?}",
+                match show_manager.current_show {
+                    Some(ref show) => show.name.clone(),
+                    None => "None".to_string(),
+                },
+                match show_manager.next_show {
+                    Some(ref show) => show.name.clone(),
+                    None => "None".to_string(),
+                },
+                show_job_queue
+            );
+
             // Reset the timer
             now = None;
-        }
 
-        match next_show_element.unwrap() {
-            ShowElement::Home => {
-                // Send a home command
-                show_manager
-                    .message_queue
-                    .send(MessageKind::InternalMessage(InternalMessage::Projector(
-                        MessageSendPack {
-                            header: HeaderPack {
-                                projector_id: 15.into(),
-                                point_count: 0.into(),
-                                home: true,
-                                enable: true,
-                                configuration_mode: false,
-                                draw_boundary: false,
-                                oneshot: false,
-                                speed_profile: 0.into(),
-                                ..Default::default()
-                            },
-                            draw_instructions: Vec::new(),
-                        }
-                        .into(),
-                    )))
-                    .await
-                    .unwrap();
-
-                // Sleep for 15 seconds
-                sleep(Duration::from_secs(HOME_SLEEP_TIME)).await;
-            }
-            ShowElement::PrepareShow(choice) => {
-                match choice {
-                    ShowChoice::Name(show_name) => {
-                        // Set the show from the name
-                        let unloaded_show = match show_manager.shows.get(&show_name) {
-                            Some(show) => show.clone(),
-                            None => {
-                                error!("Show {} not found", show_name);
-                                continue;
+            match next_show_element.unwrap() {
+                ShowElement::Home => {
+                    // Send a home command
+                    info!("Homing the projector");
+                    show_manager
+                        .message_queue
+                        .send(MessageKind::InternalMessage(InternalMessage::Projector(
+                            MessageSendPack {
+                                header: HeaderPack {
+                                    projector_id: 15.into(),
+                                    point_count: 0.into(),
+                                    home: true,
+                                    enable: true,
+                                    configuration_mode: false,
+                                    draw_boundary: false,
+                                    oneshot: false,
+                                    speed_profile: 0.into(),
+                                    ..Default::default()
+                                },
+                                draw_instructions: Vec::new(),
                             }
-                        };
+                            .into(),
+                        )))
+                        .await
+                        .unwrap();
 
-                        // Turn it into a loading show
-                        let loading_show = unloaded_show.load_show().await;
-
-                        // Set the next show
-                        show_manager.next_show = Some(loading_show);
-                    }
-                    ShowChoice::Random => {
-                        // Pick a random show from the show manager list
-                        let unloaded_show =
-                            match show_manager.shows.values().choose(&mut rand::thread_rng()) {
+                    // Add a 15 second idle command to the beginning of the
+                    // queue
+                    show_job_queue.push_front(ShowElement::Idle {
+                        time: HOME_SLEEP_TIME,
+                    });
+                }
+                ShowElement::PrepareShow(choice) => {
+                    info!("Preparing a show");
+                    match choice {
+                        ShowChoice::Name(show_name) => {
+                            // Set the show from the name
+                            let unloaded_show = match show_manager.shows.get(&show_name) {
                                 Some(show) => show.clone(),
                                 None => {
-                                    error!("There are no shows to play");
+                                    error!("Show {} not found", show_name);
                                     continue;
                                 }
                             };
 
-                        // Turn it into a loading show
-                        let loading_show = unloaded_show.load_show().await;
+                            // Turn it into a loading show
+                            let loading_show = unloaded_show.load_show().await;
 
-                        // Set the next show
-                        show_manager.next_show = Some(loading_show);
+                            // Set the next show
+                            show_manager.next_show = Some(loading_show);
+                        }
+                        ShowChoice::Random => {
+                            // Pick a random show from the show manager list
+                            let unloaded_show =
+                                match show_manager.shows.values().choose(&mut rand::thread_rng()) {
+                                    Some(show) => show.clone(),
+                                    None => {
+                                        error!("There are no shows to play");
+                                        continue;
+                                    }
+                                };
+
+                            // Turn it into a loading show
+                            let loading_show = unloaded_show.load_show().await;
+
+                            // Set the next show
+                            show_manager.next_show = Some(loading_show);
+                        }
                     }
                 }
-            }
-            ShowElement::NextShow => {
-                // Set the timer
-                show_manager.start_time = Some(Instant::now());
+                ShowElement::NextShow => {
+                    info!("Starting the next show");
 
-                const TIMEOUT: u64 = 10;
+                    // Set the timer
+                    show_manager.start_time = Some(Instant::now());
 
-                // If there isn't a next_show, then log that there isn't one and
-                // continue to the next instruction
-                if show_manager.next_show.is_none() {
-                    error!("There is no next show to play");
-                    continue;
-                }
+                    const TIMEOUT: u64 = 10;
 
-                let next_show = show_manager.next_show.take().unwrap();
-
-                // Load the song. If there is no song loaded, wait on it
-                // appearing for TIMEOUT seconds. If it doesn't appear, then
-                // log that the song wasn't loaded in time, and continue to the
-                // next instruction.
-                let timer = Instant::now();
-                loop {
-                    if next_show.is_ready() {
-                        break;
-                    }
-
-                    if timer.elapsed().as_secs() > TIMEOUT {
-                        error!("There was no next show loaded in time");
-                        break;
-                    }
-
-                    sleep(Duration::from_millis(100)).await;
-                }
-
-                // Turn this into a loaded show
-                let loaded_show = match next_show.get_loaded_show() {
-                    Ok(show) => show,
-                    Err(_) => {
-                        error!("The next show is not ready to play");
+                    // If there isn't a next_show, then log that there isn't one and
+                    // continue to the next instruction
+                    if show_manager.next_show.is_none() {
+                        error!("There is no next show to play");
                         continue;
                     }
-                };
 
-                // Set the current show
-                show_manager.current_show = Some(loaded_show);
+                    let next_show = show_manager.next_show.take().unwrap();
 
-                // Get the show
-                let current_show = show_manager.current_show.as_ref().unwrap();
-
-                // Start the song
-                let song = current_show.song.clone();
-                show_manager
-                    .message_queue
-                    .try_send(MessageKind::InternalMessage(InternalMessage::Audio {
-                        audio_file_contents: song,
-                    }))
-                    .unwrap();
-
-                let mut frames_iter = current_show.frames.iter();
-
-                loop {
-                    // Get the next frame
-                    let curr_frame = match frames_iter.next() {
-                        Some(frame) => frame,
-                        None => break,
-                    };
-
-                    // Sleep until the current frame is ready
-                    let curr_time = show_manager.start_time.unwrap().elapsed().as_millis() as i64;
-                    let sleep_time = max(curr_frame.timestamp as i64 - curr_time, 0);
-                    sleep(Duration::from_millis(sleep_time as u64)).await;
-
-                    // Execute the current frame
-
-                    // Send all the lights data
-                    for (i, light) in curr_frame.lights.iter().enumerate() {
-                        if let Some(light) = light {
-                            show_manager
-                                .message_queue
-                                .send(MessageKind::InternalMessage(InternalMessage::Light {
-                                    light_id: i as u8 + 1,
-                                    enable: *light,
-                                }))
-                                .await
-                                .unwrap();
+                    // Load the song. If there is no song loaded, wait on it
+                    // appearing for TIMEOUT seconds. If it doesn't appear, then
+                    // log that the song wasn't loaded in time, and continue to the
+                    // next instruction.
+                    let timer = Instant::now();
+                    loop {
+                        if next_show.is_ready() {
+                            break;
                         }
+
+                        if timer.elapsed().as_secs() > TIMEOUT {
+                            error!("There was no next show loaded in time");
+                            break;
+                        }
+
+                        sleep(Duration::from_millis(100)).await;
                     }
 
-                    // Send all the lasers data
-                    for (i, laser) in curr_frame.lasers.iter().enumerate() {
-                        if let Some(laser) = laser {
-                            show_manager
-                                .message_queue
-                                .send(MessageKind::InternalMessage(InternalMessage::Projector(
-                                    MessageSendPack {
-                                        header: HeaderPack {
-                                            projector_id: (i as u8).into(),
-                                            point_count: (laser.data_frame.len() as u8).into(),
-                                            home: false,
-                                            enable: true,
-                                            configuration_mode: false,
-                                            draw_boundary: false,
-                                            oneshot: false,
-                                            speed_profile: laser.speed_profile.into(),
-                                            ..Default::default()
-                                        },
-                                        draw_instructions: Vec::new(),
-                                    }
-                                    .into(),
-                                )))
-                                .await
-                                .unwrap();
+                    // Turn this into a loaded show
+                    let loaded_show = match next_show.get_loaded_show() {
+                        Ok(show) => show,
+                        Err(_) => {
+                            error!("The next show is not ready to play");
+                            continue;
+                        }
+                    };
+
+                    // Set the current show
+                    show_manager.current_show = Some(loaded_show);
+
+                    // Get the show
+                    let current_show = show_manager.current_show.as_ref().unwrap();
+
+                    // Start the song
+                    let song = current_show.song.clone();
+                    show_manager
+                        .message_queue
+                        .try_send(MessageKind::InternalMessage(InternalMessage::Audio {
+                            audio_file_contents: song,
+                        }))
+                        .unwrap();
+
+                    let mut frames_iter = current_show.frames.iter();
+
+                    loop {
+                        // Get the next frame
+                        let curr_frame = match frames_iter.next() {
+                            Some(frame) => frame,
+                            None => break,
+                        };
+
+                        // Sleep until the current frame is ready
+                        let curr_time =
+                            show_manager.start_time.unwrap().elapsed().as_millis() as i64;
+                        let sleep_time = max(curr_frame.timestamp as i64 - curr_time, 0);
+                        sleep(Duration::from_millis(sleep_time as u64)).await;
+
+                        // Execute the current frame
+
+                        // Send all the lights data
+                        for (i, light) in curr_frame.lights.iter().enumerate() {
+                            if let Some(light) = light {
+                                show_manager
+                                    .message_queue
+                                    .send(MessageKind::InternalMessage(InternalMessage::Light {
+                                        light_id: i as u8 + 1,
+                                        enable: *light,
+                                    }))
+                                    .await
+                                    .unwrap();
+                            }
+                        }
+
+                        // Send all the lasers data
+                        for (i, laser) in curr_frame.lasers.iter().enumerate() {
+                            if let Some(laser) = laser {
+                                show_manager
+                                    .message_queue
+                                    .send(MessageKind::InternalMessage(InternalMessage::Projector(
+                                        MessageSendPack::new(
+                                            HeaderPack {
+                                                projector_id: (i as u8).into(),
+                                                point_count: (laser.data_frame.len() as u8).into(),
+                                                home: false,
+                                                enable: true,
+                                                configuration_mode: false,
+                                                draw_boundary: false,
+                                                oneshot: false,
+                                                speed_profile: laser.speed_profile.into(),
+                                                ..Default::default()
+                                            },
+                                            laser.data_frame.clone(),
+                                        )
+                                        .into(),
+                                    )))
+                                    .await
+                                    .unwrap();
+                            }
                         }
                     }
                 }
-            }
-            ShowElement::NullOut => {
-                // Send a null out command
-                show_manager
-                    .message_queue
-                    .send(MessageKind::InternalMessage(InternalMessage::Projector(
-                        MessageSendPack {
-                            header: HeaderPack {
-                                projector_id: 16.into(),
-                                point_count: 0.into(),
-                                home: false,
-                                enable: true,
-                                configuration_mode: false,
-                                draw_boundary: false,
-                                oneshot: false,
-                                speed_profile: 0.into(),
-                                ..Default::default()
-                            },
-                            draw_instructions: Vec::new(),
-                        }
-                        .into(),
-                    )))
-                    .await
-                    .unwrap();
+                ShowElement::NullOut => {
+                    info!("Nulling out the projector");
 
-                // Sleep for 3 seconds
-                sleep(Duration::from_secs(3)).await;
+                    // Send a null out command
+                    show_manager
+                        .message_queue
+                        .send(MessageKind::InternalMessage(InternalMessage::Projector(
+                            MessageSendPack {
+                                header: HeaderPack {
+                                    projector_id: 16.into(),
+                                    point_count: 0.into(),
+                                    home: false,
+                                    enable: true,
+                                    configuration_mode: false,
+                                    draw_boundary: false,
+                                    oneshot: false,
+                                    speed_profile: 0.into(),
+                                    ..Default::default()
+                                },
+                                draw_instructions: Vec::new(),
+                            }
+                            .into(),
+                        )))
+                        .await
+                        .unwrap();
+
+                    // Sleep for 3 seconds
+                    sleep(Duration::from_secs(3)).await;
+                }
+                ShowElement::Idle { time } => {
+                    // Sleep for the given time. Print once a second that we're
+                    // still sleeping.
+                    info!("Idling for {} seconds", time);
+
+                    let mut time_remaining = time;
+
+                    while time_remaining > 0 {
+                        // If we're on the pi, wait a full second, otherwise
+                        // wait 100ms
+                        if !cfg!(feature = "pi") {
+                            sleep(Duration::from_millis(100)).await;
+                        } else {
+                            sleep(Duration::from_secs(1)).await;
+                        }
+                        time_remaining -= 1;
+                        info!("{} seconds remaining", time_remaining);
+                    }
+                }
+                ShowElement::Transition { show_id: _ } => todo!(),
             }
-            ShowElement::Idle { time } => {
-                // Sleep for the given time
-                sleep(Duration::from_secs(time)).await;
-            }
-            ShowElement::Transition { show_id: _ } => todo!(),
         }
     }
 }
