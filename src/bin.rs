@@ -7,6 +7,7 @@ use log::info;
 use log::warn;
 use log::LevelFilter;
 use std::io::Write;
+use tokio::signal;
 // use rillrate::prime::{LiveTail, LiveTailOpts, Pulse, PulseOpts};
 use rusty_halloween::prelude::*;
 use rusty_halloween::InternalMessage;
@@ -262,8 +263,17 @@ async fn main() -> Result<(), Error> {
 
     info!("Joining...");
 
-    let _ = tokio::join!(handle, worker_handle, queue_handle);
+    
+    // let _ = tokio::join!(handle, worker_handle, queue_handle);
 
+    match signal::ctrl_c().await {
+        Ok(()) => {}
+        Err(err) => {
+            eprintln!("Unable to listen for shutdown signal: {}", err);
+            // we also shut down in case of error
+        }
+    }
+    
     // let _tx_clone = message_queue_tx.clone();
 
     // // TODO: Rewrite this to change directly to internal message type first

@@ -356,8 +356,6 @@ async fn show_task_loop(
                         .await
                         .push_back(ShowElement::PrepareShow(ShowChoice::Random));
 
-                    info!("{:?}", &show_manager.current_show);
-
                     // // If there isn't a current show, then we should start the
                     // // next show right away
                     // if show_manager.current_show.is_none() {
@@ -510,6 +508,9 @@ async fn show_task_loop(
                     // Get the show
                     let current_show = show_manager.current_show.as_ref().unwrap();
 
+                    // Get the runtime of the show
+                    let runtime = current_show.frames.last().unwrap().timestamp;
+
                     // Start the song
                     let song = current_show.song.clone();
                     show_manager
@@ -533,6 +534,10 @@ async fn show_task_loop(
                             show_manager.start_time.unwrap().elapsed().as_millis() as i64;
                         let sleep_time = max(curr_frame.timestamp as i64 - curr_time, 0);
                         sleep(Duration::from_millis(sleep_time as u64)).await;
+
+                        // Print the amount of time remaining in the show
+                        let time_remaining = runtime - curr_frame.timestamp;
+                        info!("{} seconds remaining", time_remaining / 1000);
 
                         // Execute the current frame
 
