@@ -22,14 +22,28 @@ use super::prelude::{LoadedShow, LoadingShow, UnloadedShow};
 pub type ShowName = String;
 pub type ShowMap = HashMap<ShowName, UnloadedShow>;
 
+/// The ShowManager oversees everything relating to how shows are running. It
+/// takes requests to queue shows, as well as stop and play them. It sends
+/// messages to the light, audio, and projector worker threads to tell them how
+/// they should be running.
+///
+///
 pub struct ShowManager {
+    /// The current show that is being run. It may or may not exist, since the
+    /// show queue can be cleared and everything can be stopped. Once the
+    /// current show starts playing, it sends all of the relevant data to each
+    /// of the worker threads, so the data inside of it is not needed anymore.
+    /// However, it stays loaded until the end of the show (for now).
     pub current_show: Option<LoadedShow>,
+    /// The next show that is going to be played. This gives a staging zone to
+    /// load the song before it will start being played.
     pub next_show: Option<LoadingShow>,
-    /// This stores what is going to happen next
+    /// This stores what is going to happen next. It is a list of instructions
+    /// on how to run a show.
     ///
     /// TODO: Add a way to add transitions between songs for the audio to
     /// overlap
-    pub show_queue: Vec<ShowElement>,
+    pub show_queue: Vec<ShowInstructionSet>,
     pub start_time: Option<Instant>,
     pub shows: ShowMap,
     pub message_queue: mpsc::Sender<MessageKind>,
@@ -43,6 +57,11 @@ pub struct ShowManager {
 /// Regardless, there is a chance that there is not a "song" that is currently
 /// loaded in the current_show
 pub enum ShowState {}
+
+#[derive(Debug, Clone)]
+pub struct ShowInstructionSet {
+    pub instructions: Vec<ShowElement>,
+}
 
 #[derive(Debug, Clone)]
 pub enum ShowElement {
