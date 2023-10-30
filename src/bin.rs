@@ -113,8 +113,13 @@ async fn main() -> Result<(), Error> {
 
     // Initialize the audio
     info!("Starting audio...");
-    let (audio_channel_tx, audio_channel_rx) = mpsc::channel(100);
-    let audio_manager = Audio::new(audio_channel_rx);
+    #[cfg(feature = "audio")]
+    let (audio_channel_tx, audio_manager) = {
+        let (audio_channel_tx, audio_channel_rx) = mpsc::channel(100);
+        let audio_manager = Audio::new(audio_channel_rx);
+
+        (audio_channel_tx, audio_manager)
+    };
 
     let handle = tokio::spawn(async move {
         info!("Starting the reciever thread");
@@ -160,19 +165,23 @@ async fn main() -> Result<(), Error> {
                         }
                     }
                     InternalMessage::Audio {
-                        audio_file_contents,
+                        audio_file_contents: _audio_file_contents,
                     } => {
-                        // live_tail.log_now(module_path!(), "INFO", "Audio command received");
-                        match audio_manager {
-                            Ok(_) => {
-                                audio_channel_tx.send(audio_file_contents).await.unwrap();
-                            }
-                            Err(_) => {
-                                // live_tail.log_now(
-                                //     module_path!(),
-                                //     "ERROR",
-                                //     "Audio manager not initialized",
-                                // );
+                        // live_tail.log_now(module_path!(), "INFO", "Audio
+                        // command received");
+                        if cfg!(feature = "audio") {
+                            #[cfg(feature = "audio")]
+                            match audio_manager {
+                                Ok(_) => {
+                                    audio_channel_tx.send(_audio_file_contents).await.unwrap();
+                                }
+                                Err(_) => {
+                                    // live_tail.log_now(
+                                    //     module_path!(),
+                                    //     "ERROR",
+                                    //     "Audio manager not initialized",
+                                    // );
+                                }
                             }
                         }
                     }

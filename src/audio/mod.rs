@@ -42,7 +42,9 @@ struct AudioAsset;
 impl Audio {
     pub fn new(mut receiver: mpsc::Receiver<LoadedSong>) -> Result<(), Error> {
         // TODO: Gracefully handle audio not being available
-        let mut audio_manager =
+        let mut audio_manager = if cfg!(feature = "audio") {
+            // Adding the cfg feature here for audio allows us to go through
+            // the rest of audio testing, but not actually play sound
             match AudioManager::<CpalBackend>::new(AudioManagerSettings::default()) {
                 Ok(manager) => Self {
                     manager: Some(manager),
@@ -51,7 +53,10 @@ impl Audio {
                     error!("Error initializing audio: {}", e);
                     Self { manager: None }
                 }
-            };
+            }
+        } else {
+            Audio { manager: None }
+        };
 
         // Start the audio manager thread
         tokio::spawn(async move {

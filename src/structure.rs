@@ -4,10 +4,9 @@ use std::{
     path::Path,
 };
 
-use crate::{
-    prelude::{prelude::ShowManager, Audio},
-    show::prelude::UnloadedShow,
-};
+use crate::prelude::Audio;
+
+use crate::{prelude::prelude::ShowManager, show::prelude::UnloadedShow};
 
 pub struct FileStructure {}
 
