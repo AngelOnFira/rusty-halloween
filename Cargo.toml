@@ -30,6 +30,7 @@ interprocess = "1.1.1"
 # Dashboard
 notify = "=5.0.0-pre.14"
 # rillrate = "0.41.0"
+dashboard_core = { path = "../egui-dashboard/dashboard_core" }
 
 # Embedded
 rppal = { version = "0.13.1", optional = true }

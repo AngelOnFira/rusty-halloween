@@ -21,6 +21,9 @@ use tokio::sync::mpsc;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    // Init the dashboard
+    dashboard_core::init();
+
     // Start logging
     Builder::new()
         .format(|buf, record| {
