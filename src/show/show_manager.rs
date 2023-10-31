@@ -4,8 +4,8 @@ use crate::{
 };
 use log::{error, info};
 
-use rand::seq::IteratorRandom;
 use core::panic;
+use rand::seq::IteratorRandom;
 // use rillrate::prime::{Click, ClickOpts};
 use std::{
     cmp::max,
@@ -334,6 +334,7 @@ async fn show_task_loop(
         // there is one in next_show
         if show_manager.current_show.is_none() {
             if show_manager.next_show.is_some() {
+                info!("There is no current show, pushing next");
                 show_job_queue.push_back(ShowElement::NextShow);
             }
         }
@@ -508,10 +509,10 @@ async fn show_task_loop(
                             break;
                         }
 
-                        if timer.elapsed().as_secs() > TIMEOUT {
-                            error!("There was no next show loaded in time");
-                            break;
-                        }
+                        // if timer.elapsed().as_secs() > TIMEOUT {
+                        //     error!("There was no next show loaded in time");
+                        //     break;
+                        // }
 
                         sleep(Duration::from_millis(100)).await;
                     }
@@ -612,26 +613,26 @@ async fn show_task_loop(
                                     .unwrap();
                             }
                         }
-
-                        // // Temp break
-                        // break;
                     }
 
                     info!("Finished playing the show");
 
-                    // Print the state of the show manager
-                    info!(
-                        "Current show: {:?}, Next show: {:?}, Queue {:?}",
-                        match show_manager.current_show {
-                            Some(ref show) => show.name.clone(),
-                            None => "None".to_string(),
-                        },
-                        match show_manager.next_show {
-                            Some(ref show) => show.name.clone(),
-                            None => "None".to_string(),
-                        },
-                        show_job_queue
-                    );
+                    // Remove the current song from the ShowManager
+                    show_manager.current_show = None;
+
+                    // // Print the state of the show manager
+                    // info!(
+                    //     "Current show: {:?}, Next show: {:?}, Queue {:?}",
+                    //     match show_manager.current_show {
+                    //         Some(ref show) => show.name.clone(),
+                    //         None => "None".to_string(),
+                    //     },
+                    //     match show_manager.next_show {
+                    //         Some(ref show) => show.name.clone(),
+                    //         None => "None".to_string(),
+                    //     },
+                    //     show_job_queue
+                    // );
 
                     // Now that this show is done, try loading the next show in
                     // the queue

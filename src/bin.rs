@@ -2,6 +2,7 @@ use anyhow::Error;
 use chrono::Local;
 use env_logger::Builder;
 use interprocess::local_socket::LocalSocketListener;
+use log::debug;
 use log::error;
 use log::info;
 use log::warn;
@@ -23,7 +24,7 @@ use tokio::sync::mpsc;
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     // Init the dashboard
-    dashboard_core::init();
+    // dashboard_core::init();
 
     // Start logging
     Builder::new()
@@ -217,7 +218,7 @@ async fn main() -> Result<(), Error> {
                                 tokio::time::sleep(std::time::Duration::from_millis(50)).await;
                             }
                         } else {
-                            error!("Projectors are not supported on this platform");
+                            debug!("Projectors are not supported on this platform");
                         }
                     }
                 },

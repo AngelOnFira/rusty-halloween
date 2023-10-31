@@ -5,7 +5,7 @@ use self::pack::{DrawPack, HeaderPack};
 use crate::projector::pack::CheckSum;
 use crate::show::LaserDataFrame;
 
-use log::info;
+use log::{info, debug};
 // use rillrate::prime::{Click, ClickOpts};
 use rust_embed::RustEmbed;
 
@@ -78,7 +78,7 @@ impl MessageSendPack {
 /// Change from a MessageSendPack to a FrameSendPack
 impl From<MessageSendPack> for FrameSendPack {
     fn from(mut msg: MessageSendPack) -> FrameSendPack {
-        info!("{msg}");
+        debug!("{msg}");
 
         let pack = FrameSendPack {
             header: msg.header.checksum_pack(),

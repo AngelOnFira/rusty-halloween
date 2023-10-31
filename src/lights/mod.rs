@@ -89,6 +89,8 @@ impl LightController {
 
     #[allow(dead_code, unused_variables)]
     pub fn set_pin(&mut self, pin: u8, value: bool) {
+        let pin = pin - 1;
+        info!("Light {}: setting to {}. Len of pins: {}", pin, value, self.pins.len());
         // Note; light values are inverted since the physical lights are inverted
         #[cfg(feature = "pi")]
         match value {

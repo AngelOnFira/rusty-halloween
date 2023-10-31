@@ -2,7 +2,7 @@ build-zero:
     cross build \
         --target armv7-unknown-linux-gnueabihf \
         --bin rusty-halloween \
-        --features pi audio \
+        --features pi,audio \
         --release
         
     mkdir -p exports
@@ -15,7 +15,7 @@ build-zero-debug:
     cross build \
         --target armv7-unknown-linux-gnueabihf \
         --bin rusty-halloween \
-        --features pi audio
+        --features pi,audio
         
     mkdir -p exports
     cp target/armv7-unknown-linux-gnueabihf/debug/rusty-halloween exports/rusty-halloween-pi-zero-debug
