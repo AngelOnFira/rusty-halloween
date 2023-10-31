@@ -86,6 +86,7 @@ pub enum ShowElement {
     Transition {
         show_id: usize,
     },
+    LightTest,
 }
 
 #[derive(Debug, Clone)]
@@ -446,7 +447,7 @@ async fn show_task_loop(
                         error!("There is already a show loading");
                         continue;
                     }
-                    
+
                     match choice {
                         ShowChoice::Name(show_name) => {
                             // Set the show from the name
@@ -508,9 +509,6 @@ async fn show_task_loop(
                 }
                 ShowElement::NextShow => {
                     info!("Starting the next show");
-
-                    // Set the timer
-                    show_manager.start_time = Some(Instant::now());
 
                     const TIMEOUT: u64 = 10;
 
@@ -577,7 +575,14 @@ async fn show_task_loop(
                         }))
                         .unwrap();
 
+                    // Set the timer. This should be in sync with when the audio starts.
+                    show_manager.start_time = Some(Instant::now());
+
                     let mut frames_iter = current_show.frames.iter();
+
+                    // Every 5 seconds while the show is running, we want to
+                    // print how much longer is in the show.
+                    let mut timer = Instant::now();
 
                     loop {
                         // Get the next frame
@@ -594,7 +599,11 @@ async fn show_task_loop(
 
                         // Print the amount of time remaining in the show
                         let time_remaining = runtime - curr_frame.timestamp;
-                        // info!("{} seconds remaining", time_remaining / 1000);
+
+                        if timer.elapsed().as_secs() > 5 {
+                            timer = Instant::now();
+                            info!("{} seconds remaining", time_remaining / 1000);
+                        }
 
                         // Execute the current frame
 
@@ -608,7 +617,7 @@ async fn show_task_loop(
                                 show_manager
                                     .message_queue
                                     .send(MessageKind::InternalMessage(InternalMessage::Light {
-                                        light_id: light_number as u8 + 1,
+                                        light_id: light_number as u8,
                                         enable: *light,
                                     }))
                                     .await
@@ -722,6 +731,35 @@ async fn show_task_loop(
                     }
                 }
                 ShowElement::Transition { show_id: _ } => todo!(),
+                ShowElement::LightTest => {
+                    info!("Starting the light test");
+
+                    // Turn on all the lights one at a time. Leave each one on
+                    // for 1 second, then turn it off
+                    for i in 0..=8 {
+                        show_manager
+                            .message_queue
+                            .send(MessageKind::InternalMessage(InternalMessage::Light {
+                                light_id: i,
+                                enable: true,
+                            }))
+                            .await
+                            .unwrap();
+
+                        // Sleep for 1 second
+                        sleep(Duration::from_secs(1)).await;
+
+                        // Turn the light off
+                        show_manager
+                            .message_queue
+                            .send(MessageKind::InternalMessage(InternalMessage::Light {
+                                light_id: i,
+                                enable: false,
+                            }))
+                            .await
+                            .unwrap();
+                    }
+                }
             }
         }
     }

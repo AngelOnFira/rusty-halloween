@@ -121,8 +121,9 @@ impl UnloadedShow {
         for (timestamp, frame) in file_json.entries() {
             let timestamp = timestamp.parse().unwrap();
 
-            // Get all of the lights of this frame
-            let lights: Vec<Option<bool>> = (0..MAX_LIGHTS)
+            // Get all of the lights of this frame. We start at 1 because the
+            // first light is called "light-1".
+            let lights: Vec<Option<bool>> = (1..=MAX_LIGHTS)
                 .map(|i| {
                     let light_name = format!("light-{}", i);
                     if frame[&light_name].is_null() {

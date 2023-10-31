@@ -255,6 +255,7 @@ async fn main() -> Result<(), Error> {
         // Send first show
         show_worker_channel_tx
             .send(vec![
+                // ShowElement::LightTest,
                 ShowElement::Home,
                 ShowElement::PrepareShow(ShowChoice::Random { last_song: None }),
             ])

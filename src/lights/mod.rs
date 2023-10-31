@@ -1,5 +1,5 @@
 use anyhow::Error;
-use log::info;
+use log::{info, error};
 // use rillrate::prime::{Switch, SwitchOpts};
 use tokio::sync::mpsc;
 
@@ -91,11 +91,19 @@ impl LightController {
     pub fn set_pin(&mut self, pin: u8, value: bool) {
         let pin = pin - 1;
         info!("Light {}: setting to {}. Len of pins: {}", pin, value, self.pins.len());
-        // Note; light values are inverted since the physical lights are inverted
+        // Note; light values are inverted since the physical lights are
+        // inverted
+        
+        // Make sure the pin input is not outside of the range of pins
+        if pin as usize > self.pins.len() {
+            error!("Light {}: pin {} is out of range", pin, pin);
+            return;
+        }
+
         #[cfg(feature = "pi")]
         match value {
-            true => self.pins[pin as usize - 1].set_low(),
-            false => self.pins[pin as usize - 1].set_high(),
+            true => self.pins[pin as usize].set_low(),
+            false => self.pins[pin as usize].set_high(),
         }
 
         // // Change the switch on the dashboard
