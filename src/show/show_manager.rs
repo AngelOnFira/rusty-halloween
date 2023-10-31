@@ -439,6 +439,14 @@ async fn show_task_loop(
                 }
                 ShowElement::PrepareShow(choice) => {
                     info!("Preparing a show");
+                    // Make sure that show_manager.next_show is None first. If
+                    // if isn't, then there is another show loading, and we
+                    // might OOM
+                    if show_manager.next_show.is_some() {
+                        error!("There is already a show loading");
+                        continue;
+                    }
+                    
                     match choice {
                         ShowChoice::Name(show_name) => {
                             // Set the show from the name
@@ -550,6 +558,10 @@ async fn show_task_loop(
                     // Set the current show
                     show_manager.current_show = Some(loaded_show);
 
+                    // Set the last song for future reference
+                    show_manager.last_show_name =
+                        Some(show_manager.current_show.as_ref().unwrap().name.clone());
+
                     // Get the show
                     let current_show = show_manager.current_show.as_ref().unwrap();
 
@@ -582,7 +594,7 @@ async fn show_task_loop(
 
                         // Print the amount of time remaining in the show
                         let time_remaining = runtime - curr_frame.timestamp;
-                        info!("{} seconds remaining", time_remaining / 1000);
+                        // info!("{} seconds remaining", time_remaining / 1000);
 
                         // Execute the current frame
 
