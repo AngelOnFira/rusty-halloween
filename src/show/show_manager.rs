@@ -5,6 +5,7 @@ use crate::{
 use log::{error, info};
 
 use rand::seq::IteratorRandom;
+use core::panic;
 // use rillrate::prime::{Click, ClickOpts};
 use std::{
     cmp::max,
@@ -388,6 +389,11 @@ async fn show_task_loop(
             // Reset the timer
             now = None;
 
+            // We're going to drop the lock for now, since some actions can take
+            // a while, and we don't want to hold up the queue. We'll reacquire
+            // it later if needed.
+            drop(show_job_queue);
+
             match next_show_element.unwrap() {
                 ShowElement::Home => {
                     // Send a home command
@@ -416,9 +422,12 @@ async fn show_task_loop(
 
                     // Add a 15 second idle command to the beginning of the
                     // queue
-                    show_job_queue.push_front(ShowElement::Idle {
-                        time: HOME_SLEEP_TIME,
-                    });
+                    show_job_queue_clone
+                        .lock()
+                        .await
+                        .push_front(ShowElement::Idle {
+                            time: HOME_SLEEP_TIME,
+                        });
                 }
                 ShowElement::PrepareShow(choice) => {
                     info!("Preparing a show");
@@ -457,6 +466,15 @@ async fn show_task_loop(
                             show_manager.next_show = Some(loading_show);
                         }
                     }
+
+                    // If nothing is currently playing, then prepare a NextShow
+                    // command
+                    if show_manager.current_show.is_none() {
+                        show_job_queue_clone
+                            .lock()
+                            .await
+                            .push_back(ShowElement::NextShow);
+                    }
                 }
                 ShowElement::NextShow => {
                     info!("Starting the next show");
@@ -470,6 +488,11 @@ async fn show_task_loop(
                     // continue to the next instruction
                     if show_manager.next_show.is_none() {
                         error!("There is no next show to play");
+
+                        // Start a new show loading
+                        let mut show_job_queue = show_job_queue_clone.lock().await;
+                        show_job_queue.push_back(ShowElement::PrepareShow(ShowChoice::Random));
+
                         continue;
                     }
 
@@ -542,12 +565,16 @@ async fn show_task_loop(
                         // Execute the current frame
 
                         // Send all the lights data
-                        for (i, light) in curr_frame.lights.iter().enumerate() {
+                        for (light_number, light) in curr_frame.lights.iter().enumerate() {
+                            // We add one to the light number here to account
+                            // for lasers in the instruction file starting at 1
+                            let light_number = light_number + 1;
+
                             if let Some(light) = light {
                                 show_manager
                                     .message_queue
                                     .send(MessageKind::InternalMessage(InternalMessage::Light {
-                                        light_id: i as u8 + 1,
+                                        light_id: light_number as u8 + 1,
                                         enable: *light,
                                     }))
                                     .await
@@ -556,14 +583,18 @@ async fn show_task_loop(
                         }
 
                         // Send all the lasers data
-                        for (i, laser) in curr_frame.lasers.iter().enumerate() {
+                        for (laser_number, laser) in curr_frame.lasers.iter().enumerate() {
+                            // We add one to the laser number here to account
+                            // for lasers in the instruction file starting at 1
+                            let laser_number = laser_number + 1;
+
                             if let Some(laser) = laser {
                                 show_manager
                                     .message_queue
                                     .send(MessageKind::InternalMessage(InternalMessage::Projector(
                                         MessageSendPack::new(
                                             HeaderPack {
-                                                projector_id: (i as u8).into(),
+                                                projector_id: (laser_number as u8).into(),
                                                 point_count: (laser.data_frame.len() as u8).into(),
                                                 home: false,
                                                 enable: true,
@@ -581,7 +612,32 @@ async fn show_task_loop(
                                     .unwrap();
                             }
                         }
+
+                        // // Temp break
+                        // break;
                     }
+
+                    info!("Finished playing the show");
+
+                    // Print the state of the show manager
+                    info!(
+                        "Current show: {:?}, Next show: {:?}, Queue {:?}",
+                        match show_manager.current_show {
+                            Some(ref show) => show.name.clone(),
+                            None => "None".to_string(),
+                        },
+                        match show_manager.next_show {
+                            Some(ref show) => show.name.clone(),
+                            None => "None".to_string(),
+                        },
+                        show_job_queue
+                    );
+
+                    // Now that this show is done, try loading the next show in
+                    // the queue
+                    let mut show_job_queue = show_job_queue_clone.lock().await;
+                    show_job_queue.push_back(ShowElement::Home);
+                    show_job_queue.push_back(ShowElement::NextShow);
                 }
                 ShowElement::NullOut => {
                     info!("Nulling out the projector");
