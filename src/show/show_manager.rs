@@ -87,6 +87,7 @@ pub enum ShowElement {
         show_id: usize,
     },
     LightTest,
+    RunInit,
 }
 
 #[derive(Debug, Clone)]
@@ -679,6 +680,7 @@ async fn show_task_loop(
                     // Now that this show is done, try loading the next show in
                     // the queue
                     let mut show_job_queue = show_job_queue_clone.lock().await;
+                    show_job_queue.push_back(ShowElement::RunInit);
                     show_job_queue.push_back(ShowElement::Home);
                     show_job_queue.push_back(ShowElement::NextShow);
                 }
@@ -760,6 +762,19 @@ async fn show_task_loop(
                             .unwrap();
                     }
                 }
+                ShowElement::RunInit => {
+                    // Return if we're not on the pi
+                    if !cfg!(feature = "pi") {
+                        return;
+                    }
+
+                    // Run the init script on the pi from the absolute file
+                    // It is located at ~/Halloween/uart/init_serial.sh
+                    let output = std::process::Command::new("sh")
+                        .arg("/home/pi/Halloween/uart/init_serial.sh")
+                        .output()
+                        .expect("Failed to run init script");
+                },
             }
         }
     }

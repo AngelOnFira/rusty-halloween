@@ -135,7 +135,7 @@ impl UnloadedShow {
                 .collect();
 
             // Get all the lasers of this frame
-            let lasers: Vec<Option<Laser>> = (0..MAX_PROJECTORS)
+            let lasers: Vec<Option<Laser>> = (1..=MAX_PROJECTORS)
                 .map(|i| {
                     let laser_name = format!("laser-{}", i);
 
