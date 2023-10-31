@@ -36,6 +36,7 @@ pub struct ShowManager {
     /// of the worker threads, so the data inside of it is not needed anymore.
     /// However, it stays loaded until the end of the show (for now).
     pub current_show: Option<LoadedShow>,
+    pub last_show_name: Option<ShowName>,
     /// The next show that is going to be played. This gives a staging zone to
     /// load the song before it will start being played.
     pub next_show: Option<LoadingShow>,
@@ -90,7 +91,10 @@ pub enum ShowElement {
 #[derive(Debug, Clone)]
 pub enum ShowChoice {
     Name(ShowName),
-    Random,
+    Random {
+        // Option to not choose the last song
+        last_song: Option<ShowName>,
+    },
 }
 
 const HOME_SLEEP_TIME: u64 = 15;
@@ -100,6 +104,7 @@ impl ShowManager {
         Self {
             current_show: None,
             next_show: None,
+            last_show_name: None,
             start_time: None,
             message_queue: sender,
             shows,
@@ -356,7 +361,9 @@ async fn show_task_loop(
                     show_job_queue_clone
                         .lock()
                         .await
-                        .push_back(ShowElement::PrepareShow(ShowChoice::Random));
+                        .push_back(ShowElement::PrepareShow(ShowChoice::Random {
+                            last_song: show_manager.last_show_name.clone(),
+                        }));
 
                     // // If there isn't a current show, then we should start the
                     // // next show right away
@@ -449,16 +456,30 @@ async fn show_task_loop(
                             // Set the next show
                             show_manager.next_show = Some(loading_show);
                         }
-                        ShowChoice::Random => {
+                        ShowChoice::Random { last_song } => {
                             // Pick a random show from the show manager list
-                            let unloaded_show =
-                                match show_manager.shows.values().choose(&mut rand::thread_rng()) {
+                            let unloaded_show = loop {
+                                let unloaded_show = match show_manager
+                                    .shows
+                                    .values()
+                                    .choose(&mut rand::thread_rng())
+                                {
                                     Some(show) => show.clone(),
                                     None => {
                                         error!("There are no shows to play");
                                         continue;
                                     }
                                 };
+
+                                match last_song {
+                                    Some(ref last_song) => {
+                                        if &unloaded_show.name != last_song {
+                                            break unloaded_show;
+                                        }
+                                    }
+                                    None => break unloaded_show,
+                                }
+                            };
 
                             // Turn it into a loading show
                             let loading_show = unloaded_show.load_show().await;
@@ -491,8 +512,8 @@ async fn show_task_loop(
                         error!("There is no next show to play");
 
                         // Start a new show loading
-                        let mut show_job_queue = show_job_queue_clone.lock().await;
-                        show_job_queue.push_back(ShowElement::PrepareShow(ShowChoice::Random));
+                        // let mut show_job_queue = show_job_queue_clone.lock().await;
+                        // show_job_queue.push_back(ShowElement::PrepareShow(ShowChoice::Random));
 
                         continue;
                     }

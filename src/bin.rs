@@ -256,7 +256,7 @@ async fn main() -> Result<(), Error> {
         show_worker_channel_tx
             .send(vec![
                 ShowElement::Home,
-                ShowElement::PrepareShow(ShowChoice::Random),
+                ShowElement::PrepareShow(ShowChoice::Random { last_song: None }),
             ])
             .await
             .unwrap();
@@ -264,7 +264,6 @@ async fn main() -> Result<(), Error> {
 
     info!("Joining...");
 
-    
     // let _ = tokio::join!(handle, worker_handle, queue_handle);
 
     match signal::ctrl_c().await {
@@ -274,7 +273,7 @@ async fn main() -> Result<(), Error> {
             // we also shut down in case of error
         }
     }
-    
+
     // let _tx_clone = message_queue_tx.clone();
 
     // // TODO: Rewrite this to change directly to internal message type first
