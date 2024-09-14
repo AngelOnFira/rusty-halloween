@@ -8,7 +8,7 @@ jobs:
     name: Linux ARMv7
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - uses: actions-rs/toolchain@v1
         with:
@@ -23,7 +23,7 @@ jobs:
           args: --target armv7-unknown-linux-gnueabihf --release --features pi
 
       - name: Archive code coverage results
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: pi-binary
           path: target/armv7-unknown-linux-gnueabihf/release/rusty-halloween
