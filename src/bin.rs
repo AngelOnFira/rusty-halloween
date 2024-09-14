@@ -215,7 +215,7 @@ async fn main() -> Result<(), Error> {
                                 // bits per frame / 57600 baud = 0.028 seconds =
                                 // 28 milliseconds per frame, so we sleep for 50
                                 // milliseconds to be safe.
-                                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
                             }
                         } else {
                             debug!("Projectors are not supported on this platform");
