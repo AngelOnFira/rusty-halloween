@@ -21,6 +21,25 @@ pub struct FrameSendPack {
     pub draw_instructions: Vec<Frame>,
 }
 
+impl FrameSendPack {
+    pub fn into_bytes(self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+
+        bytes.extend_from_slice(&self.header);
+        for draw_instruction in self.draw_instructions {
+            bytes.extend_from_slice(&draw_instruction);
+        }
+
+        // Add extra bytes to pad up to 51 total frames including the header and
+        // draw instructions
+        while bytes.len() < 51 * 4 {
+            bytes.push(0);
+        }
+
+        bytes
+    }
+}
+
 #[derive(PartialEq, Clone, Debug)]
 pub struct MessageSendPack {
     pub header: HeaderPack,

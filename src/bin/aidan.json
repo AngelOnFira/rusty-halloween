@@ -1,0 +1,1986 @@
+{
+    "square-large": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 0,
+            "y": 0
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 300,
+            "y": 0
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 300,
+            "y": 300
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 0,
+            "y": 300
+        }
+    ],
+    "square-small": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 100,
+            "y": 100
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 200,
+            "y": 100
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 200,
+            "y": 200
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 100,
+            "y": 200
+        }
+    ],
+    "square-large-slow": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 0,
+            "y": 0
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 300,
+            "y": 0
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 300,
+            "y": 300
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 0,
+            "y": 300
+        }
+    ],
+    "square-small-slow": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 100,
+            "y": 100
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 200,
+            "y": 100
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 200,
+            "y": 200
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 100,
+            "y": 200
+        }
+    ],
+    "star": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 150,
+            "y": 0
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 175,
+            "y": 125
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 300,
+            "y": 150
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 175,
+            "y": 175
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 150,
+            "y": 300
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 125,
+            "y": 175
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 0,
+            "y": 150
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 125,
+            "y": 125
+        }
+    ],
+    "star-slow": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 150,
+            "y": 0
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 175,
+            "y": 125
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 300,
+            "y": 150
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 175,
+            "y": 175
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 150,
+            "y": 300
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 125,
+            "y": 175
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 0,
+            "y": 150
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 125,
+            "y": 125
+        }
+    ],
+    "triangle-large": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 0,
+            "y": 300
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 300,
+            "y": 300
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 150,
+            "y": 0
+        }
+    ],
+    "triangle-large-slow": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 0,
+            "y": 300
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 300,
+            "y": 300
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 150,
+            "y": 0
+        }
+    ],
+    "triangle-small": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 150,
+            "y": 75
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 225,
+            "y": 200
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 75,
+            "y": 200
+        }
+    ],
+    "triangle-small-slow": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 150,
+            "y": 75
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 225,
+            "y": 200
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 75,
+            "y": 200
+        }
+    ],
+    "crescent": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 225,
+            "y": 125
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 210,
+            "y": 70
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 150,
+            "y": 50
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 100,
+            "y": 75
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 75,
+            "y": 150
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 100,
+            "y": 225
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 150,
+            "y": 250
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 210,
+            "y": 235
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 225,
+            "y": 175
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 180,
+            "y": 210
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 120,
+            "y": 200
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 120,
+            "y": 150
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 120,
+            "y": 100
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 185,
+            "y": 85
+        }
+    ],
+    "horizontal-lines-left-to-right-slow": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 50,
+            "y": 50
+        },
+        {
+            "hex": "000",
+            "alpha": "ff",
+            "x": 250,
+            "y": 50
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 50,
+            "y": 100
+        },
+        {
+            "hex": "000",
+            "alpha": "ff",
+            "x": 250,
+            "y": 100
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 50,
+            "y": 150
+        },
+        {
+            "hex": "000",
+            "alpha": "ff",
+            "x": 250,
+            "y": 150
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 50,
+            "y": 200
+        },
+        {
+            "hex": "000",
+            "alpha": "ff",
+            "x": 250,
+            "y": 200
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 50,
+            "y": 250
+        },
+        {
+            "hex": "000",
+            "alpha": "ff",
+            "x": 250,
+            "y": 250
+        }
+    ],
+    "horizontal-lines-right-to-left-slow": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 250,
+            "y": 50
+        },
+        {
+            "hex": "000",
+            "alpha": "ff",
+            "x": 50,
+            "y": 50
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 250,
+            "y": 100
+        },
+        {
+            "hex": "000",
+            "alpha": "ff",
+            "x": 50,
+            "y": 100
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 250,
+            "y": 150
+        },
+        {
+            "hex": "000",
+            "alpha": "ff",
+            "x": 50,
+            "y": 150
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 250,
+            "y": 200
+        },
+        {
+            "hex": "000",
+            "alpha": "ff",
+            "x": 50,
+            "y": 200
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 250,
+            "y": 250
+        },
+        {
+            "hex": "000",
+            "alpha": "ff",
+            "x": 50,
+            "y": 250
+        }
+    ],
+    "vertical-lines-top-to-bottom-slow": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 50,
+            "y": 50
+        },
+        {
+            "hex": "000",
+            "alpha": "ff",
+            "x": 50,
+            "y": 250
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 100,
+            "y": 50
+        },
+        {
+            "hex": "000",
+            "alpha": "ff",
+            "x": 100,
+            "y": 250
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 150,
+            "y": 50
+        },
+        {
+            "hex": "000",
+            "alpha": "ff",
+            "x": 150,
+            "y": 250
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 200,
+            "y": 50
+        },
+        {
+            "hex": "000",
+            "alpha": "ff",
+            "x": 200,
+            "y": 250
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 250,
+            "y": 50
+        },
+        {
+            "hex": "000",
+            "alpha": "ff",
+            "x": 250,
+            "y": 250
+        }
+    ],
+    "vertical-lines-bottom-to-top-slow": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 50,
+            "y": 250
+        },
+        {
+            "hex": "000",
+            "alpha": "ff",
+            "x": 50,
+            "y": 50
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 100,
+            "y": 250
+        },
+        {
+            "hex": "000",
+            "alpha": "ff",
+            "x": 100,
+            "y": 50
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 150,
+            "y": 250
+        },
+        {
+            "hex": "000",
+            "alpha": "ff",
+            "x": 150,
+            "y": 50
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 200,
+            "y": 250
+        },
+        {
+            "hex": "000",
+            "alpha": "ff",
+            "x": 200,
+            "y": 50
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 250,
+            "y": 250
+        },
+        {
+            "hex": "000",
+            "alpha": "ff",
+            "x": 250,
+            "y": 50
+        }
+    ],
+    "clockwise-spiral-slow": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 50,
+            "y": 50
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 250,
+            "y": 50
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 250,
+            "y": 250
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 50,
+            "y": 250
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 50,
+            "y": 100
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 200,
+            "y": 100
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 200,
+            "y": 200
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 100,
+            "y": 200
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 100,
+            "y": 150
+        },
+        {
+            "hex": "000",
+            "alpha": "ff",
+            "x": 150,
+            "y": 150
+        }
+    ],
+    "counterclockwise-spiral-slow": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 250,
+            "y": 50
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 50,
+            "y": 50
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 50,
+            "y": 250
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 250,
+            "y": 250
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 250,
+            "y": 100
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 100,
+            "y": 100
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 100,
+            "y": 200
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 200,
+            "y": 200
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 200,
+            "y": 150
+        },
+        {
+            "hex": "000",
+            "alpha": "ff",
+            "x": 150,
+            "y": 150
+        }
+    ],
+    "lightning-bolt": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 150,
+            "y": 60
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 105,
+            "y": 165
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 150,
+            "y": 165
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 120,
+            "y": 240
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 180,
+            "y": 135
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 135,
+            "y": 135
+        }
+    ],
+    "circle": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 50,
+            "y": 170
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 50,
+            "y": 130
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 60,
+            "y": 100
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 75,
+            "y": 75
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 100,
+            "y": 60
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 130,
+            "y": 50
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 170,
+            "y": 50
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 200,
+            "y": 60
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 225,
+            "y": 75
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 240,
+            "y": 100
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 250,
+            "y": 130
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 250,
+            "y": 170
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 240,
+            "y": 200
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 225,
+            "y": 225
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 200,
+            "y": 240
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 170,
+            "y": 250
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 130,
+            "y": 250
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 100,
+            "y": 240
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 75,
+            "y": 225
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 60,
+            "y": 200
+        }
+    ],
+    "circle-slow": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 50,
+            "y": 170
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 50,
+            "y": 130
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 60,
+            "y": 100
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 75,
+            "y": 75
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 100,
+            "y": 60
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 130,
+            "y": 50
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 170,
+            "y": 50
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 200,
+            "y": 60
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 225,
+            "y": 75
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 240,
+            "y": 100
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 250,
+            "y": 130
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 250,
+            "y": 170
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 240,
+            "y": 200
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 225,
+            "y": 225
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 200,
+            "y": 240
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 170,
+            "y": 250
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 130,
+            "y": 250
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 100,
+            "y": 240
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 75,
+            "y": 225
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 60,
+            "y": 200
+        }
+    ],
+    "candy": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 25,
+            "y": 200
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 25,
+            "y": 100
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 75,
+            "y": 125
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 100,
+            "y": 110
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 150,
+            "y": 100
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 200,
+            "y": 110
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 225,
+            "y": 125
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 275,
+            "y": 100
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 275,
+            "y": 200
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 225,
+            "y": 175
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 200,
+            "y": 190
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 150,
+            "y": 200
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 100,
+            "y": 190
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 75,
+            "y": 175
+        }
+    ],
+    "parallelogram": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 100,
+            "y": 75
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 300,
+            "y": 75
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 200,
+            "y": 225
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 0,
+            "y": 225
+        }
+    ],
+    "parallelogram-slow": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 100,
+            "y": 75
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 300,
+            "y": 75
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 200,
+            "y": 225
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 0,
+            "y": 225
+        }
+    ],
+    "pentagon": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 85,
+            "y": 250
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 40,
+            "y": 130
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 150,
+            "y": 50
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 260,
+            "y": 125
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 215,
+            "y": 250
+        }
+    ],
+    "pentagon-slow": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 85,
+            "y": 250
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 40,
+            "y": 130
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 150,
+            "y": 50
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 260,
+            "y": 125
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 215,
+            "y": 250
+        }
+    ],
+    "hexagon": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 75,
+            "y": 275
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 0,
+            "y": 150
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 75,
+            "y": 25
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 225,
+            "y": 25
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 300,
+            "y": 150
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 225,
+            "y": 275
+        }
+    ],
+    "hexagon-slow": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 75,
+            "y": 275
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 0,
+            "y": 150
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 75,
+            "y": 25
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 225,
+            "y": 25
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 300,
+            "y": 150
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 225,
+            "y": 275
+        }
+    ],
+    "septagon-slow": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 85,
+            "y": 300
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 25,
+            "y": 200
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 50,
+            "y": 100
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 150,
+            "y": 50
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 250,
+            "y": 100
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 270,
+            "y": 200
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 215,
+            "y": 300
+        }
+    ],
+    "octagon": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 85,
+            "y": 300
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 0,
+            "y": 215
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 0,
+            "y": 85
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 85,
+            "y": 0
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 215,
+            "y": 0
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 300,
+            "y": 85
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 300,
+            "y": 215
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 215,
+            "y": 300
+        }
+    ],
+    "octagon-slow": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 85,
+            "y": 300
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 0,
+            "y": 215
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 0,
+            "y": 85
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 85,
+            "y": 0
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 215,
+            "y": 0
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 300,
+            "y": 85
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 300,
+            "y": 215
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 215,
+            "y": 300
+        }
+    ],
+    "bow": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 0,
+            "y": 50
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 300,
+            "y": 250
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 300,
+            "y": 50
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 0,
+            "y": 250
+        }
+    ],
+    "bow-slow": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 0,
+            "y": 50
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 300,
+            "y": 250
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 300,
+            "y": 50
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 0,
+            "y": 250
+        }
+    ],
+    "pentagram": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 150,
+            "y": 30
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 222,
+            "y": 270
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 30,
+            "y": 110
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 270,
+            "y": 110
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 78,
+            "y": 270
+        }
+    ],
+    "pentagram-slow": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 150,
+            "y": 0
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 240,
+            "y": 300
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 0,
+            "y": 100
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 300,
+            "y": 100
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 60,
+            "y": 300
+        }
+    ],
+    "ghost": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 90,
+            "y": 240
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 150,
+            "y": 234
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 201,
+            "y": 120
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 225,
+            "y": 150
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 240,
+            "y": 150
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 210,
+            "y": 96
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 180,
+            "y": 60
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 120,
+            "y": 60
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 105,
+            "y": 105
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 60,
+            "y": 60
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 105,
+            "y": 132
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 120,
+            "y": 210
+        }
+    ],
+    "bat": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 60,
+            "y": 162
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 81,
+            "y": 132
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 129,
+            "y": 120
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 141,
+            "y": 105
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 150,
+            "y": 120
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 159,
+            "y": 105
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 171,
+            "y": 120
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 219,
+            "y": 132
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 240,
+            "y": 162
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 225,
+            "y": 180
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 210,
+            "y": 162
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 195,
+            "y": 180
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 180,
+            "y": 165
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 165,
+            "y": 195
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 135,
+            "y": 195
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 120,
+            "y": 165
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 105,
+            "y": 180
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 90,
+            "y": 162
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 75,
+            "y": 180
+        }
+    ],
+    "pumpkin": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 60,
+            "y": 150
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 66,
+            "y": 105
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 90,
+            "y": 90
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 105,
+            "y": 99
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 120,
+            "y": 90
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 135,
+            "y": 99
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 135,
+            "y": 60
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 165,
+            "y": 60
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 165,
+            "y": 99
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 180,
+            "y": 90
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 198,
+            "y": 99
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 210,
+            "y": 90
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 234,
+            "y": 105
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 240,
+            "y": 150
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 234,
+            "y": 195
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 210,
+            "y": 210
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 195,
+            "y": 198
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 180,
+            "y": 210
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 165,
+            "y": 198
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 150,
+            "y": 210
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 135,
+            "y": 198
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 120,
+            "y": 210
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 105,
+            "y": 198
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 90,
+            "y": 210
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 66,
+            "y": 195
+        }
+    ],
+    "gravestone-cross": [
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 90,
+            "y": 228
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 120,
+            "y": 216
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 108,
+            "y": 141
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 132,
+            "y": 120
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 150,
+            "y": 120
+        },
+        {
+            "hex": "000",
+            "alpha": "ff",
+            "x": 150,
+            "y": 72
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 135,
+            "y": 90
+        },
+        {
+            "hex": "000",
+            "alpha": "ff",
+            "x": 168,
+            "y": 90
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 147,
+            "y": 120
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 168,
+            "y": 120
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 192,
+            "y": 141
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 180,
+            "y": 216
+        },
+        {
+            "hex": "fff",
+            "alpha": "ff",
+            "x": 210,
+            "y": 228
+        }
+    ]
+}
