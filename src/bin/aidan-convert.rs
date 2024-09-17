@@ -1,8 +1,5 @@
 use rusty_halloween::{
-    prelude::{
-        pack::{HeaderPack},
-        FrameSendPack, MessageSendPack,
-    },
+    prelude::{pack::HeaderPack, FrameSendPack, MessageSendPack},
     show::LaserDataFrame,
 };
 use serde_json::{Map, Value};
@@ -31,9 +28,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                         as u16,
                                     y_pos: point_data.get("y").and_then(Value::as_u64).unwrap_or(0)
                                         as u16,
-                                    r: if is_white { 0 } else { 255 },
-                                    g: if is_white { 0 } else { 255 },
-                                    b: if is_white { 0 } else { 255 },
+                                    r: if is_white { 255 } else { 0 },
+                                    g: if is_white { 255 } else { 0 },
+                                    b: if is_white { 255 } else { 0 },
                                 }
                             })
                         })
