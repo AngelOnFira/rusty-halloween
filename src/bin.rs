@@ -10,14 +10,14 @@ use log::LevelFilter;
 use std::io::Write;
 use tokio::signal;
 // use rillrate::prime::{LiveTail, LiveTailOpts, Pulse, PulseOpts};
-use rusty_halloween::prelude::*;
-use rusty_halloween::InternalMessage;
-use rusty_halloween::MessageKind;
+use crate::prelude::*;
+use crate::InternalMessage;
+use crate::MessageKind;
 
-use rusty_halloween::projector::uart::UARTProjectorController;
-use rusty_halloween::show::prelude::ShowChoice;
-use rusty_halloween::show::prelude::ShowElement;
-use rusty_halloween::show::prelude::ShowManager;
+use crate::projector::uart::UARTProjectorController;
+use crate::show::prelude::ShowChoice;
+use crate::show::prelude::ShowElement;
+use crate::show::prelude::ShowManager;
 
 use tokio::sync::mpsc;
 
@@ -106,6 +106,13 @@ async fn main() -> Result<(), Error> {
     if !cfg!(feature = "pi") {
         warn!("Projectors are not supported on this platform");
     }
+
+    // // Initialize UART
+    // let (uart_tx, uart_rx) = mpsc::channel(100);
+    // let uart_controller = UartController::init(tx_clone).await?;
+    // tokio::spawn(async move {
+    //     uart_controller.start(uart_rx).await;
+    // });
 
     // Initialize the projector
     info!("Starting projector...");

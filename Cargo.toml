@@ -18,6 +18,10 @@ path = "src/lib.rs"
 name = "rusty-halloween"
 path = "src/bin.rs"
 
+[[bin]]
+name = "test-2024"
+path = "src/bin/test_2024.rs"
+
 [features]
 default = []
 pi = ["dep:rppal"]
@@ -57,4 +61,3 @@ rand = "0.8.5"
 console-subscriber = "0.2.0"
 chrono = "0.4.31"
 serde_json = "1.0"
-

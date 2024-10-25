@@ -1,0 +1,131 @@
+{
+    "light-1": {
+        "protocol": "GPIO",
+        "id": 1,
+        "pin": 28
+    },
+    "light-2": {
+        "protocol": "GPIO",
+        "id": 2,
+        "pin": 27
+    },
+    "light-3": {
+        "protocol": "GPIO",
+        "id": 3,
+        "pin": 16
+    },
+    "light-4": {
+        "protocol": "GPIO",
+        "id": 4,
+        "pin": 18
+    },
+    "light-5": {
+        "protocol": "GPIO",
+        "id": 5,
+        "pin": 22
+    },
+    "light-6": {
+        "protocol": "GPIO",
+        "id": 6,
+        "pin": 24
+    },
+    "light-7": {
+        "protocol": "GPIO",
+        "id": 7,
+        "pin": 26
+    },
+    "laser-1": {
+        "protocol": "SERIAL",
+        "id": 1
+    },
+    "laser-2": {
+        "protocol": "SERIAL",
+        "id": 2
+    },
+    "laser-3": {
+        "protocol": "SERIAL",
+        "id": 3
+    },
+    "laser-4": {
+        "protocol": "SERIAL",
+        "id": 4
+    },
+    "laser-5": {
+        "protocol": "SERIAL",
+        "id": 5
+    },
+    "projector-1": {
+        "protocol" : "DMX",
+        "id": 1,
+        "format": [
+            "state",
+            "",
+            "gallery",
+            "pattern",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "colour",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+        ]
+    },
+    "turret-1": {
+        "protocol" : "DMX",
+        "id": 41,
+        "format": [
+            "pan",
+            "tilt",
+            "state"
+        ]
+    },
+    "turret-2": {
+        "protocol" : "DMX",
+        "id": 44,
+        "format": [
+            "pan",
+            "tilt",
+            "state"
+        ]
+    },
+    "turret-3": {
+        "protocol" : "DMX",
+        "id": 47,
+        "format": [
+            "pan",
+            "tilt",
+            "state"
+        ]
+    },
+    "turret-4": {
+        "protocol" : "DMX",
+        "id": 50,
+        "format": [
+            "pan",
+            "tilt",
+            "state"
+        ]
+    }
+}

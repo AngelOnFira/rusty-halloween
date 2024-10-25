@@ -85,6 +85,14 @@ pub struct Frame {
     pub timestamp: u64,
     pub lights: Vec<Option<bool>>,
     pub lasers: Vec<Option<Laser>>,
+    pub dmx_states: Vec<DmxState>, // New field for DMX devices
+}
+
+#[derive(Clone, Debug)]
+pub struct DmxState {
+    pub device_name: String,
+    pub channel_id: u64,
+    pub values: Vec<u8>,
 }
 
 #[derive(Clone, Debug)]
@@ -108,105 +116,129 @@ impl UnloadedShow {
             .to_str()
             .unwrap();
 
-        // Load the file as a string
-        let show_file_path = show_file_path.to_str().unwrap();
-        let show_file = std::fs::read_to_string(show_file_path).unwrap();
+        // Load the hardware configuration
+        let hardware_config = std::fs::read_to_string("src/show/assets/2024/hardware.json")
+            .expect("Failed to read hardware config");
+        let hardware: serde_json::Value = serde_json::from_str(&hardware_config)
+            .expect("Failed to parse hardware config");
 
-        // Load as json
-        let file_json = json::parse(&show_file).unwrap();
+        // Load the show file
+        let show_file = std::fs::read_to_string(show_file_path).unwrap();
+        let show_json: serde_json::Value = serde_json::from_str(&show_file).unwrap();
 
         let mut frames = Vec::new();
 
-        // Get every frame
-        for (timestamp, frame) in file_json.entries() {
+        // Process each timestamp frame
+        for (timestamp, frame) in show_json.as_object().unwrap() {
+            if timestamp == "song" { continue; }
+            
             let timestamp = timestamp.parse().unwrap();
+            let frame = frame.as_object().unwrap();
 
-            // Get all of the lights of this frame. We start at 1 because the
-            // first light is called "light-1".
-            let lights: Vec<Option<bool>> = (1..=MAX_LIGHTS)
-                .map(|i| {
-                    let light_name = format!("light-{}", i);
-                    if frame[&light_name].is_null() {
-                        None
-                    } else {
-                        Some(frame[&light_name].as_f32().unwrap() > 0.0)
-                    }
-                })
-                .collect();
+            let mut lights = vec![None; MAX_LIGHTS];
+            let mut lasers = vec![None; MAX_PROJECTORS];
+            let mut dmx_states = Vec::new();
 
-            // Get all the lasers of this frame
-            let lasers: Vec<Option<Laser>> = (1..=MAX_PROJECTORS)
-                .map(|i| {
-                    let laser_name = format!("laser-{}", i);
+            // Process each device in the frame
+            for (device_name, device_state) in frame {
+                let device_config = &hardware[device_name];
+                let protocol = device_config["protocol"].as_str().unwrap();
 
-                    if frame[&laser_name].is_null() {
-                        None
-                    } else {
-                        let laser = frame[&laser_name].to_owned();
+                match protocol {
+                    "GPIO" => {
+                        if let Some(light_num) = device_name.strip_prefix("light-") {
+                            if let Ok(index) = light_num.parse::<usize>() {
+                                if index <= MAX_LIGHTS {
+                                    let value = device_state.as_f64().unwrap_or(0.0) > 0.0;
+                                    lights[index - 1] = Some(value);
+                                }
+                            }
+                        }
+                    },
+                    "SERIAL" => {
+                        if let Some(laser_num) = device_name.strip_prefix("laser-") {
+                            if let Ok(index) = laser_num.parse::<usize>() {
+                                if index <= MAX_PROJECTORS {
+                                    let laser = if device_state.is_number() {
+                                        // Reset command
+                                        Some(Laser {
+                                            home: false,
+                                            speed_profile: 0,
+                                            enable: true,
+                                            data_frame: vec![LaserDataFrame::default()],
+                                        })
+                                    } else {
+                                        // Full laser configuration
+                                        let config = device_state.get("config");
+                                        let points = device_state.get("points");
 
-                        // If the laser is set to zero, reset it
-                        if laser.is_number() {
-                            return Some(Laser {
-                                home: false,
-                                speed_profile: 0,
-                                enable: true,
-                                // TODO: This shouldn't be just a single frame
-                                data_frame: vec![LaserDataFrame {
-                                    x_pos: 0,
-                                    y_pos: 0,
-                                    r: 0,
-                                    g: 0,
-                                    b: 0,
-                                }],
-                            });
+                                        match (config, points) {
+                                            (Some(config), Some(points)) => {
+                                                let home = config.get("home").and_then(|v| v.as_bool()).unwrap_or(false);
+                                                let speed_profile = config.get("speed-profile").and_then(|v| v.as_u64()).unwrap_or(0) as u8;
+                                                
+                                                let laser_frames = points.as_array().unwrap().iter()
+                                                    .map(|point| {
+                                                        let coords = point.as_array().unwrap();
+                                                        LaserDataFrame {
+                                                            x_pos: coords[0].as_u64().unwrap() as u16,
+                                                            y_pos: coords[1].as_u64().unwrap() as u16,
+                                                            r: coords[2].as_u64().unwrap() as u8,
+                                                            g: coords[3].as_u64().unwrap() as u8,
+                                                            b: coords[4].as_u64().unwrap() as u8,
+                                                        }
+                                                    })
+                                                    .collect();
+
+                                                Some(Laser {
+                                                    home,
+                                                    speed_profile,
+                                                    enable: true,
+                                                    data_frame: laser_frames,
+                                                })
+                                            },
+                                            _ => None,
+                                        }
+                                    };
+                                    lasers[index - 1] = laser;
+                                }
+                            }
+                        }
+                    },
+                    "DMX" => {
+                        let id = device_config["id"].as_u64().unwrap();
+                        let format = device_config["format"].as_array().unwrap();
+                        
+                        // Convert the device state into DMX values based on the format
+                        let mut values = vec![0u8; format.len()];
+                        
+                        for (i, channel_type) in format.iter().enumerate() {
+                            if let Some(channel_name) = channel_type.as_str() {
+                                if !channel_name.is_empty() {
+                                    if let Some(value) = device_state.get(channel_name) {
+                                        values[i] = value.as_u64().unwrap_or(0) as u8;
+                                    }
+                                }
+                            }
                         }
 
-                        let laser_config = &laser["config"];
-
-                        // Laser config data
-                        let home = laser_config["home"].as_bool().unwrap_or(false);
-                        let speed_profile = laser_config["speed-profile"].as_u8().unwrap_or(0);
-
-                        // Laser data
-                        let laser_frames: Vec<LaserDataFrame> = laser["points"]
-                            .members()
-                            .map(|frame| {
-                                let frame = frame.to_owned();
-                                let arr = frame
-                                    .members()
-                                    .map(|x| x.as_u16().unwrap())
-                                    .collect::<Vec<u16>>();
-
-                                let x_pos = arr[0];
-                                let y_pos = arr[1];
-                                let r = arr[2] as u8;
-                                let g = arr[3] as u8;
-                                let b = arr[4] as u8;
-
-                                LaserDataFrame {
-                                    x_pos,
-                                    y_pos,
-                                    r,
-                                    g,
-                                    b,
-                                }
-                            })
-                            .collect();
-
-                        Some(Laser {
-                            home,
-                            speed_profile,
-                            enable: true,
-                            data_frame: laser_frames,
-                        })
+                        dmx_states.push(DmxState {
+                            device_name: device_name.to_string(),
+                            channel_id: id,
+                            values,
+                        });
+                    },
+                    _ => {
+                        info!("Unknown protocol {} for device {}", protocol, device_name);
                     }
-                })
-                .collect();
+                }
+            }
 
             frames.push(Frame {
                 timestamp,
                 lights,
                 lasers,
+                dmx_states,
             });
         }
 
@@ -219,7 +251,7 @@ impl UnloadedShow {
         }
     }
 
-    // Show frame patterns
+    // Update row_flashing to include empty DMX states
     pub fn row_flashing() -> Vec<Frame> {
         (0..1_000)
             .map(|i| Frame {
@@ -234,7 +266,21 @@ impl UnloadedShow {
                     })
                     .collect(),
                 lasers: (0..MAX_PROJECTORS).map(|_| None).collect(),
+                dmx_states: Vec::new(), // Empty DMX states for test pattern
             })
             .collect::<Vec<Frame>>()
+    }
+}
+
+// Add a default implementation for LaserDataFrame
+impl Default for LaserDataFrame {
+    fn default() -> Self {
+        Self {
+            x_pos: 0,
+            y_pos: 0,
+            r: 0,
+            g: 0,
+            b: 0,
+        }
     }
 }

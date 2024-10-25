@@ -5,7 +5,6 @@ use crate::show::LaserDataFrame;
 /// Trait to calculate checksum before packing the struct
 pub trait CheckSum {
     fn calculate_checksum(&self, message: [u8; 4]) -> bool {
-        // TODO: Make sure this is correct, it could be big endien
         let message = u32::from_le_bytes(message);
 
         let mut sum = message ^ (message >> 1);
@@ -111,6 +110,30 @@ impl From<LaserDataFrame> for DrawPack {
             blue: laser.b.into(),
             ..Default::default()
         }
+    }
+}
+
+#[derive(PackedStruct, Default, Debug, PartialEq, Clone)]
+#[packed_struct(bit_numbering = "msb0")]
+pub struct NewPack {
+    #[packed_field(bits = "0..=7")]
+    pub index: Integer<u8, Bits<8>>,
+    #[packed_field(bits = "8..=10")]
+    pub red: Integer<u8, Bits<3>>,
+    #[packed_field(bits = "11..=13")]
+    pub green: Integer<u8, Bits<3>>,
+    #[packed_field(bits = "14..=16")]
+    pub blue: Integer<u8, Bits<3>>,
+    #[packed_field(bits = "17..=30")]
+    pub _reserved: ReservedZero<packed_bits::Bits<14>>,
+    #[packed_field(bits = "31")]
+    pub checksum: bool,
+}
+
+impl CheckSum for NewPack {
+    fn checksum_pack(&mut self) -> [u8; 4] {
+        self.checksum = self.calculate_checksum(self.pack().unwrap());
+        self.pack().unwrap()
     }
 }
 

@@ -242,82 +242,44 @@ impl ShowManager {
         let shows = names
             .iter()
             .flat_map(|name| {
-                // Get the name of all the files in the folder
-                let files = std::fs::read_dir(format!("shows/{}", name)).unwrap();
+                let show_dir = format!("shows/{}", name);
 
-                // Get all that begin with `instructions-`
-                let instructions_files = files
-                    .into_iter()
-                    .filter(|file| {
-                        file.as_ref()
-                            .unwrap()
-                            .path()
+                // Get all instruction files (starting with 'instructions-')
+                let instruction_files = std::fs::read_dir(&show_dir)
+                    .unwrap()
+                    .filter_map(Result::ok)
+                    .filter(|entry| {
+                        entry
                             .file_name()
-                            .unwrap()
                             .to_str()
-                            .unwrap()
-                            .starts_with("instructions-")
+                            .map(|s| s.starts_with("instructions-"))
+                            .unwrap_or(false)
                     })
                     .collect::<Vec<_>>();
 
-                // Get the name of all the files in the folder
-                let files = std::fs::read_dir(format!("shows/{}", name)).unwrap();
-
-                // Get all that that have a file format .mp3, keep only the path
-                // of the first one
-                let _song_file_name = files
-                    .into_iter()
-                    .filter(|file| {
-                        file.as_ref()
-                            .unwrap()
-                            .path()
-                            .extension()
-                            .unwrap()
-                            .to_str()
-                            .unwrap()
-                            == "mp3"
+                // Find the first MP3 file (if any)
+                let _song_file_name = std::fs::read_dir(&show_dir)
+                    .unwrap()
+                    .filter_map(Result::ok)
+                    .find(|entry| {
+                        entry.path().extension().and_then(|ext| ext.to_str()) == Some("mp3")
                     })
-                    .map(|file| {
-                        file.as_ref()
-                            .unwrap()
+                    .and_then(|entry| {
+                        entry
                             .path()
                             .file_stem()
-                            .unwrap()
-                            .to_str()
-                            .unwrap()
-                            .to_string()
-                    })
-                    .next()
-                    .unwrap()
-                    .clone();
+                            .and_then(|s| s.to_str())
+                            .map(String::from)
+                    });
 
-                // Create a show for each one of these files
-
-                instructions_files
+                // Create a show for each instruction file
+                instruction_files
                     .into_iter()
-                    .filter_map(|file| {
-                        if let Ok(file) = file {
-                            // Load the frames
-                            let show = UnloadedShow::load_show_file(&file.path());
-
-                            // // Set up the buttons on the dashboard
-                            // let click = Click::new(
-                            //     format!("app.dashboard.Shows.{}", name),
-                            //     ClickOpts::default().label("Start"),
-                            // );
-                            // let this = click.clone();
-
-                            // let _message_queue_clone = message_queue.clone();
-                            // click.sync_callback(move |_envelope| {
-                            //     // Start loading that song
-                            //     this.apply();
-                            //     Ok(())
-                            // });
-
-                            return Some((file.file_name().to_str().unwrap().to_string(), show));
-                        }
-
-                        None
+                    .filter_map(|entry| {
+                        let path = entry.path();
+                        let file_name = entry.file_name().to_str()?.to_string();
+                        let show = UnloadedShow::load_show_file(&path);
+                        Some((file_name, show))
                     })
                     .collect::<ShowMap>()
             })
@@ -774,7 +736,7 @@ async fn show_task_loop(
                         .arg("/home/pi/Halloween/uart/init_serial.sh")
                         .output()
                         .expect("Failed to run init script");
-                },
+                }
             }
         }
     }

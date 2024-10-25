@@ -8,10 +8,12 @@ use std::io::{self};
 pub mod audio;
 pub mod config;
 pub mod dashboard;
+pub mod dmx;
 pub mod lights;
 pub mod projector;
 pub mod show;
 pub mod structure;
+mod bin;
 
 pub mod prelude {
     pub use crate::audio::*;
