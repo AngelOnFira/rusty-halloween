@@ -7,7 +7,7 @@ use crate::{
     prelude::{LoadedSong, LoadingSong},
 };
 
-use super::{LaserDataFrame, MAX_LIGHTS, MAX_PROJECTORS};
+use super::{LaserDataFrame, MAX_LASERS, MAX_LIGHTS, MAX_PROJECTORS, MAX_TURRETS};
 
 /// A show contains a song and a list of frames. The song won't be loaded in
 /// until it is the next one up. This is to save memory. A show should be
@@ -85,7 +85,8 @@ pub struct Frame {
     pub timestamp: u64,
     pub lights: Vec<Option<bool>>,
     pub lasers: Vec<Option<Laser>>,
-    pub dmx_states: Vec<DmxState>, // New field for DMX devices
+    pub projectors: Vec<Option<Projector>>,
+    pub turrets: Vec<Option<Turret>>,
 }
 
 #[derive(Clone, Debug)]
@@ -103,6 +104,21 @@ pub struct Laser {
     pub enable: bool,
     // Laser
     pub data_frame: Vec<LaserDataFrame>,
+}
+
+#[derive(Clone, Debug)]
+pub struct Projector {
+    pub state: u8,
+    pub gallery: u8,
+    pub pattern: u8,
+    pub colour: u8,
+}
+
+#[derive(Clone, Debug)]
+pub struct Turret {
+    pub state: u8,
+    pub pan: u16,
+    pub tilt: u16,
 }
 
 impl UnloadedShow {
@@ -132,105 +148,117 @@ impl UnloadedShow {
         for (timestamp, frame) in show_json.as_object().unwrap() {
             if timestamp == "song" { continue; }
             
-            let timestamp = timestamp.parse().unwrap();
+            let timestamp: u64 = timestamp.parse().unwrap();
             let frame = frame.as_object().unwrap();
 
             let mut lights = vec![None; MAX_LIGHTS];
-            let mut lasers = vec![None; MAX_PROJECTORS];
+            let mut lasers = vec![None; MAX_LASERS];
+            let mut projectors = vec![None; MAX_PROJECTORS];
+            let mut turrets = vec![None; MAX_TURRETS];
             let mut dmx_states = Vec::new();
 
             // Process each device in the frame
             for (device_name, device_state) in frame {
-                let device_config = &hardware[device_name];
-                let protocol = device_config["protocol"].as_str().unwrap();
-
-                match protocol {
-                    "GPIO" => {
-                        if let Some(light_num) = device_name.strip_prefix("light-") {
-                            if let Ok(index) = light_num.parse::<usize>() {
-                                if index <= MAX_LIGHTS {
-                                    let value = device_state.as_f64().unwrap_or(0.0) > 0.0;
-                                    lights[index - 1] = Some(value);
-                                }
-                            }
+                if let Some(light_num) = device_name.strip_prefix("light-") {
+                    if let Ok(index) = light_num.parse::<usize>() {
+                        if index <= MAX_LIGHTS {
+                            let value = device_state.as_f64().unwrap_or(0.0) > 0.0;
+                            lights[index - 1] = Some(value);
                         }
-                    },
-                    "SERIAL" => {
-                        if let Some(laser_num) = device_name.strip_prefix("laser-") {
-                            if let Ok(index) = laser_num.parse::<usize>() {
-                                if index <= MAX_PROJECTORS {
-                                    let laser = if device_state.is_number() {
-                                        // Reset command
-                                        Some(Laser {
-                                            home: false,
-                                            speed_profile: 0,
-                                            enable: true,
-                                            data_frame: vec![LaserDataFrame::default()],
-                                        })
-                                    } else {
-                                        // Full laser configuration
-                                        let config = device_state.get("config");
-                                        let points = device_state.get("points");
-
-                                        match (config, points) {
-                                            (Some(config), Some(points)) => {
-                                                let home = config.get("home").and_then(|v| v.as_bool()).unwrap_or(false);
-                                                let speed_profile = config.get("speed-profile").and_then(|v| v.as_u64()).unwrap_or(0) as u8;
-                                                
-                                                let laser_frames = points.as_array().unwrap().iter()
-                                                    .map(|point| {
-                                                        let coords = point.as_array().unwrap();
-                                                        LaserDataFrame {
-                                                            x_pos: coords[0].as_u64().unwrap() as u16,
-                                                            y_pos: coords[1].as_u64().unwrap() as u16,
-                                                            r: coords[2].as_u64().unwrap() as u8,
-                                                            g: coords[3].as_u64().unwrap() as u8,
-                                                            b: coords[4].as_u64().unwrap() as u8,
-                                                        }
-                                                    })
-                                                    .collect();
-
-                                                Some(Laser {
-                                                    home,
-                                                    speed_profile,
-                                                    enable: true,
-                                                    data_frame: laser_frames,
-                                                })
-                                            },
-                                            _ => None,
-                                        }
-                                    };
-                                    lasers[index - 1] = laser;
-                                }
-                            }
-                        }
-                    },
-                    "DMX" => {
-                        let id = device_config["id"].as_u64().unwrap();
-                        let format = device_config["format"].as_array().unwrap();
-                        
-                        // Convert the device state into DMX values based on the format
-                        let mut values = vec![0u8; format.len()];
-                        
-                        for (i, channel_type) in format.iter().enumerate() {
-                            if let Some(channel_name) = channel_type.as_str() {
-                                if !channel_name.is_empty() {
-                                    if let Some(value) = device_state.get(channel_name) {
-                                        values[i] = value.as_u64().unwrap_or(0) as u8;
-                                    }
-                                }
-                            }
-                        }
-
-                        dmx_states.push(DmxState {
-                            device_name: device_name.to_string(),
-                            channel_id: id,
-                            values,
-                        });
-                    },
-                    _ => {
-                        info!("Unknown protocol {} for device {}", protocol, device_name);
                     }
+                } else if let Some(laser_num) = device_name.strip_prefix("laser-") {
+                    if let Ok(index) = laser_num.parse::<usize>() {
+                        if index <= MAX_LASERS {
+                            let laser = if device_state.is_number() {
+                                // Reset command
+                                Some(Laser {
+                                    home: false,
+                                    speed_profile: 0,
+                                    enable: true,
+                                    data_frame: vec![LaserDataFrame::default()],
+                                })
+                            } else {
+                                // Full laser configuration
+                                let config = device_state.get("config");
+                                let points = device_state.get("points");
+
+                                match (config, points) {
+                                    (Some(config), Some(points)) => {
+                                        let home = config.get("home").and_then(|v| v.as_bool()).unwrap_or(false);
+                                        let speed_profile = config.get("speed-profile").and_then(|v| v.as_u64()).unwrap_or(0) as u8;
+                                        
+                                        let laser_frames = points.as_array().unwrap().iter()
+                                            .map(|point| {
+                                                let coords = point.as_array().unwrap();
+                                                LaserDataFrame {
+                                                    x_pos: coords[0].as_u64().unwrap() as u16,
+                                                    y_pos: coords[1].as_u64().unwrap() as u16,
+                                                    r: coords[2].as_u64().unwrap() as u8,
+                                                    g: coords[3].as_u64().unwrap() as u8,
+                                                    b: coords[4].as_u64().unwrap() as u8,
+                                                }
+                                            })
+                                            .collect();
+
+                                        Some(Laser {
+                                            home,
+                                            speed_profile,
+                                            enable: true,
+                                            data_frame: laser_frames,
+                                        })
+                                    },
+                                    _ => None,
+                                }
+                            };
+                            lasers[index - 1] = laser;
+                        }
+                    }
+                } else if let Some(projector_num) = device_name.strip_prefix("projector-") {
+                    if let Ok(index) = projector_num.parse::<usize>() {
+                        if index <= MAX_PROJECTORS {
+                            let projector = Projector {
+                                state: device_state["state"].as_u64().unwrap_or(0) as u8,
+                                gallery: device_state["gallery"].as_u64().unwrap_or(0) as u8,
+                                pattern: device_state["pattern"].as_u64().unwrap_or(0) as u8,
+                                colour: device_state["colour"].as_u64().unwrap_or(0) as u8,
+                            };
+                            projectors[index - 1] = Some(projector);
+                        }
+                    }
+                } else if let Some(turret_num) = device_name.strip_prefix("turret-") {
+                    if let Ok(index) = turret_num.parse::<usize>() {
+                        if index <= MAX_TURRETS {
+                            let turret = Turret {
+                                state: device_state["state"].as_u64().unwrap_or(0) as u8,
+                                pan: device_state["pan"].as_u64().unwrap_or(0) as u16,
+                                tilt: device_state["tilt"].as_u64().unwrap_or(0) as u16,
+                            };
+                            turrets[index - 1] = Some(turret);
+                        }
+                    }
+                } else {
+                    // Assume any other device is DMX
+                    let device_config = &hardware[device_name];
+                    let id = device_config["id"].as_u64().unwrap();
+                    let format = device_config["format"].as_array().unwrap();
+                    
+                    let mut values = vec![0u8; format.len()];
+                    
+                    for (i, channel_type) in format.iter().enumerate() {
+                        if let Some(channel_name) = channel_type.as_str() {
+                            if !channel_name.is_empty() {
+                                if let Some(value) = device_state.get(channel_name) {
+                                    values[i] = value.as_u64().unwrap_or(0) as u8;
+                                }
+                            }
+                        }
+                    }
+
+                    dmx_states.push(DmxState {
+                        device_name: device_name.to_string(),
+                        channel_id: id,
+                        values,
+                    });
                 }
             }
 
@@ -238,7 +266,8 @@ impl UnloadedShow {
                 timestamp,
                 lights,
                 lasers,
-                dmx_states,
+                projectors,
+                turrets,
             });
         }
 
@@ -265,8 +294,9 @@ impl UnloadedShow {
                         }
                     })
                     .collect(),
-                lasers: (0..MAX_PROJECTORS).map(|_| None).collect(),
-                dmx_states: Vec::new(), // Empty DMX states for test pattern
+                lasers: (0..MAX_LASERS).map(|_| None).collect(),
+                projectors: (0..MAX_PROJECTORS).map(|_| None).collect(),
+                turrets: (0..MAX_TURRETS).map(|_| None).collect(),
             })
             .collect::<Vec<Frame>>()
     }

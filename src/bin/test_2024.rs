@@ -31,16 +31,47 @@ fn main() {
 
     println!("Validation complete!");
 
-    // Print some stats about the show
-    let frame_count = song.as_object().unwrap().len() - 1; // Subtract 1 for "song" field
-    println!("\nShow statistics:");
-    println!("Number of frames: {}", frame_count);
-    println!("Show duration: {} seconds", 
-        song.as_object().unwrap()
-            .keys()
-            .filter(|k| *k != "song")
-            .map(|k| k.parse::<u64>().unwrap_or(0))
-            .max()
-            .unwrap_or(0) / 1000
-    );
+    // Try to load the show using UnloadedShow
+    println!("\nAttempting to load show...");
+    let show = UnloadedShow::load_show_file(Path::new("src/show/assets/2024/song.json"));
+
+    // Debug show
+    dbg!(&show);
+
+    // Print show details
+    println!("\nShow details:");
+    println!("Name: {}", show.name);
+    println!("Number of frames: {}", show.frames.len());
+    
+    // Print details about the first few frames
+    println!("\nFirst frame details:");
+    if let Some(first_frame) = show.frames.first() {
+        println!("Timestamp: {}ms", first_frame.timestamp);
+        println!("Active lights: {}", first_frame.lights.iter()
+            .enumerate()
+            .filter(|(_, &light)| light == Some(true))
+            .map(|(i, _)| format!("light-{}", i + 1))
+            .collect::<Vec<_>>()
+            .join(", "));
+        
+        println!("Active lasers: {}", first_frame.lasers.iter()
+            .enumerate()
+            .filter(|(_, laser)| laser.is_some())
+            .map(|(i, _)| format!("laser-{}", i + 1))
+            .collect::<Vec<_>>()
+            .join(", "));
+        
+        println!("DMX states:");
+        for dmx_state in &first_frame.dmx_states {
+            println!("  {}: Channel {} - {:?}", 
+                dmx_state.device_name, 
+                dmx_state.channel_id, 
+                dmx_state.values);
+        }
+    }
+
+    // Print show duration
+    if let Some(last_frame) = show.frames.last() {
+        println!("\nShow duration: {} seconds", last_frame.timestamp as f64 / 1000.0);
+    }
 }

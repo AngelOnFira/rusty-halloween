@@ -49,6 +49,7 @@ pub struct ShowManager {
     pub start_time: Option<Instant>,
     pub shows: ShowMap,
     pub message_queue: mpsc::Sender<MessageKind>,
+    // pub dmx_sender: mpsc::Sender<DmxMessageSendPack>,
 }
 
 /// There are several states to be in:
@@ -618,6 +619,12 @@ async fn show_task_loop(
                                     .unwrap();
                             }
                         }
+
+                        // Go through all the DMX devices and send the data.
+                        // Start with the projectors
+
+                        // Now that a frame is done sending everything send all
+                        // of the DMX data
                     }
 
                     info!("Finished playing the show");

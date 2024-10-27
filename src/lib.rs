@@ -44,6 +44,10 @@ pub enum InternalMessage {
     Audio { audio_file_contents: LoadedSong },
     /// Direct projector frames
     Projector(FrameSendPack),
+    /// DMX data
+    // Dmx(DmxMessageSendPack),
+    /// DMX send request
+    DmxSendRequest,
 }
 
 /// Messages that should be processed in the queue

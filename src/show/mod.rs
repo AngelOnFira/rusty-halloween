@@ -22,4 +22,6 @@ pub struct LaserDataFrame {
 }
 
 pub const MAX_LIGHTS: usize = 7;
-pub const MAX_PROJECTORS: usize = 5;
+pub const MAX_LASERS: usize = 5;
+pub const MAX_PROJECTORS: usize = 1;
+pub const MAX_TURRETS: usize = 4;

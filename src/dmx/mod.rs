@@ -19,6 +19,14 @@ pub struct DmxState {
     pub values: [u8; DMX_CHANNELS],
 }
 
+impl DmxState {
+    // pub fn init(tx: mpsc::Sender<DmxMessageSendPack>) -> Self {
+    //     DmxState {
+    //         tx,
+    //     }
+    // }
+}
+
 #[derive(PartialEq, Clone, Debug)]
 pub struct FrameSendPack {
     pub header: DmxFrame,
@@ -109,11 +117,11 @@ impl From<DmxMessageSendPack> for FrameSendPack {
         debug!("{msg}");
 
         let pack = FrameSendPack {
-            header: msg.header.checksum_pack(),
+            header: msg.header.pack_header().unwrap()[0],
             dmx_channel_data: msg
                 .channel_data
                 .into_iter()
-                .map(|mut x| x.checksum_pack())
+                .map(|mut x| x.pack_data().unwrap()[0])
                 .collect(),
         };
 

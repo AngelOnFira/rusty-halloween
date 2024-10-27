@@ -7,17 +7,17 @@ use log::error;
 use log::info;
 use log::warn;
 use log::LevelFilter;
+use prelude::DmxState;
 use std::io::Write;
 use tokio::signal;
 // use rillrate::prime::{LiveTail, LiveTailOpts, Pulse, PulseOpts};
 use crate::prelude::*;
 use crate::InternalMessage;
-use crate::MessageKind;
+// use crate::MessageKind;
 
 use crate::projector::uart::UARTProjectorController;
-use crate::show::prelude::ShowChoice;
-use crate::show::prelude::ShowElement;
-use crate::show::prelude::ShowManager;
+use crate::show::prelude::*;
+use crate::MessageKind;
 
 use tokio::sync::mpsc;
 
@@ -59,7 +59,7 @@ async fn main() -> Result<(), Error> {
     // Load the config file
     info!("Starting config...");
     #[cfg(feature = "pi")]
-    let config = Config::load()?;
+    let config = Config::load_from_json("src/show/assets/2024/hardware.json")?;
 
     // Make sure the socket is removed if the program exits, check if the file
     // exists first
@@ -130,6 +130,11 @@ async fn main() -> Result<(), Error> {
         (audio_channel_tx, audio_manager)
     };
 
+    // Initialize DMX
+    info!("Starting DMX...");
+    // let (dmx_tx, dmx_rx) = mpsc::channel(100);
+    // let dmx_sender = DmxState::init(dmx_tx);
+
     let handle = tokio::spawn(async move {
         info!("Starting the reciever thread");
         // // Start a new pulse for the dashboard
@@ -145,6 +150,7 @@ async fn main() -> Result<(), Error> {
         //     Default::default(),
         //     LiveTailOpts::default(),
         // );
+
 
         while let Some(message) = message_queue_rx.recv().await {
             // TODO: Catch errors to not crash the thread
@@ -228,6 +234,7 @@ async fn main() -> Result<(), Error> {
                             debug!("Projectors are not supported on this platform");
                         }
                     }
+                    _ => {}
                 },
             }
         }
