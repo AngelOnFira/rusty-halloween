@@ -1,4 +1,5 @@
-use rusty_halloween::show::prelude::UnloadedShow;
+use log::info;
+use rusty_halloween::{config::Config, show::prelude::UnloadedShow};
 use serde_json::Value;
 use std::path::Path;
 
@@ -36,9 +37,13 @@ fn main() {
 
     println!("Validation complete!");
 
+    // Load the config file
+    info!("Loading config...");
+    let config = Config::load_from_json("src/show/assets/2024/hardware.json").unwrap();
+
     // Try to load the show using UnloadedShow
     println!("\nAttempting to load show...");
-    let show = UnloadedShow::load_show_file(Path::new("src/show/assets/2024/song.json"));
+    let show = UnloadedShow::load_show_file(Path::new("src/show/assets/2024/song.json"), &config);
 
     // Debug show
     dbg!(&show);

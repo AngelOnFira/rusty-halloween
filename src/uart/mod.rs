@@ -1,11 +1,14 @@
+use log::error;
 use tokio::sync::mpsc;
 use anyhow::Error;
 
 #[cfg(feature = "pi")]
 use rppal::uart::{Parity, Uart};
 
+use crate::MessageKind;
+
 pub enum UartMessage {
-    Projector(Vec<u8>),
+    Laser(Vec<u8>),
     DMX(Vec<u8>),
 }
 
@@ -15,7 +18,7 @@ pub struct UartController {
 }
 
 impl UartController {
-    pub async fn init(message_queue: mpsc::Sender<MessageKind>) -> Result<Self, Error> {
+    pub async fn init() -> Result<Self, Error> {
         #[cfg(feature = "pi")]
         let uart = Uart::with_path("/dev/serial0", 57_600, Parity::None, 8, 1)?;
 
@@ -35,7 +38,7 @@ impl UartController {
     pub async fn start(mut self, mut rx: mpsc::Receiver<UartMessage>) {
         while let Some(message) = rx.recv().await {
             match message {
-                UartMessage::Projector(data) => {
+                UartMessage::Laser(data) => {
                     if let Err(e) = self.send_data(data) {
                         error!("Failed to send projector data: {}", e);
                     }

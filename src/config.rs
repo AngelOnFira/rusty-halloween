@@ -3,7 +3,9 @@ use pi_pinout::{GpioPin, PhysicalPin, WiringPiPin};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+use crate::show::prelude::{DmxStateIndex, DmxStateVarPosition};
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
 pub struct Config {
     pub lights: Vec<Light>,
     pub lasers: Vec<Laser>,
@@ -11,30 +13,30 @@ pub struct Config {
     pub turrets: Vec<Turret>,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
 pub struct Light {
     pub pin: Pin,
     pub id: u8,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
 pub struct Laser {
     pub id: u8,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
 pub struct Projector {
     pub id: u8,
     pub format: Vec<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
 pub struct Turret {
     pub id: u8,
     pub format: Vec<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
 pub enum Pin {
     Physical(PhysicalPin),
     Gpio(GpioPin),
@@ -113,6 +115,34 @@ impl Config {
             projectors,
             turrets,
         })
+    }
+
+    pub fn get_dmx_state_var_position(&self, device_name: &str, var_name: &str) -> DmxStateIndex {
+        // Look through either projectors or turrets
+        if let Some(project_num) = device_name.strip_prefix("projector-") {
+            let id = project_num.parse::<u8>().unwrap();
+
+            // Find the index of the var_name in the format
+            let index = self.projectors[id as usize]
+                .format
+                .iter()
+                .position(|v| v == var_name)
+                .unwrap() as u8;
+            return id + index;
+        } else if let Some(turret_num) = device_name.strip_prefix("turret-") {
+            let id = turret_num.parse::<u8>().unwrap();
+
+            // Find the index of the var_name in the format
+            let index = self.turrets[id as usize]
+                .format
+                .iter()
+                .position(|v| v == var_name)
+                .unwrap() as u8;
+            return id + index;
+        } else {
+            // If it wasn't a projector or turret then throw an error
+            panic!("Invalid device name: {}", device_name);
+        }
     }
 }
 

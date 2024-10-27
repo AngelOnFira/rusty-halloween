@@ -1,9 +1,11 @@
 use std::fmt::{Debug, Display};
 
-
 use log::debug;
 use pack::{DmxDataPack, DmxHeaderPack};
 use rust_embed::RustEmbed;
+use tokio::sync::mpsc;
+
+use crate::{config::Config, show::prelude::DmxStateVarPosition, uart::UartMessage};
 
 pub mod pack;
 
@@ -11,18 +13,56 @@ type DmxFrame = u8;
 
 const DMX_CHANNELS: usize = 255;
 
+pub enum DmxMessage {
+    Send,
+    UpdateState(Vec<DmxStateVarPosition>),
+}
+
 pub struct DmxState {
-    pub device_name: String,
-    pub channel_id: u64,
+    pub config: Config,
     pub values: [u8; DMX_CHANNELS],
 }
 
+pub struct DmxStateChange {
+    pub id: u8,
+    pub values: Vec<u8>,
+}
+
 impl DmxState {
-    // pub fn init(tx: mpsc::Sender<DmxMessageSendPack>) -> Self {
-    //     DmxState {
-    //         tx,
-    //     }
-    // }
+    pub fn init(config: Config) -> Self {
+        DmxState {
+            config,
+            values: [0; DMX_CHANNELS],
+        }
+    }
+
+    pub fn set_dmx_state(&mut self, dmx_state_var_positions: Vec<DmxStateVarPosition>) {
+        for (index, value) in dmx_state_var_positions {
+            self.values[index as usize] = value;
+        }
+    }
+
+    pub async fn start(
+        mut self,
+        mut rx: mpsc::Receiver<DmxMessage>,
+        uart_tx: mpsc::Sender<UartMessage>,
+    ) {
+        while let Some(message) = rx.recv().await {
+            match message {
+                DmxMessage::Send => {
+                    uart_tx
+                        .send(UartMessage::DMX(self.values.to_vec()))
+                        .await
+                        .unwrap();
+                }
+                DmxMessage::UpdateState(state) => {
+                    for (index, value) in state {
+                        self.values[index as usize] = value;
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -126,7 +166,3 @@ impl From<DmxMessageSendPack> for FrameSendPack {
         pack
     }
 }
-
-#[derive(RustEmbed)]
-#[folder = "src/projector/visions/assets"]
-struct VisionAsset;

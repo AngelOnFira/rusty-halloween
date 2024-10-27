@@ -1,11 +1,14 @@
 use anyhow::Error;
 use chrono::Local;
 use env_logger::Builder;
-use interprocess::local_socket::LocalSocketListener;
 use log::{debug, error, info, warn, LevelFilter};
 use rusty_halloween::{
-    prelude::uart::UARTProjectorController,
+    config::Config,
+    dmx::{DmxMessage, DmxState},
+    laser::{LaserController, LaserMessage},
+    lights::LightController,
     show::prelude::{ShowChoice, ShowElement, ShowManager},
+    uart::UartController,
     InternalMessage, MessageKind,
 };
 use std::io::Write;
@@ -32,40 +35,22 @@ async fn main() -> Result<(), Error> {
         .filter(Some("symphonia_bundle_mp3::demuxer"), LevelFilter::Off)
         .init();
 
-    info!("Starting UART controller...");
-
-    // Send the data test to uart
-    // UARTProjectorController::init().await?;
-
-    // return Ok(());
-
     info!("Starting Tokio console...");
     #[cfg(not(feature = "pi"))]
     console_subscriber::init();
 
     // Load the config file
-    info!("Starting config...");
-    #[cfg(feature = "pi")]
+    info!("Loading config...");
     let config = Config::load_from_json("src/show/assets/2024/hardware.json")?;
-
-    // Make sure the socket is removed if the program exits, check if the file
-    // exists first
-    info!("Starting socket...");
-    if std::path::Path::new("/tmp/pico.sock").exists() {
-        std::fs::remove_file("/tmp/pico.sock")?;
-    }
 
     // // Set up the local audio storage
     // info!("Starting audio system...");
     // FileStructure::verify();
 
-    let _listener = LocalSocketListener::bind("/tmp/pico.sock")?;
-
     // Message queue
     let (message_queue_tx, mut message_queue_rx) = mpsc::channel(100);
 
     // Initialize the lights
-    #[cfg(feature = "pi")]
     let mut light_controller = {
         info!("Starting lights...");
         let tx_clone = message_queue_tx.clone();
@@ -73,35 +58,26 @@ async fn main() -> Result<(), Error> {
         LightController::init(&config, tx_clone).await?
     };
 
-    if !cfg!(feature = "pi") {
-        warn!("Lights are not supported on this platform");
-    }
+    // Initialize UART controller
+    let uart_tx = {
+        let (uart_tx, uart_rx) = mpsc::channel(100);
+        let uart_controller = UartController::init().await.unwrap();
+        tokio::spawn(async move {
+            uart_controller.start(uart_rx).await;
+        });
 
-    #[cfg(feature = "spi")]
-    let mut projector_controller = {
-        // Initialize the projector
-        info!("Starting projector...");
-        let tx_clone = message_queue_tx.clone();
-        #[allow(unused_variables, unused_mut)]
-        SPIProjectorController::init(tx_clone).await?
+        uart_tx
     };
 
-    if !cfg!(feature = "pi") {
-        warn!("Projectors are not supported on this platform");
-    }
-
-    // // Initialize UART
-    // let (uart_tx, uart_rx) = mpsc::channel(100);
-    // let uart_controller = UartController::init(tx_clone).await?;
-    // tokio::spawn(async move {
-    //     uart_controller.start(uart_rx).await;
-    // });
-
     // Initialize the projector
-    info!("Starting projector...");
+    info!("Starting laser...");
     let tx_clone = message_queue_tx.clone();
-    #[allow(unused_variables, unused_mut)]
-    let mut projector_controller = UARTProjectorController::init(tx_clone).await?;
+    let (laser_tx, laser_rx) = mpsc::channel(100);
+    let mut laser_controller = LaserController::init();
+    let uart_tx_clone = uart_tx.clone();
+    tokio::spawn(async move {
+        laser_controller.start(laser_rx, uart_tx_clone).await;
+    });
 
     // Initialize the audio
     info!("Starting audio...");
@@ -115,57 +91,25 @@ async fn main() -> Result<(), Error> {
 
     // Initialize DMX
     info!("Starting DMX...");
-    // let (dmx_tx, dmx_rx) = mpsc::channel(100);
-    // let dmx_sender = DmxState::init(dmx_tx);
+    let (dmx_tx, dmx_rx) = mpsc::channel(100);
+    let dmx_state = DmxState::init(config.clone());
+    let uart_tx_clone = uart_tx.clone();
+    tokio::spawn(async move {
+        dmx_state.start(dmx_rx, uart_tx_clone).await;
+    });
 
     let handle = tokio::spawn(async move {
         info!("Starting the reciever thread");
-        // // Start a new pulse for the dashboard
-        // let pulse = Pulse::new(
-        //     "app.dashboard.all.pulse",
-        //     Default::default(),
-        //     PulseOpts::default().min(0).max(10),
-        // );
-
-        // // Start a new log list for the dashboard
-        // let live_tail = LiveTail::new(
-        //     "app.dashboard.Data.Messages",
-        //     Default::default(),
-        //     LiveTailOpts::default(),
-        // );
 
         while let Some(message) = message_queue_rx.recv().await {
             // TODO: Catch errors to not crash the thread
 
-            // // Update the pulse
-            // pulse.push(1);
-
             // Handle the message
             match message {
                 MessageKind::InternalMessage(internal_message) => match internal_message {
-                    #[allow(unused_variables)]
-                    InternalMessage::Vision {
-                        vision_file_contents,
-                    } => {
-                        // live_tail.log_now(module_path!(), "INFO", "Vision command received");
-                        if cfg!(feature = "pi") {
-                            {
-                                #[cfg(feature = "spi")]
-                                if let Err(e) =
-                                    projector_controller.uart_send_file(&vision_file_contents)
-                                {
-                                    error!("Failed to send projector command: {}", e);
-                                }
-                            }
-                        } else {
-                            error!("Projectors are not supported on this platform");
-                        }
-                    }
                     InternalMessage::Audio {
                         audio_file_contents: _audio_file_contents,
                     } => {
-                        // live_tail.log_now(module_path!(), "INFO", "Audio
-                        // command received");
                         if cfg!(feature = "audio") {
                             #[cfg(feature = "audio")]
                             match audio_manager {
@@ -173,11 +117,7 @@ async fn main() -> Result<(), Error> {
                                     audio_channel_tx.send(_audio_file_contents).await.unwrap();
                                 }
                                 Err(_) => {
-                                    // live_tail.log_now(
-                                    //     module_path!(),
-                                    //     "ERROR",
-                                    //     "Audio manager not initialized",
-                                    // );
+                                    error!("Audio manager not initialized");
                                 }
                             }
                         }
@@ -186,37 +126,31 @@ async fn main() -> Result<(), Error> {
                         light_id: _light_id,
                         enable: _enable,
                     } => {
-                        // live_tail.log_now(module_path!(), "INFO", "Light
-                        // command received");
+                        info!("Light command received");
                         #[cfg(feature = "pi")]
                         light_controller.set_pin(_light_id, _enable);
                     }
                     #[allow(unused_variables)]
-                    InternalMessage::Projector(frame_send_pack) => {
-                        // live_tail.log_now(module_path!(), "INFO", "Projector command received");
-                        if cfg!(feature = "pi") {
-                            {
-                                if let Err(e) =
-                                    projector_controller.uart_send_projector(frame_send_pack)
-                                {
-                                    error!("Failed to send projector command: {}", e);
-                                }
-                                // Sleep for half a second for the projector.
-                                // This prevents them from sending information
-                                // too fast, causing them to overlap data and
-                                // freeze.
-                                //
-                                // The calulation for time is 51 frames * 32
-                                // bits per frame / 57600 baud = 0.028 seconds =
-                                // 28 milliseconds per frame, so we sleep for 50
-                                // milliseconds to be safe.
-                                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-                            }
-                        } else {
-                            debug!("Projectors are not supported on this platform");
+                    InternalMessage::Laser(frame_send_pack) => {
+                        info!("Projector command received");
+                        {
+                            laser_tx
+                                .send(LaserMessage::Frame(frame_send_pack))
+                                .await
+                                .unwrap();
                         }
                     }
-                    _ => {}
+                    InternalMessage::DmxSendRequest => {
+                        info!("DMX send request received");
+                        dmx_tx.send(DmxMessage::Send).await.unwrap();
+                    }
+                    InternalMessage::DmxUpdateState(dmx_state_var_positions) => {
+                        info!("DMX data received");
+                        dmx_tx
+                            .send(DmxMessage::UpdateState(dmx_state_var_positions))
+                            .await
+                            .unwrap();
+                    }
                 },
             }
         }
@@ -225,7 +159,7 @@ async fn main() -> Result<(), Error> {
     // Get the shows on disk
     info!("Starting shows...");
     let tx_clone = message_queue_tx.clone();
-    let shows = ShowManager::load_shows(tx_clone);
+    let shows = ShowManager::load_shows(tx_clone, &config);
 
     // Start playing the first show
     let tx_clone = message_queue_tx.clone();
@@ -270,7 +204,7 @@ async fn main() -> Result<(), Error> {
             eprintln!("Unable to listen for shutdown signal: {}", err);
             // we also shut down in case of error
         }
-    }
+    };
 
     // let _tx_clone = message_queue_tx.clone();
 

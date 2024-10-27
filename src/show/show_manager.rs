@@ -1,4 +1,5 @@
 use crate::{
+    config::Config,
     prelude::{pack::HeaderPack, MessageSendPack},
     InternalMessage, MessageKind,
 };
@@ -218,7 +219,7 @@ impl ShowManager {
             tokio::spawn(async move { show_task_loop(self, show_job_queue_clone).await });
     }
 
-    pub fn load_shows(_message_queue: mpsc::Sender<MessageKind>) -> ShowMap {
+    pub fn load_shows(_message_queue: mpsc::Sender<MessageKind>, config: &Config) -> ShowMap {
         // Find all folders in the shows folder
         let shows = std::fs::read_dir("shows").unwrap();
 
@@ -277,7 +278,7 @@ impl ShowManager {
                     .filter_map(|entry| {
                         let path = entry.path();
                         let file_name = entry.file_name().to_str()?.to_string();
-                        let show = UnloadedShow::load_show_file(&path);
+                        let show = UnloadedShow::load_show_file(&path, &config);
                         Some((file_name, show))
                     })
                     .collect::<ShowMap>()
@@ -371,7 +372,7 @@ async fn show_task_loop(
                     info!("Homing the projector");
                     show_manager
                         .message_queue
-                        .send(MessageKind::InternalMessage(InternalMessage::Projector(
+                        .send(MessageKind::InternalMessage(InternalMessage::Laser(
                             MessageSendPack {
                                 header: HeaderPack {
                                     projector_id: 15.into(),
@@ -596,7 +597,7 @@ async fn show_task_loop(
                             if let Some(laser) = laser {
                                 show_manager
                                     .message_queue
-                                    .send(MessageKind::InternalMessage(InternalMessage::Projector(
+                                    .send(MessageKind::InternalMessage(InternalMessage::Laser(
                                         MessageSendPack::new(
                                             HeaderPack {
                                                 projector_id: (laser_number as u8).into(),
@@ -620,9 +621,49 @@ async fn show_task_loop(
 
                         // Go through all the DMX devices and send the data.
                         // Start with the projectors
+                        for projector in curr_frame.projectors.iter() {
+                            if let Some(projector) = projector {
+                                show_manager
+                                    .message_queue
+                                    .send(MessageKind::InternalMessage(
+                                        InternalMessage::DmxUpdateState(vec![
+                                            projector.state,
+                                            projector.gallery,
+                                            projector.pattern,
+                                            projector.colour,
+                                        ]),
+                                    ))
+                                    .await
+                                    .unwrap();
+                            }
+                        }
+
+                        // Send all the turrets data
+                        for turret in curr_frame.turrets.iter() {
+                            if let Some(turret) = turret {
+                                show_manager
+                                    .message_queue
+                                    .send(MessageKind::InternalMessage(
+                                        InternalMessage::DmxUpdateState(vec![
+                                            turret.state,
+                                            turret.pan,
+                                            turret.tilt,
+                                        ]),
+                                    ))
+                                    .await
+                                    .unwrap();
+                            }
+                        }
 
                         // Now that a frame is done sending everything send all
                         // of the DMX data
+                        show_manager
+                            .message_queue
+                            .send(MessageKind::InternalMessage(
+                                InternalMessage::DmxSendRequest,
+                            ))
+                            .await
+                            .unwrap();
                     }
 
                     info!("Finished playing the show");
@@ -657,7 +698,7 @@ async fn show_task_loop(
                     // Send a null out command
                     show_manager
                         .message_queue
-                        .send(MessageKind::InternalMessage(InternalMessage::Projector(
+                        .send(MessageKind::InternalMessage(InternalMessage::Laser(
                             MessageSendPack {
                                 header: HeaderPack {
                                     projector_id: 16.into(),

@@ -2,16 +2,44 @@ use std::fmt::{Debug, Display};
 
 use self::pack::{DrawPack, HeaderPack};
 
-use crate::{projector::pack::CheckSum, show::LaserDataFrame};
+use crate::{laser::pack::CheckSum, show::LaserDataFrame, uart::UartMessage};
 
 use log::debug;
 use rust_embed::RustEmbed;
+use tokio::sync::mpsc;
 
 pub mod pack;
-pub mod spi;
-pub mod uart;
 
 type Frame = [u8; 4];
+
+pub enum LaserMessage {
+    Frame(FrameSendPack),
+}
+
+pub struct LaserController {}
+
+impl LaserController {
+    pub fn init() -> Self {
+        Self {}
+    }
+
+    pub async fn start(
+        &mut self,
+        mut rx: mpsc::Receiver<LaserMessage>,
+        uart_tx: mpsc::Sender<UartMessage>,
+    ) {
+        while let Some(message) = rx.recv().await {
+            match message {
+                LaserMessage::Frame(frame) => {
+                    uart_tx
+                        .send(UartMessage::Laser(frame.into_bytes()))
+                        .await
+                        .unwrap();
+                }
+            }
+        }
+    }
+}
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct FrameSendPack {
@@ -104,7 +132,3 @@ impl From<MessageSendPack> for FrameSendPack {
         pack
     }
 }
-
-#[derive(RustEmbed)]
-#[folder = "src/projector/visions/assets"]
-struct VisionAsset;

@@ -4,10 +4,15 @@ use log::info;
 
 use crate::{
     audio::Audio,
+    config::Config,
     prelude::{LoadedSong, LoadingSong},
 };
 
 use super::{LaserDataFrame, MAX_LASERS, MAX_LIGHTS, MAX_PROJECTORS, MAX_TURRETS};
+
+pub type DmxStateData = u8;
+pub type DmxStateIndex = u8;
+pub type DmxStateVarPosition = (DmxStateIndex, DmxStateData);
 
 /// A show contains a song and a list of frames. The song won't be loaded in
 /// until it is the next one up. This is to save memory. A show should be
@@ -108,21 +113,21 @@ pub struct Laser {
 
 #[derive(Clone, Debug)]
 pub struct Projector {
-    pub state: u8,
-    pub gallery: u8,
-    pub pattern: u8,
-    pub colour: u8,
+    pub state: DmxStateVarPosition,
+    pub gallery: DmxStateVarPosition,
+    pub pattern: DmxStateVarPosition,
+    pub colour: DmxStateVarPosition,
 }
 
 #[derive(Clone, Debug)]
 pub struct Turret {
-    pub state: u8,
-    pub pan: u16,
-    pub tilt: u16,
+    pub state: DmxStateVarPosition,
+    pub pan: DmxStateVarPosition,
+    pub tilt: DmxStateVarPosition,
 }
 
 impl UnloadedShow {
-    pub fn load_show_file(show_file_path: &Path) -> Self {
+    pub fn load_show_file(show_file_path: &Path, config: &Config) -> Self {
         // The show name is in shows/<show_name>/instructions.json, extract it
         let show_name = show_file_path
             .parent()
@@ -229,10 +234,22 @@ impl UnloadedShow {
                     if let Ok(index) = projector_num.parse::<usize>() {
                         if index <= MAX_PROJECTORS {
                             let projector = Projector {
-                                state: device_state["state"].as_u64().unwrap_or(0) as u8,
-                                gallery: device_state["gallery"].as_u64().unwrap_or(0) as u8,
-                                pattern: device_state["pattern"].as_u64().unwrap_or(0) as u8,
-                                colour: device_state["colour"].as_u64().unwrap_or(0) as u8,
+                                state: (
+                                    config.get_dmx_state_var_position(device_name, "state"),
+                                    device_state["state"].as_u64().unwrap_or(0) as u8,
+                                ),
+                                gallery: (
+                                    config.get_dmx_state_var_position(device_name, "gallery"),
+                                    device_state["gallery"].as_u64().unwrap_or(0) as u8,
+                                ),
+                                pattern: (
+                                    config.get_dmx_state_var_position(device_name, "pattern"),
+                                    device_state["pattern"].as_u64().unwrap_or(0) as u8,
+                                ),
+                                colour: (
+                                    config.get_dmx_state_var_position(device_name, "colour"),
+                                    device_state["colour"].as_u64().unwrap_or(0) as u8,
+                                ),
                             };
                             projectors[index - 1] = Some(projector);
                         }
@@ -241,9 +258,18 @@ impl UnloadedShow {
                     if let Ok(index) = turret_num.parse::<usize>() {
                         if index <= MAX_TURRETS {
                             let turret = Turret {
-                                state: device_state["state"].as_u64().unwrap_or(0) as u8,
-                                pan: device_state["pan"].as_u64().unwrap_or(0) as u16,
-                                tilt: device_state["tilt"].as_u64().unwrap_or(0) as u16,
+                                state: (
+                                    config.get_dmx_state_var_position(device_name, "state"),
+                                    device_state["state"].as_u64().unwrap_or(0) as u8,
+                                ),
+                                pan: (
+                                    config.get_dmx_state_var_position(device_name, "pan"),
+                                    device_state["pan"].as_u64().unwrap_or(0) as u8,
+                                ),
+                                tilt: (
+                                    config.get_dmx_state_var_position(device_name, "tilt"),
+                                    device_state["tilt"].as_u64().unwrap_or(0) as u8,
+                                ),
                             };
                             turrets[index - 1] = Some(turret);
                         }
