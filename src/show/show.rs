@@ -137,11 +137,11 @@ impl UnloadedShow {
             .to_str()
             .unwrap();
 
-        // Load the hardware configuration
-        let hardware_config = std::fs::read_to_string("src/show/assets/2024/hardware.json")
-            .expect("Failed to read hardware config");
-        let hardware: serde_json::Value =
-            serde_json::from_str(&hardware_config).expect("Failed to parse hardware config");
+        // // Load the hardware configuration
+        // let hardware_config = std::fs::read_to_string("src/show/assets/2024/hardware.json")
+        //     .expect("Failed to read hardware config");
+        // let hardware: serde_json::Value =
+        //     serde_json::from_str(&hardware_config).expect("Failed to parse hardware config");
 
         // Load the show file
         let show_file = std::fs::read_to_string(show_file_path).unwrap();
@@ -162,7 +162,7 @@ impl UnloadedShow {
             let mut lasers = vec![None; MAX_LASERS];
             let mut projectors = vec![None; MAX_PROJECTORS];
             let mut turrets = vec![None; MAX_TURRETS];
-            let mut dmx_states = Vec::new();
+            // let mut dmx_states = Vec::new();
 
             // Process each device in the frame
             for (device_name, device_state) in frame {
@@ -275,28 +275,29 @@ impl UnloadedShow {
                         }
                     }
                 } else {
-                    // Assume any other device is DMX
-                    let device_config = &hardware[device_name];
-                    let id = device_config["id"].as_u64().unwrap();
-                    let format = device_config["format"].as_array().unwrap();
+                    // // Assume any other device is DMX
+                    // let device_config = &hardware[device_name];
+                    // let id = device_config["id"].as_u64().unwrap();
+                    // let format = device_config["format"].as_array().unwrap();
 
-                    let mut values = vec![0u8; format.len()];
+                    // let mut values = vec![0u8; format.len()];
 
-                    for (i, channel_type) in format.iter().enumerate() {
-                        if let Some(channel_name) = channel_type.as_str() {
-                            if !channel_name.is_empty() {
-                                if let Some(value) = device_state.get(channel_name) {
-                                    values[i] = value.as_u64().unwrap_or(0) as u8;
-                                }
-                            }
-                        }
-                    }
+                    // for (i, channel_type) in format.iter().enumerate() {
+                    //     if let Some(channel_name) = channel_type.as_str() {
+                    //         if !channel_name.is_empty() {
+                    //             if let Some(value) = device_state.get(channel_name) {
+                    //                 values[i] = value.as_u64().unwrap_or(0) as u8;
+                    //             }
+                    //         }
+                    //     }
+                    // }
 
-                    dmx_states.push(DmxState {
-                        device_name: device_name.to_string(),
-                        channel_id: id,
-                        values,
-                    });
+                    // dmx_states.push(DmxState {
+                    //     device_name: device_name.to_string(),
+                    //     channel_id: id,
+                    //     values,
+                    // });
+                    panic!("Unknown device: {}", device_name);
                 }
             }
 

@@ -18,7 +18,7 @@ name = "test-2024"
 path = "src/bin/test_2024.rs"
 
 [features]
-default = []
+default = ["audio"]
 pi = ["dep:rppal"]
 embed_audio = []
 audio = []

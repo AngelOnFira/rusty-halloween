@@ -123,7 +123,7 @@ impl Config {
             let id = project_num.parse::<u8>().unwrap();
 
             // Find the index of the var_name in the format
-            let index = self.projectors[id as usize]
+            let index = self.projectors[id as usize - 1]
                 .format
                 .iter()
                 .position(|v| v == var_name)
@@ -133,7 +133,7 @@ impl Config {
             let id = turret_num.parse::<u8>().unwrap();
 
             // Find the index of the var_name in the format
-            let index = self.turrets[id as usize]
+            let index = self.turrets[id as usize - 1]
                 .format
                 .iter()
                 .position(|v| v == var_name)

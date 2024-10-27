@@ -3,6 +3,7 @@ use chrono::Local;
 use env_logger::Builder;
 use log::{debug, error, info, warn, LevelFilter};
 use rusty_halloween::{
+    audio::Audio,
     config::Config,
     dmx::{DmxMessage, DmxState},
     laser::{LaserController, LaserMessage},
@@ -111,7 +112,6 @@ async fn main() -> Result<(), Error> {
                         audio_file_contents: _audio_file_contents,
                     } => {
                         if cfg!(feature = "audio") {
-                            #[cfg(feature = "audio")]
                             match audio_manager {
                                 Ok(_) => {
                                     audio_channel_tx.send(_audio_file_contents).await.unwrap();
@@ -140,16 +140,16 @@ async fn main() -> Result<(), Error> {
                                 .unwrap();
                         }
                     }
-                    InternalMessage::DmxSendRequest => {
-                        info!("DMX send request received");
-                        dmx_tx.send(DmxMessage::Send).await.unwrap();
-                    }
                     InternalMessage::DmxUpdateState(dmx_state_var_positions) => {
                         info!("DMX data received");
                         dmx_tx
                             .send(DmxMessage::UpdateState(dmx_state_var_positions))
                             .await
                             .unwrap();
+                    }
+                    InternalMessage::DmxSendRequest => {
+                        info!("DMX send request received");
+                        dmx_tx.send(DmxMessage::Send).await.unwrap();
                     }
                 },
             }

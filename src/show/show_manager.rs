@@ -299,6 +299,8 @@ async fn show_task_loop(
         let mut show_job_queue = show_job_queue_clone.lock().await;
         let next_show_element = show_job_queue.pop_front().to_owned();
 
+        info!("Next show element: {:?}", next_show_element);
+
         // If nothing is playing, then we should move on to the next song if
         // there is one in next_show
         if show_manager.current_show.is_none() {
@@ -773,7 +775,8 @@ async fn show_task_loop(
                 ShowElement::RunInit => {
                     // Return if we're not on the pi
                     if !cfg!(feature = "pi") {
-                        return;
+                        info!("Not on the pi, skipping init");
+                        continue;
                     }
 
                     // Run the init script on the pi from the absolute file

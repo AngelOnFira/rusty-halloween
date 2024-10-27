@@ -217,5 +217,6 @@
             "pan": 90,
             "tilt": 90
         }
-    }
+    },
+    "song": "metronome.mp3"
 }
