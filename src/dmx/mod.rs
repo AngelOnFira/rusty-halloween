@@ -1,7 +1,6 @@
 use std::fmt::{Debug, Display};
 
-use crate::projector::pack::CheckSum;
-use crate::show::LaserDataFrame;
+use crate::{projector::pack::CheckSum, show::LaserDataFrame};
 
 use log::{debug, info};
 use pack::{DmxDataPack, DmxHeaderPack};

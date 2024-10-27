@@ -4,8 +4,7 @@ mod show;
 mod show_manager;
 
 pub mod prelude {
-    pub use crate::show::show::*;
-    pub use crate::show::show_manager::*;
+    pub use crate::show::{show::*, show_manager::*};
 }
 
 #[derive(RustEmbed)]

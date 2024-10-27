@@ -1,7 +1,4 @@
-use rusty_halloween::{
-    prelude::{pack::HeaderPack, FrameSendPack, MessageSendPack},
-    show::LaserDataFrame,
-};
+use rusty_halloween::{prelude::{pack::HeaderPack, FrameSendPack, MessageSendPack}, show::LaserDataFrame};
 use serde_json::{Map, Value};
 use std::fs;
 

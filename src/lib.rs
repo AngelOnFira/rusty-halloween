@@ -1,27 +1,26 @@
-use interprocess::local_socket::LocalSocketStream;
-
-use prelude::LoadedSong;
+use anyhow::Error;
+use chrono::Local;
+use env_logger::Builder;
+use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
+use log::{debug, error, info, warn, LevelFilter};
+use prelude::{uart::UARTProjectorController, LoadedSong};
 use projector::FrameSendPack;
-
-use std::io::{self};
+use show::prelude::{ShowChoice, ShowElement, ShowManager};
+use std::io::{
+    Write, {self},
+};
+use tokio::{signal, sync::mpsc};
 
 pub mod audio;
 pub mod config;
-pub mod dashboard;
 pub mod dmx;
 pub mod lights;
 pub mod projector;
 pub mod show;
 pub mod structure;
-mod bin;
 
 pub mod prelude {
-    pub use crate::audio::*;
-    pub use crate::config::*;
-    pub use crate::dashboard::*;
-    pub use crate::lights::*;
-    pub use crate::projector::*;
-    pub use crate::show::*;
+    pub use crate::{audio::*, config::*, lights::*, projector::*, show::*};
 }
 
 fn handle_error(conn: io::Result<LocalSocketStream>) -> Option<LocalSocketStream> {

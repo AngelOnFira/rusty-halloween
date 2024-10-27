@@ -2,10 +2,9 @@ use std::fmt::{Debug, Display};
 
 use self::pack::{DrawPack, HeaderPack};
 
-use crate::projector::pack::CheckSum;
-use crate::show::LaserDataFrame;
+use crate::{projector::pack::CheckSum, show::LaserDataFrame};
 
-use log::{info, debug};
+use log::{debug, info};
 // use rillrate::prime::{Click, ClickOpts};
 use rust_embed::RustEmbed;
 
@@ -63,12 +62,7 @@ impl Display for MessageSendPack {
             false => format!("{} draw instructions", self.draw_instructions.len()),
         };
 
-        write!(
-            f,
-            "Sending to {} with {}",
-            projector,
-            task,
-        )
+        write!(f, "Sending to {} with {}", projector, task,)
     }
 }
 

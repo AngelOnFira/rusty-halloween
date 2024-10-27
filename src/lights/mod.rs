@@ -1,5 +1,5 @@
 use anyhow::Error;
-use log::{info, error};
+use log::{error, info};
 // use rillrate::prime::{Switch, SwitchOpts};
 use tokio::sync::mpsc;
 
@@ -90,10 +90,15 @@ impl LightController {
     #[allow(dead_code, unused_variables)]
     pub fn set_pin(&mut self, pin: u8, value: bool) {
         let pin = pin - 1;
-        info!("Light {}: setting to {}. Len of pins: {}", pin, value, self.pins.len());
+        info!(
+            "Light {}: setting to {}. Len of pins: {}",
+            pin,
+            value,
+            self.pins.len()
+        );
         // Note; light values are inverted since the physical lights are
         // inverted
-        
+
         // Make sure the pin input is not outside of the range of pins
         if pin as usize > self.pins.len() {
             error!("Light {}: pin {} is out of range", pin, pin);

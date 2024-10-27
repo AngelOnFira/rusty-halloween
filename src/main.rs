@@ -1,31 +1,21 @@
 use anyhow::Error;
 use chrono::Local;
 use env_logger::Builder;
-use interprocess::local_socket::LocalSocketListener;
-use log::debug;
-use log::error;
-use log::info;
-use log::warn;
-use log::LevelFilter;
-use prelude::DmxState;
-use std::io::Write;
-use tokio::signal;
-// use rillrate::prime::{LiveTail, LiveTailOpts, Pulse, PulseOpts};
-use crate::prelude::*;
-use crate::InternalMessage;
-// use crate::MessageKind;
-
-use crate::projector::uart::UARTProjectorController;
-use crate::show::prelude::*;
-use crate::MessageKind;
-
-use tokio::sync::mpsc;
+use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
+use log::{debug, error, info, warn, LevelFilter};
+use rusty_halloween::{
+    prelude::{uart::UARTProjectorController, LoadedSong},
+    projector::FrameSendPack,
+    show::prelude::{ShowChoice, ShowElement, ShowManager},
+    InternalMessage, MessageKind,
+};
+use std::io::{
+    Write, {self},
+};
+use tokio::{signal, sync::mpsc};
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    // Init the dashboard
-    // dashboard_core::init();
-
     // Start logging
     Builder::new()
         .format(|buf, record| {
@@ -76,10 +66,6 @@ async fn main() -> Result<(), Error> {
 
     // Message queue
     let (message_queue_tx, mut message_queue_rx) = mpsc::channel(100);
-
-    // Start the dashboard
-    info!("Starting dashboard...");
-    Dashboard::init(message_queue_tx.clone()).await?;
 
     // Initialize the lights
     #[cfg(feature = "pi")]
@@ -150,7 +136,6 @@ async fn main() -> Result<(), Error> {
         //     Default::default(),
         //     LiveTailOpts::default(),
         // );
-
 
         while let Some(message) = message_queue_rx.recv().await {
             // TODO: Catch errors to not crash the thread

@@ -5,7 +5,7 @@ use packed_struct::{prelude::*, types::bits::Bits};
 // 0      | 0xF0      | Controller ID (Reserved addresses 0xA-0xE)
 //        | 0x0F      | Universe Selector
 #[derive(PackedStruct, Default, Debug, PartialEq, Clone)]
-#[packed_struct(bit_numbering = "msb0", size="1")]
+#[packed_struct(bit_numbering = "msb0", size = "1")]
 pub struct DmxHeaderPack {
     #[packed_field(bits = "0..=3")]
     pub controller_id: Integer<u8, Bits<4>>,
@@ -23,10 +23,10 @@ impl DmxHeaderPack {
 // Byte #    | Bits      | Definition
 // 1 -> 255  | 0xFF      | DMX Channel Data - Forward the DMX data as required by the channel
 //
-// Note: Writing again to the DMX controller requires addressing it again 
+// Note: Writing again to the DMX controller requires addressing it again
 // and sending another 255 bytes
 #[derive(PackedStruct, Default, Debug, PartialEq, Clone)]
-#[packed_struct(bit_numbering = "msb0", size="1")]
+#[packed_struct(bit_numbering = "msb0", size = "1")]
 pub struct DmxDataPack {
     #[packed_field(bits = "0..=7")]
     pub channel_data: Integer<u8, Bits<8>>,

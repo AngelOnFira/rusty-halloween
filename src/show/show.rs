@@ -135,8 +135,8 @@ impl UnloadedShow {
         // Load the hardware configuration
         let hardware_config = std::fs::read_to_string("src/show/assets/2024/hardware.json")
             .expect("Failed to read hardware config");
-        let hardware: serde_json::Value = serde_json::from_str(&hardware_config)
-            .expect("Failed to parse hardware config");
+        let hardware: serde_json::Value =
+            serde_json::from_str(&hardware_config).expect("Failed to parse hardware config");
 
         // Load the show file
         let show_file = std::fs::read_to_string(show_file_path).unwrap();
@@ -146,8 +146,10 @@ impl UnloadedShow {
 
         // Process each timestamp frame
         for (timestamp, frame) in show_json.as_object().unwrap() {
-            if timestamp == "song" { continue; }
-            
+            if timestamp == "song" {
+                continue;
+            }
+
             let timestamp: u64 = timestamp.parse().unwrap();
             let frame = frame.as_object().unwrap();
 
@@ -184,10 +186,20 @@ impl UnloadedShow {
 
                                 match (config, points) {
                                     (Some(config), Some(points)) => {
-                                        let home = config.get("home").and_then(|v| v.as_bool()).unwrap_or(false);
-                                        let speed_profile = config.get("speed-profile").and_then(|v| v.as_u64()).unwrap_or(0) as u8;
-                                        
-                                        let laser_frames = points.as_array().unwrap().iter()
+                                        let home = config
+                                            .get("home")
+                                            .and_then(|v| v.as_bool())
+                                            .unwrap_or(false);
+                                        let speed_profile = config
+                                            .get("speed-profile")
+                                            .and_then(|v| v.as_u64())
+                                            .unwrap_or(0)
+                                            as u8;
+
+                                        let laser_frames = points
+                                            .as_array()
+                                            .unwrap()
+                                            .iter()
                                             .map(|point| {
                                                 let coords = point.as_array().unwrap();
                                                 LaserDataFrame {
@@ -206,7 +218,7 @@ impl UnloadedShow {
                                             enable: true,
                                             data_frame: laser_frames,
                                         })
-                                    },
+                                    }
                                     _ => None,
                                 }
                             };
@@ -241,9 +253,9 @@ impl UnloadedShow {
                     let device_config = &hardware[device_name];
                     let id = device_config["id"].as_u64().unwrap();
                     let format = device_config["format"].as_array().unwrap();
-                    
+
                     let mut values = vec![0u8; format.len()];
-                    
+
                     for (i, channel_type) in format.iter().enumerate() {
                         if let Some(channel_name) = channel_type.as_str() {
                             if !channel_name.is_empty() {

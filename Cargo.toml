@@ -11,12 +11,7 @@ members = [
 ]
 
 [lib]
-name = "rusty_halloween"
 path = "src/lib.rs"
-
-[[bin]]
-name = "rusty-halloween"
-path = "src/bin.rs"
 
 [[bin]]
 name = "test-2024"
