@@ -1,15 +1,7 @@
-use anyhow::Error;
-use chrono::Local;
-use env_logger::Builder;
-use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
-use log::{debug, error, info, warn, LevelFilter};
-use prelude::{uart::UARTProjectorController, LoadedSong};
+use interprocess::local_socket::LocalSocketStream;
+use prelude::LoadedSong;
 use projector::FrameSendPack;
-use show::prelude::{ShowChoice, ShowElement, ShowManager};
-use std::io::{
-    Write, {self},
-};
-use tokio::{signal, sync::mpsc};
+use std::io::{self};
 
 pub mod audio;
 pub mod config;

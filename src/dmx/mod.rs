@@ -1,8 +1,7 @@
 use std::fmt::{Debug, Display};
 
-use crate::{projector::pack::CheckSum, show::LaserDataFrame};
 
-use log::{debug, info};
+use log::debug;
 use pack::{DmxDataPack, DmxHeaderPack};
 use rust_embed::RustEmbed;
 
@@ -112,7 +111,7 @@ impl DmxMessageSendPack {
 
 /// Change from a MessageSendPack to a FrameSendPack
 impl From<DmxMessageSendPack> for FrameSendPack {
-    fn from(mut msg: DmxMessageSendPack) -> FrameSendPack {
+    fn from(msg: DmxMessageSendPack) -> FrameSendPack {
         debug!("{msg}");
 
         let pack = FrameSendPack {
@@ -120,7 +119,7 @@ impl From<DmxMessageSendPack> for FrameSendPack {
             dmx_channel_data: msg
                 .channel_data
                 .into_iter()
-                .map(|mut x| x.pack_data().unwrap()[0])
+                .map(|x| x.pack_data().unwrap()[0])
                 .collect(),
         };
 

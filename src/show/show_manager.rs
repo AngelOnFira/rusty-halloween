@@ -4,9 +4,7 @@ use crate::{
 };
 use log::{error, info};
 
-use core::panic;
 use rand::seq::IteratorRandom;
-// use rillrate::prime::{Click, ClickOpts};
 use std::{
     cmp::max,
     collections::{HashMap, VecDeque},

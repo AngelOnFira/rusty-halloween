@@ -4,8 +4,7 @@ use self::pack::{DrawPack, HeaderPack};
 
 use crate::{projector::pack::CheckSum, show::LaserDataFrame};
 
-use log::{debug, info};
-// use rillrate::prime::{Click, ClickOpts};
+use log::debug;
 use rust_embed::RustEmbed;
 
 pub mod pack;

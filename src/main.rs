@@ -1,17 +1,14 @@
 use anyhow::Error;
 use chrono::Local;
 use env_logger::Builder;
-use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
+use interprocess::local_socket::LocalSocketListener;
 use log::{debug, error, info, warn, LevelFilter};
 use rusty_halloween::{
-    prelude::{uart::UARTProjectorController, LoadedSong},
-    projector::FrameSendPack,
+    prelude::uart::UARTProjectorController,
     show::prelude::{ShowChoice, ShowElement, ShowManager},
     InternalMessage, MessageKind,
 };
-use std::io::{
-    Write, {self},
-};
+use std::io::Write;
 use tokio::{signal, sync::mpsc};
 
 #[tokio::main]
