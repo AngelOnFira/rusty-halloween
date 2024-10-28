@@ -22,9 +22,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cross-
 
-      # Install cross
+      # Install cross only if not cached
       - name: Install cross
-        run: cargo install cross
+        run: |
+          if ! command -v cross &> /dev/null; then
+            cargo install cross
+          fi
 
       # Build with cross
       - name: Build
