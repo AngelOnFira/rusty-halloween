@@ -16,6 +16,22 @@ jobs:
           target: armv7-unknown-linux-gnueabihf
           override: true
 
+      # Install cross-compilation dependencies
+      - name: Install cross-compilation dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config
+          sudo apt-get install -y libasound2-dev
+          sudo apt-get install -y gcc-arm-linux-gnueabihf
+          sudo apt-get install -y libc6-dev-armhf-cross
+
+      # Set up pkg-config for cross-compilation
+      - name: Configure pkg-config
+        run: |
+          echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=/usr/lib/arm-linux-gnueabihf/pkgconfig" >> $GITHUB_ENV
+          echo "PKG_CONFIG_SYSROOT_DIR=/usr/arm-linux-gnueabihf" >> $GITHUB_ENV
+
       # Install cargo-chef
       - name: Install cargo-chef
         uses: actions-rs/cargo@v1
