@@ -670,6 +670,13 @@ async fn show_task_loop(
 
                     info!("Finished playing the show");
 
+                    // Send stop command to audio
+                    show_manager
+                        .message_queue
+                        .send(MessageKind::InternalMessage(InternalMessage::AudioStop))
+                        .await
+                        .unwrap();
+
                     // Remove the current song from the ShowManager
                     show_manager.current_show = None;
 
@@ -790,3 +797,4 @@ async fn show_task_loop(
         }
     }
 }
+

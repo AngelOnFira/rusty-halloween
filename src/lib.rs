@@ -21,12 +21,21 @@ pub enum InternalMessage {
     Light { light_id: u8, enable: bool },
     /// Play an audio file
     Audio { audio_file_contents: LoadedSong },
+    /// Stop audio playback
+    AudioStop,
     /// Direct projector frames
     Laser(FrameSendPack),
     /// DMX data
     DmxUpdateState(Vec<DmxStateVarPosition>),
     /// DMX send request
     DmxSendRequest,
+}
+
+// Add new enum for audio controller messages
+#[derive(Debug)]
+pub enum AudioMessage {
+    Play(LoadedSong),
+    Stop,
 }
 
 /// Messages that should be processed in the queue

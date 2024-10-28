@@ -117,28 +117,40 @@ impl Config {
         })
     }
 
-    pub fn get_dmx_state_var_position(&self, device_name: &str, var_name: &str) -> DmxStateIndex {
+    pub fn get_dmx_state_var_position(
+        &self,
+        device_name: &str,
+        var_name: &str,
+    ) -> DmxStateIndex {
         // Look through either projectors or turrets
         if let Some(project_num) = device_name.strip_prefix("projector-") {
             let id = project_num.parse::<u8>().unwrap();
 
             // Find the index of the var_name in the format
-            let index = self.projectors[id as usize - 1]
+            let var_name_index: u8 = self.projectors[id as usize - 1]
                 .format
                 .iter()
                 .position(|v| v == var_name)
                 .unwrap() as u8;
-            return id + index;
+
+            // Find the DMX address for this hardware device
+            let dmx_address = self.projectors[id as usize - 1].id;
+
+            return dmx_address + var_name_index;
         } else if let Some(turret_num) = device_name.strip_prefix("turret-") {
             let id = turret_num.parse::<u8>().unwrap();
 
             // Find the index of the var_name in the format
-            let index = self.turrets[id as usize - 1]
+            let var_name_index: u8 = self.turrets[id as usize - 1]
                 .format
                 .iter()
                 .position(|v| v == var_name)
                 .unwrap() as u8;
-            return id + index;
+
+            // Find the DMX address for this hardware device
+            let dmx_address = self.turrets[id as usize - 1].id;
+
+            return dmx_address + var_name_index;
         } else {
             // If it wasn't a projector or turret then throw an error
             panic!("Invalid device name: {}", device_name);

@@ -313,6 +313,8 @@ impl UnloadedShow {
         // Sort frames by timestamp
         frames.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
 
+        dbg!(&frames);
+
         UnloadedShow {
             name: show_name.to_string(),
             frames,

@@ -17,6 +17,8 @@ use log::{error, info};
 use rust_embed::RustEmbed;
 use tokio::sync::mpsc;
 
+use crate::AudioMessage;
+
 pub struct Audio {
     manager: Option<AudioManager<CpalBackend>>,
 }
@@ -40,35 +42,46 @@ pub struct LoadedSong {
 struct AudioAsset;
 
 impl Audio {
-    pub fn new(mut receiver: mpsc::Receiver<LoadedSong>) -> Result<(), Error> {
+    pub fn new() -> Result<Self, Error> {
         // TODO: Gracefully handle audio not being available
-        let mut audio_manager = if cfg!(feature = "audio") {
+        if cfg!(feature = "audio") {
             // Adding the cfg feature here for audio allows us to go through
             // the rest of audio testing, but not actually play sound
             match AudioManager::<CpalBackend>::new(AudioManagerSettings::default()) {
-                Ok(manager) => Self {
+                Ok(manager) => Ok(Self {
                     manager: Some(manager),
-                },
+                }),
                 Err(e) => {
                     error!("Error initializing audio: {}", e);
-                    Self { manager: None }
+                    Ok(Self { manager: None })
                 }
             }
         } else {
-            Audio { manager: None }
-        };
+            Ok(Audio { manager: None })
+        }
+    }
 
-        // Start the audio manager thread
-        tokio::spawn(async move {
-            while let Some(sound) = receiver.recv().await {
-                info!("Playing sound: {}", sound.name);
-                if let Some(manager) = audio_manager.manager.as_mut() {
-                    manager.play(sound.stream).unwrap();
+    pub async fn start(mut self, mut receiver: mpsc::Receiver<AudioMessage>) {
+        while let Some(message) = receiver.recv().await {
+            match message {
+                AudioMessage::Play(sound) => {
+                    info!("Playing sound: {}", sound.name);
+                    if let Some(manager) = self.manager.as_mut() {
+                        if let Err(e) = manager.play(sound.stream) {
+                            error!("Failed to play audio: {}", e);
+                        }
+                    }
+                }
+                AudioMessage::Stop => {
+                    info!("Stopping audio playback");
+                    if let Some(manager) = self.manager.as_mut() {
+                        // TODO: Implement stop functionality
+                        // This will depend on how you want to handle stopping - either
+                        // stopping all sounds or specific ones
+                    }
                 }
             }
-        });
-
-        Ok(())
+        }
     }
 
     pub fn get_sound(name: &str) -> Result<LoadingSong, Box<dyn std::error::Error>> {

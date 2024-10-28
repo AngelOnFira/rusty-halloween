@@ -10,7 +10,7 @@ use rusty_halloween::{
     lights::LightController,
     show::prelude::{ShowChoice, ShowElement, ShowManager},
     uart::UartController,
-    InternalMessage, MessageKind,
+    AudioMessage, InternalMessage, MessageKind,
 };
 use std::io::Write;
 use tokio::{signal, sync::mpsc};
@@ -83,11 +83,13 @@ async fn main() -> Result<(), Error> {
     // Initialize the audio
     info!("Starting audio...");
     #[cfg(feature = "audio")]
-    let (audio_channel_tx, audio_manager) = {
-        let (audio_channel_tx, audio_channel_rx) = mpsc::channel(100);
-        let audio_manager = Audio::new(audio_channel_rx);
-
-        (audio_channel_tx, audio_manager)
+    let audio_tx = {
+        let (audio_tx, audio_rx) = mpsc::channel(100);
+        let audio_controller = Audio::new()?;
+        tokio::spawn(async move {
+            audio_controller.start(audio_rx).await;
+        });
+        audio_tx
     };
 
     // Initialize DMX
@@ -109,17 +111,18 @@ async fn main() -> Result<(), Error> {
             match message {
                 MessageKind::InternalMessage(internal_message) => match internal_message {
                     InternalMessage::Audio {
-                        audio_file_contents: _audio_file_contents,
+                        audio_file_contents,
                     } => {
                         if cfg!(feature = "audio") {
-                            match audio_manager {
-                                Ok(_) => {
-                                    audio_channel_tx.send(_audio_file_contents).await.unwrap();
-                                }
-                                Err(_) => {
-                                    error!("Audio manager not initialized");
-                                }
-                            }
+                            audio_tx
+                                .send(AudioMessage::Play(audio_file_contents))
+                                .await
+                                .unwrap();
+                        }
+                    }
+                    InternalMessage::AudioStop => {
+                        if cfg!(feature = "audio") {
+                            audio_tx.send(AudioMessage::Stop).await.unwrap();
                         }
                     }
                     InternalMessage::Light {
