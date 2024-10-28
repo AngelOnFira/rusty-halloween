@@ -16,50 +16,17 @@ jobs:
           target: armv7-unknown-linux-gnueabihf
           override: true
 
-      # Install cross-compilation dependencies
-      - name: Install cross-compilation dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y pkg-config
-          sudo apt-get install -y libasound2-dev
-          sudo apt-get install -y gcc-arm-linux-gnueabihf
-          sudo apt-get install -y libc6-dev-armhf-cross
-
-      # Set up pkg-config for cross-compilation
-      - name: Configure pkg-config
-        run: |
-          echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=/usr/lib/arm-linux-gnueabihf/pkgconfig" >> $GITHUB_ENV
-          echo "PKG_CONFIG_SYSROOT_DIR=/usr/arm-linux-gnueabihf" >> $GITHUB_ENV
-
-      # Install cargo-chef
-      - name: Install cargo-chef
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: cargo-chef
-
-      # Generate recipe.json
-      - name: Generate recipe
-        run: cargo chef prepare --recipe-path recipe.json
-
-      # Cache dependencies based on recipe.json
       - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
+            ~/.cargo/bin/cross
             target
-            ~/.cargo/bin/cross  # Cache cross binary
-          key: ${{ runner.os }}-cargo-${{ hashFiles('recipe.json') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      # Build dependencies only
-      - name: Build dependencies
-        run: cargo chef cook --target armv7-unknown-linux-gnueabihf --release --features pi
-
-      # Build actual project
       - uses: actions-rs/cargo@v1
         with:
           use-cross: true
