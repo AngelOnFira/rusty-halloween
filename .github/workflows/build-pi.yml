@@ -10,30 +10,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          target: armv7-unknown-linux-gnueabihf
-          override: true
-
+      # Cache dependencies
       - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            ~/.cargo/bin/cross
             target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+            ~/.cargo/bin/cross
+          key: ${{ runner.os }}-cross-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-
+            ${{ runner.os }}-cross-
 
-      - uses: actions-rs/cargo@v1
-        with:
-          use-cross: true
-          command: build
-          args: --target armv7-unknown-linux-gnueabihf --release --features pi
+      # Install cross
+      - name: Install cross
+        run: cargo install cross
 
-      - name: Archive code coverage results
+      # Build with cross
+      - name: Build
+        run: cross build --target armv7-unknown-linux-gnueabihf --release --features pi
+
+      - name: Archive binary
         uses: actions/upload-artifact@v4
         with:
           name: pi-binary
