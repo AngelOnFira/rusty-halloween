@@ -50,8 +50,16 @@ impl DmxState {
                     // Debug print the values
                     println!("{:?}", self);
 
+                    let mut data = Vec::new();
+
+                    // Add the header to the start of the array
+                    data.push(0xA0);
+
+                    // Add the rest of the values
+                    data.extend_from_slice(&self.values);
+
                     uart_tx
-                        .send(UartMessage::DMX(self.values.to_vec()))
+                        .send(UartMessage::DMX(data))
                         .await
                         .unwrap();
                 }
