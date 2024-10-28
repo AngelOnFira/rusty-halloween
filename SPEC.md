@@ -14,27 +14,27 @@ All data is sent over the same UART bus on `/dev/serial0`. Devices know when to 
 
 The header packet is used for projector control. This packet contains information about the projector ID, point count, and various modes of operation, including configuration and boundary settings.
 
-| Frame # | Bits               | Definition                                                                                          |
-|---------|--------------------|-----------------------------------------------------------------------------------------------------|
-| 0       | `0xF0000000`        | **Projector ID** — Projectors reserve addresses `0x0 - 0x9`. `0xF` is reserved to index all projectors. |
-|         | `0x0FF00000`        | **Point Count**                                                                                     |
-|         | `0x00040000`        | **Enable** flag                                                                                     |
-|         | `0x00080000`        | **Home** flag                                                                                       |
-|         | `0x00020000`        | **Configuration Mode** flag                                                                         |
-|         | `0x00010000`        | **Draw Boundary** flag                                                                              |
-|         | `0x00008000`        | **Oneshot** flag                                                                                    |
-|         | `0x00007000`        | **Speed Profile**                                                                                   |
-|         | `0x00000001`        | **Checksum**                                                                                        |
+| Frame # | Bits         | Definition                                                                                              |
+| ------- | ------------ | ------------------------------------------------------------------------------------------------------- |
+| 0       | `0xF0000000` | **Projector ID** — Projectors reserve addresses `0x0 - 0x9`. `0xF` is reserved to index all projectors. |
+|         | `0x0FF00000` | **Point Count**                                                                                         |
+|         | `0x00040000` | **Enable** flag                                                                                         |
+|         | `0x00080000` | **Home** flag                                                                                           |
+|         | `0x00020000` | **Configuration Mode** flag                                                                             |
+|         | `0x00010000` | **Draw Boundary** flag                                                                                  |
+|         | `0x00008000` | **Oneshot** flag                                                                                        |
+|         | `0x00007000` | **Speed Profile**                                                                                       |
+|         | `0x00000001` | **Checksum**                                                                                            |
 
 ### **Pattern Selection (32-bit Packet)**
 
 This packet defines the pattern ID and color mask used for projector visualizations.
 
-| Frame # | Bits             | Definition                                                          |
-|---------|------------------|---------------------------------------------------------------------|
-| 1       | `0xFF000000`      | **Pattern ID** — Selected from a pattern lookup array               |
-|         | `0x00FF8000`      | **Color Mask** — 3-bit Red, 3-bit Green, 3-bit Blue (9-bit total)   |
-|         | `0x00000001`      | **Checksum**                                                       |
+| Frame # | Bits         | Definition                                                        |
+| ------- | ------------ | ----------------------------------------------------------------- |
+| 1       | `0xFF000000` | **Pattern ID** — Selected from a pattern lookup array             |
+|         | `0x00FF8000` | **Color Mask** — 3-bit Red, 3-bit Green, 3-bit Blue (9-bit total) |
+|         | `0x00000001` | **Checksum**                                                      |
 
 ### **Pattern Lookup Array**
 
@@ -56,18 +56,18 @@ DMX data is sent in 8-bit packets. Each message includes a header to identify th
 
 The header packet identifies the controller and universe.
 
-| Byte #  | Bits          | Definition                                                                 |
-|---------|---------------|----------------------------------------------------------------------------|
-| 0       | `0xF0`        | **Controller ID** — DMX Controllers reserve addresses `0xA-0xE`.            |
-|         | `0x0F`        | **Universe Selector** — Used to extend the number of addressable DMX devices. |
+| Byte # | Bits   | Definition                                                                    |
+| ------ | ------ | ----------------------------------------------------------------------------- |
+| 0      | `0xF0` | **Controller ID** — DMX Controllers reserve addresses `0xA-0xE`.              |
+|        | `0x0F` | **Universe Selector** — Used to extend the number of addressable DMX devices. |
 
 ### **DMX Data (8-bit Packet)**
 
-DMX data is straightforward, containing 255 bytes for DMX channel data. Writing again to the dmx controller requires that you address it again and send another 255 bytes
+DMX data is straightforward, containing 255 bytes for DMX channel data. Indexing starts at 1, not 0. This means that a hardware device with ID 1 would start writing its data the byte after the header. Writing again to the DMX controller requires that you address it again and send another 255 bytes.
 
-| Byte #  | Bits          | Definition                                                                 |
-|---------|---------------|----------------------------------------------------------------------------|
-| 1 -> 255  | `0xFF`        | **DMX Channel Data** — Forward the DMX data as required by the channel.     |
+| Byte #   | Bits   | Definition                                                              |
+| -------- | ------ | ----------------------------------------------------------------------- |
+| 1 -> 255 | `0xFF` | **DMX Channel Data** — Forward the DMX data as required by the channel. |
 
 ---
 
@@ -77,32 +77,32 @@ Devices and their protocols are mapped in JSON format. The example below shows h
 
 ```json
 {
-  "light-0": { "protocol": "GPIO", 
+  "light-0": { "protocol": "GPIO",
                "pin": 12 },
-  "light-1": { "protocol": "GPIO", 
+  "light-1": { "protocol": "GPIO",
                "pin": 15 },
   ...
-  "light-8": { 
-    "protocol": "DMX", 
-    "format": [ /* DMX channel format */ ], 
-    "ID": 0 
+  "light-8": {
+    "protocol": "DMX",
+    "format": [ /* DMX channel format */ ],
+    "ID": 0
   },
   ...
   "laser-1": { "protocol": "SERIAL",
                "ID": 1},
-  "laser-2": { "protocol": "SERIAL", 
+  "laser-2": { "protocol": "SERIAL",
                "ID": 2},
   ...
-  "laser-6": { 
-    "protocol": "DMX", 
-    "format": [ /* DMX channel format */ ], 
-    "ID": 1 
+  "laser-6": {
+    "protocol": "DMX",
+    "format": [ /* DMX channel format */ ],
+    "ID": 1
   },
   ...
-  "turret-0": { 
-    "protocol": "DMX", 
-    "format": [ /* DMX channel format */ ], 
-    "ID": 2 
+  "turret-0": {
+    "protocol": "DMX",
+    "format": [ /* DMX channel format */ ],
+    "ID": 2
   }
 }
 ```
@@ -113,7 +113,7 @@ You can see the 2024 hardware spec [here](https://gist.github.com/AngelOnFira/5f
 
 For DMX devices, the format array provides a lookup for keywords in the instruction JSON. When the index of the keyword is searched, it will return a channel value, that when combined with the device ID will give the channel address for that value. The number of channels used by a device is equal to the length of the format array.
 
-Ex: 
+Ex:
 
 ID: 5
 format: ["state", "", "library", "pattern", "" ""]
