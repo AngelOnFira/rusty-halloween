@@ -54,12 +54,6 @@ impl FrameSendPack {
         bytes.extend_from_slice(&self.header);
         bytes.extend_from_slice(&self.draw_instruction);
 
-        // Add extra bytes to pad up to 51 total frames including the header and
-        // draw instructions
-        while bytes.len() < 51 * 4 {
-            bytes.push(0);
-        }
-
         bytes
     }
 }
