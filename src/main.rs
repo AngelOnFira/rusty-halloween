@@ -52,7 +52,7 @@ async fn main() -> Result<(), Error> {
     let (message_queue_tx, mut message_queue_rx) = mpsc::channel(100);
 
     // Initialize the lights
-    let light_controller = {
+    let mut light_controller = {
         info!("Starting lights...");
         let tx_clone = message_queue_tx.clone();
         #[allow(unused_variables, unused_mut)]
