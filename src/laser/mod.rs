@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Display};
 
-use self::pack::{DrawPack, HeaderPack};
+use self::pack::{HeaderPack, PatternPack};
 
 use crate::{laser::pack::CheckSum, show::LaserDataFrame, uart::UartMessage};
 
@@ -44,7 +44,7 @@ impl LaserController {
 #[derive(PartialEq, Clone, Debug)]
 pub struct FrameSendPack {
     pub header: Frame,
-    pub draw_instructions: Vec<Frame>,
+    pub draw_instruction: Frame,
 }
 
 impl FrameSendPack {
@@ -52,9 +52,7 @@ impl FrameSendPack {
         let mut bytes = Vec::new();
 
         bytes.extend_from_slice(&self.header);
-        for draw_instruction in self.draw_instructions {
-            bytes.extend_from_slice(&draw_instruction);
-        }
+        bytes.extend_from_slice(&self.draw_instruction);
 
         // Add extra bytes to pad up to 51 total frames including the header and
         // draw instructions
@@ -69,15 +67,13 @@ impl FrameSendPack {
 #[derive(PartialEq, Clone, Debug)]
 pub struct MessageSendPack {
     pub header: HeaderPack,
-    pub draw_instructions: Vec<DrawPack>,
+    pub draw_instruction: PatternPack,
 }
 
 impl Display for MessageSendPack {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut draw_instructions = String::new();
-        for draw_pack in &self.draw_instructions {
-            draw_instructions.push_str(&format!("{}\n", draw_pack));
-        }
+        draw_instructions.push_str(&format!("{}\n", self.draw_instruction));
 
         let projector = match self.header.projector_id.to_string().as_str() {
             "15" => "all projectors".to_string(),
@@ -86,7 +82,7 @@ impl Display for MessageSendPack {
 
         let task = match self.header.home {
             true => "a homing request".to_string(),
-            false => format!("{} draw instructions", self.draw_instructions.len()),
+            false => format!("{} draw instructions", 1),
         };
 
         write!(f, "Sending to {} with {}", projector, task,)
@@ -94,12 +90,12 @@ impl Display for MessageSendPack {
 }
 
 impl MessageSendPack {
-    pub fn new(header: HeaderPack, draw_instructions: Vec<LaserDataFrame>) -> Self {
-        let draw_instructions = draw_instructions.into_iter().map(DrawPack::from).collect();
+    pub fn new(header: HeaderPack, draw_instruction: LaserDataFrame) -> Self {
+        let draw_instruction = PatternPack::from(draw_instruction);
 
         MessageSendPack {
             header,
-            draw_instructions,
+            draw_instruction,
         }
     }
     pub fn home_message() -> Self {
@@ -110,7 +106,7 @@ impl MessageSendPack {
                 enable: true,
                 ..Default::default()
             },
-            draw_instructions: Vec::new(),
+            draw_instruction: PatternPack::default(),
         }
     }
 }
@@ -122,11 +118,7 @@ impl From<MessageSendPack> for FrameSendPack {
 
         let pack = FrameSendPack {
             header: msg.header.checksum_pack(),
-            draw_instructions: msg
-                .draw_instructions
-                .into_iter()
-                .map(|mut x| x.checksum_pack())
-                .collect(),
+            draw_instruction: msg.draw_instruction.checksum_pack(),
         };
 
         pack

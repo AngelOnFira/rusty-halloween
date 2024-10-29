@@ -105,10 +105,12 @@ pub struct DmxState {
 pub struct Laser {
     // Laser conf
     pub home: bool,
+    pub point_count: u8,
     pub speed_profile: u8,
     pub enable: bool,
     // Laser
-    pub data_frame: Vec<LaserDataFrame>,
+    pub hex: [u8; 3],
+    pub value: u8,
 }
 
 #[derive(Clone, Debug)]
@@ -166,6 +168,8 @@ impl UnloadedShow {
 
             // Process each device in the frame
             for (device_name, device_state) in frame {
+                dbg!(&device_name);
+                dbg!(&device_state);
                 if let Some(light_num) = device_name.strip_prefix("light-") {
                     if let Ok(index) = light_num.parse::<usize>() {
                         if index <= MAX_LIGHTS {
@@ -180,48 +184,102 @@ impl UnloadedShow {
                                 // Reset command
                                 Some(Laser {
                                     home: false,
+                                    point_count: 0,
                                     speed_profile: 0,
                                     enable: true,
-                                    data_frame: vec![LaserDataFrame::default()],
+                                    hex: [0, 0, 0],
+                                    value: 0,
                                 })
                             } else {
                                 // Full laser configuration
                                 let config = device_state.get("config");
                                 let points = device_state.get("points");
 
-                                match (config, points) {
-                                    (Some(config), Some(points)) => {
+                                match config {
+                                    Some(config) => {
                                         let home = config
                                             .get("home")
                                             .and_then(|v| v.as_bool())
                                             .unwrap_or(false);
+
                                         let speed_profile = config
                                             .get("speed-profile")
                                             .and_then(|v| v.as_u64())
                                             .unwrap_or(0)
                                             as u8;
 
-                                        let laser_frames = points
-                                            .as_array()
-                                            .unwrap()
-                                            .iter()
-                                            .map(|point| {
-                                                let coords = point.as_array().unwrap();
-                                                LaserDataFrame {
-                                                    x_pos: coords[0].as_u64().unwrap() as u16,
-                                                    y_pos: coords[1].as_u64().unwrap() as u16,
-                                                    r: coords[2].as_u64().unwrap() as u8,
-                                                    g: coords[3].as_u64().unwrap() as u8,
-                                                    b: coords[4].as_u64().unwrap() as u8,
-                                                }
+                                        let point_count =
+                                            points.unwrap().as_array().unwrap().len() as u8;
+
+                                        dbg!(device_state.get("hex"));
+
+                                        let hex = device_state
+                                            .get("hex")
+                                            .and_then(|v| v.as_str())
+                                            .unwrap_or("000")
+                                            .chars()
+                                            .map(|c| {
+                                                u8::from_str_radix(&c.to_string(), 16).unwrap()
                                             })
-                                            .collect();
+                                            .collect::<Vec<u8>>()
+                                            .try_into()
+                                            .unwrap();
+
+                                        let value_lookup = [
+                                            "bat",
+                                            "bow",
+                                            "bow_slow",
+                                            "candy",
+                                            "circle",
+                                            "circle_slow",
+                                            "clockwise_spiral_slow",
+                                            "counterclockwise_spiral_slow",
+                                            "crescent",
+                                            "ghost",
+                                            "gravestone_cross",
+                                            "hexagon",
+                                            "hexagon_slow",
+                                            "horizontal_lines_left_to_right_slow",
+                                            "horizontal_lines_right_to_left_slow",
+                                            "lightning_bolt",
+                                            "octagon",
+                                            "octagon_slow",
+                                            "parallelogram",
+                                            "parallelogram_slow",
+                                            "pentagon",
+                                            "pentagon_slow",
+                                            "pentagram",
+                                            "pentagram_slow",
+                                            "pumpkin",
+                                            "septagon_slow",
+                                            "square_large",
+                                            "square_large_slow",
+                                            "square_small",
+                                            "square_small_slow",
+                                            "star",
+                                            "star_slow",
+                                            "triangle_large",
+                                            "triangle_large_slow",
+                                            "triangle_small",
+                                            "triangle_small_slow",
+                                            "vertical_lines_bottom_to_top_slow",
+                                            "vertical_lines_top_to_bottom_slow",
+                                        ];
+
+                                        let value_config = device_state.get("value").unwrap();
+                                        let value = value_lookup
+                                            .iter()
+                                            .position(|&v| v == value_config.as_str().unwrap())
+                                            .unwrap_or(0)
+                                            as u8;
 
                                         Some(Laser {
                                             home,
+                                            point_count,
                                             speed_profile,
                                             enable: true,
-                                            data_frame: laser_frames,
+                                            hex,
+                                            value,
                                         })
                                     }
                                     _ => None,
@@ -347,8 +405,7 @@ impl UnloadedShow {
 impl Default for LaserDataFrame {
     fn default() -> Self {
         Self {
-            x_pos: 0,
-            y_pos: 0,
+            pattern_id: 0,
             r: 0,
             g: 0,
             b: 0,

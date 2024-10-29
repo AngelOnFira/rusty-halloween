@@ -1,10 +1,13 @@
 use crate::{
     config::Config,
+    laser::pack::PatternPack,
     prelude::{pack::HeaderPack, MessageSendPack},
+    show::LaserDataFrame,
     InternalMessage, MessageKind,
 };
 use log::{error, info};
 
+use core::panic;
 use rand::seq::IteratorRandom;
 use std::{
     cmp::max,
@@ -144,41 +147,43 @@ impl ShowManager {
                 }
             }
 
-            for (i, laser) in frame.lasers.iter().enumerate() {
-                let laser_name = format!("laser-{}", i);
-                let laser_config_name = format!("laser-{}-config", i);
-                if let Some(laser) = laser {
-                    file_json[&timestamp][&laser_config_name] = json::JsonValue::new_object();
-                    file_json[&timestamp][&laser_config_name]["home"] =
-                        json::JsonValue::Boolean(laser.home);
-                    file_json[&timestamp][&laser_config_name]["speed-profile"] =
-                        json::JsonValue::Number(laser.speed_profile.into());
+            // TODO: Fix this if we need to save the laser data
+            unimplemented!();
+            // for (i, laser) in frame.lasers.iter().enumerate() {
+            //     let laser_name = format!("laser-{}", i);
+            //     let laser_config_name = format!("laser-{}-config", i);
+            //     if let Some(laser) = laser {
+            //         file_json[&timestamp][&laser_config_name] = json::JsonValue::new_object();
+            //         file_json[&timestamp][&laser_config_name]["home"] =
+            //             json::JsonValue::Boolean(laser.home);
+            //         file_json[&timestamp][&laser_config_name]["speed-profile"] =
+            //             json::JsonValue::Number(laser.speed_profile.into());
 
-                    file_json[&timestamp][&laser_name] = json::JsonValue::new_array();
+            //         file_json[&timestamp][&laser_name] = json::JsonValue::new_array();
 
-                    for laser_frame in &laser.data_frame {
-                        file_json[&timestamp][&laser_name]
-                            .push(json::JsonValue::new_array())
-                            .unwrap();
-                        let last_index = file_json[&timestamp][&laser_name].len() - 1;
-                        file_json[&timestamp][&laser_name][last_index]
-                            .push(laser_frame.x_pos)
-                            .unwrap();
-                        file_json[&timestamp][&laser_name][last_index]
-                            .push(laser_frame.y_pos)
-                            .unwrap();
-                        file_json[&timestamp][&laser_name][last_index]
-                            .push(laser_frame.r)
-                            .unwrap();
-                        file_json[&timestamp][&laser_name][last_index]
-                            .push(laser_frame.g)
-                            .unwrap();
-                        file_json[&timestamp][&laser_name][last_index]
-                            .push(laser_frame.b)
-                            .unwrap();
-                    }
-                }
-            }
+            //         for laser_frame in &laser.data_frame {
+            //             file_json[&timestamp][&laser_name]
+            //                 .push(json::JsonValue::new_array())
+            //                 .unwrap();
+            //             let last_index = file_json[&timestamp][&laser_name].len() - 1;
+            //             file_json[&timestamp][&laser_name][last_index]
+            //                 .push(laser_frame.x_pos)
+            //                 .unwrap();
+            //             file_json[&timestamp][&laser_name][last_index]
+            //                 .push(laser_frame.y_pos)
+            //                 .unwrap();
+            //             file_json[&timestamp][&laser_name][last_index]
+            //                 .push(laser_frame.r)
+            //                 .unwrap();
+            //             file_json[&timestamp][&laser_name][last_index]
+            //                 .push(laser_frame.g)
+            //                 .unwrap();
+            //             file_json[&timestamp][&laser_name][last_index]
+            //                 .push(laser_frame.b)
+            //                 .unwrap();
+            //         }
+            //     }
+            // }
         }
 
         file_json.pretty(4)
@@ -378,7 +383,6 @@ async fn show_task_loop(
                             MessageSendPack {
                                 header: HeaderPack {
                                     projector_id: 15.into(),
-                                    point_count: 0.into(),
                                     home: true,
                                     enable: true,
                                     configuration_mode: false,
@@ -387,7 +391,7 @@ async fn show_task_loop(
                                     speed_profile: 0.into(),
                                     ..Default::default()
                                 },
-                                draw_instructions: Vec::new(),
+                                draw_instruction: PatternPack::default(),
                             }
                             .into(),
                         )))
@@ -603,7 +607,7 @@ async fn show_task_loop(
                                         MessageSendPack::new(
                                             HeaderPack {
                                                 projector_id: (laser_number as u8).into(),
-                                                point_count: (laser.data_frame.len() as u8).into(),
+                                                point_count: laser.point_count.into(),
                                                 home: false,
                                                 enable: true,
                                                 configuration_mode: false,
@@ -612,7 +616,12 @@ async fn show_task_loop(
                                                 speed_profile: laser.speed_profile.into(),
                                                 ..Default::default()
                                             },
-                                            laser.data_frame.clone(),
+                                            LaserDataFrame {
+                                                pattern_id: laser.value,
+                                                r: laser.hex[0],
+                                                g: laser.hex[1],
+                                                b: laser.hex[2],
+                                            },
                                         )
                                         .into(),
                                     )))
@@ -720,7 +729,7 @@ async fn show_task_loop(
                                     speed_profile: 0.into(),
                                     ..Default::default()
                                 },
-                                draw_instructions: Vec::new(),
+                                draw_instruction: PatternPack::default(),
                             }
                             .into(),
                         )))
@@ -797,4 +806,3 @@ async fn show_task_loop(
         }
     }
 }
-

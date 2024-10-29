@@ -33,16 +33,6 @@ impl DmxState {
         }
     }
 
-    pub fn set_dmx_state(&mut self, dmx_state_var_positions: Vec<DmxStateVarPosition>) {
-        for (index, value) in dmx_state_var_positions {
-            // DMX addresses start at 1, not 0. Translate the DMX index to the
-            // correct array index
-            let index = index as usize - 1;
-
-            self.values[index] = value;
-        }
-    }
-
     pub async fn start(
         mut self,
         mut rx: mpsc::Receiver<DmxMessage>,
@@ -67,7 +57,11 @@ impl DmxState {
                 }
                 DmxMessage::UpdateState(state) => {
                     for (index, value) in state {
-                        self.values[index as usize] = value;
+                        // DMX addresses start at 1, not 0. Translate the DMX index to the
+                        // correct array index
+                        let index = index as usize - 1;
+
+                        self.values[index] = value;
                     }
                 }
             }

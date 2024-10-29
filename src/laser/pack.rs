@@ -60,64 +60,19 @@ impl CheckSum for HeaderPack {
         self.checksum = self.calculate_checksum(self.pack().unwrap());
         let pack = self.pack().unwrap();
 
-        // println!("{:#?}", &self);
-
         pack
     }
 }
 
-// frame # | Bits & Definition
-// Draw Mode:
-// 1 -> n  | 0xFF800000 = X coordinate
-//         | 0x007FC000 = Y coordinate
-//         | 0x00003800 = Red 3-bit colour
-//         | 0x00000700 = Green 3-bit colour
-//         | 0x000000E0 = Blue 3-bit colour
+// Pattern Selection:
+// 1       | 0xFF000000 = Pattern ID - Selected from pattern lookup array
+//         | 0x00FF8000 = Color Mask - 3-bit Red, 3-bit Green, 3-bit Blue (9-bit total)
 //         | 0x00000001 = Checksum
 #[derive(PackedStruct, Default, Debug, PartialEq, Clone)]
 #[packed_struct(bit_numbering = "msb0")]
-pub struct DrawPack {
-    #[packed_field(bits = "0..=8", endian = "msb")]
-    pub x: Integer<u16, Bits<9>>,
-    #[packed_field(bits = "9..=17", endian = "msb")]
-    pub y: Integer<u16, Bits<9>>,
-    #[packed_field(bits = "18..=20")]
-    pub red: Integer<u8, Bits<3>>,
-    #[packed_field(bits = "21..=23")]
-    pub green: Integer<u8, Bits<3>>,
-    #[packed_field(bits = "24..=26")]
-    pub blue: Integer<u8, Bits<3>>,
-    #[packed_field(bits = "27..=30")]
-    pub _reserved: ReservedZero<packed_bits::Bits<4>>,
-    #[packed_field(bits = "31")]
-    pub checksum: bool,
-}
-
-impl CheckSum for DrawPack {
-    fn checksum_pack(&mut self) -> [u8; 4] {
-        self.checksum = self.calculate_checksum(self.pack().unwrap());
-        self.pack().unwrap()
-    }
-}
-
-impl From<LaserDataFrame> for DrawPack {
-    fn from(laser: LaserDataFrame) -> Self {
-        DrawPack {
-            x: laser.x_pos.into(),
-            y: laser.y_pos.into(),
-            red: laser.r.into(),
-            green: laser.g.into(),
-            blue: laser.b.into(),
-            ..Default::default()
-        }
-    }
-}
-
-#[derive(PackedStruct, Default, Debug, PartialEq, Clone)]
-#[packed_struct(bit_numbering = "msb0")]
-pub struct NewPack {
+pub struct PatternPack {
     #[packed_field(bits = "0..=7")]
-    pub index: Integer<u8, Bits<8>>,
+    pub pattern_id: Integer<u8, Bits<8>>,
     #[packed_field(bits = "8..=10")]
     pub red: Integer<u8, Bits<3>>,
     #[packed_field(bits = "11..=13")]
@@ -130,26 +85,24 @@ pub struct NewPack {
     pub checksum: bool,
 }
 
-impl CheckSum for NewPack {
+impl CheckSum for PatternPack {
     fn checksum_pack(&mut self) -> [u8; 4] {
         self.checksum = self.calculate_checksum(self.pack().unwrap());
         self.pack().unwrap()
     }
 }
 
-// frame # | Bits & Definition
-// Configure Mode:
-// 1       | 0xFFFFF000 = Acceleration (0 - 1048574)
-//         | 0x00000FFE = Transfer Size (0 - 2046)
-//         | 0x00000001 = Checksum
-// 2       | 0xFFFFC000 = Max Speed (0 - 262142)
-//         | 0x00003FFE = Min Speed (0 - 16382)
-//         | 0x00000001 = Checksum
-// 3       | 0xFFF00000 = X Home Pos (0 - 4094)
-//         | 0x000FFF00 = Y Home Pos (0 - 4094)
-//         | 0x000000F0 = Projector ID (0 - 14)
-//         | 0x00000001 = Checksum
-// 4 -> n  | 0x00000000
+impl From<LaserDataFrame> for PatternPack {
+    fn from(laser: LaserDataFrame) -> Self {
+        PatternPack {
+            pattern_id: laser.pattern_id.into(),
+            red: laser.r.into(),
+            green: laser.g.into(),
+            blue: laser.b.into(),
+            ..Default::default()
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -282,14 +235,13 @@ mod tests {
     fn test_draw_pack_empty() -> Result<(), PackingError> {
         assert_eq!(
             [0x00, 0x00, 0x00, 0x00],
-            DrawPack::default().checksum_pack()
+            PatternPack::default().checksum_pack()
         );
 
         assert_eq!(
             [0x00, 0x00, 0x00, 0x00],
-            DrawPack {
-                x: 0.into(),
-                y: 0.into(),
+            PatternPack {
+                pattern_id: 0.into(),
                 red: 0.into(),
                 green: 0.into(),
                 blue: 0.into(),
@@ -306,13 +258,12 @@ mod tests {
     fn test_draw_pack() -> Result<(), PackingError> {
         assert_eq!(
             [0x3d, 0x17, 0x38, 0x00],
-            DrawPack {
-                x: 122.into(),
-                y: 92.into(),
+            PatternPack {
+                pattern_id: 122.into(),
                 red: 7.into(),
                 green: 0.into(),
                 blue: 0.into(),
-                ..DrawPack::default()
+                ..PatternPack::default()
             }
             .checksum_pack()
         );
