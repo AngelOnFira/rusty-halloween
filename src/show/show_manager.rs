@@ -7,7 +7,6 @@ use crate::{
 };
 use log::{error, info};
 
-use core::panic;
 use rand::seq::IteratorRandom;
 use std::{
     cmp::max,

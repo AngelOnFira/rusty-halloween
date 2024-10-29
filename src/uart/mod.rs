@@ -1,11 +1,9 @@
+use anyhow::Error;
 use log::error;
 use tokio::sync::mpsc;
-use anyhow::Error;
 
 #[cfg(feature = "pi")]
 use rppal::uart::{Parity, Uart};
-
-use crate::MessageKind;
 
 pub enum UartMessage {
     Laser(Vec<u8>),
@@ -44,7 +42,7 @@ impl UartController {
                     }
                     // Sleep for the calculated delay (as in your original code)
                     tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-                },
+                }
                 UartMessage::DMX(data) => {
                     if let Err(e) = self.send_data(data) {
                         error!("Failed to send DMX data: {}", e);

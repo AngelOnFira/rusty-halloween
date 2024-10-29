@@ -3,7 +3,7 @@ use pi_pinout::{GpioPin, PhysicalPin, WiringPiPin};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::show::prelude::{DmxStateIndex, DmxStateVarPosition};
+use crate::show::prelude::DmxStateIndex;
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
 pub struct Config {
@@ -117,11 +117,7 @@ impl Config {
         })
     }
 
-    pub fn get_dmx_state_var_position(
-        &self,
-        device_name: &str,
-        var_name: &str,
-    ) -> DmxStateIndex {
+    pub fn get_dmx_state_var_position(&self, device_name: &str, var_name: &str) -> DmxStateIndex {
         // Look through either projectors or turrets
         if let Some(project_num) = device_name.strip_prefix("projector-") {
             let id = project_num.parse::<u8>().unwrap();

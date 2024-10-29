@@ -4,8 +4,6 @@ use self::pack::{HeaderPack, PatternPack};
 
 use crate::{laser::pack::CheckSum, show::LaserDataFrame, uart::UartMessage};
 
-use log::debug;
-use rust_embed::RustEmbed;
 use tokio::sync::mpsc;
 
 pub mod pack;
@@ -108,8 +106,6 @@ impl MessageSendPack {
 /// Change from a MessageSendPack to a FrameSendPack
 impl From<MessageSendPack> for FrameSendPack {
     fn from(mut msg: MessageSendPack) -> FrameSendPack {
-        debug!("{msg}");
-
         let pack = FrameSendPack {
             header: msg.header.checksum_pack(),
             draw_instruction: msg.draw_instruction.checksum_pack(),

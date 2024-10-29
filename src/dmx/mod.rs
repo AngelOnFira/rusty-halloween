@@ -1,5 +1,4 @@
-use pack::{DmxDataPack, DmxHeaderPack};
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 use tokio::sync::mpsc;
 
 use crate::{config::Config, show::prelude::DmxStateVarPosition, uart::UartMessage};

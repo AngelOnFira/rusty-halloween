@@ -1,7 +1,7 @@
 use anyhow::Error;
 use chrono::Local;
 use env_logger::Builder;
-use log::{debug, error, info, warn, LevelFilter};
+use log::{info, LevelFilter};
 use rusty_halloween::{
     audio::Audio,
     config::Config,
@@ -52,7 +52,7 @@ async fn main() -> Result<(), Error> {
     let (message_queue_tx, mut message_queue_rx) = mpsc::channel(100);
 
     // Initialize the lights
-    let mut light_controller = {
+    let light_controller = {
         info!("Starting lights...");
         let tx_clone = message_queue_tx.clone();
         #[allow(unused_variables, unused_mut)]
