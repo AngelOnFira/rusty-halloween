@@ -67,9 +67,9 @@ impl Display for MessageSendPack {
         let mut draw_instructions = String::new();
         draw_instructions.push_str(&format!("{}\n", self.draw_instruction));
 
-        let projector = match self.header.projector_id.to_string().as_str() {
-            "15" => "all projectors".to_string(),
-            id => format!("projector {}", id),
+        let laser = match self.header.laser_id.to_string().as_str() {
+            "15" => "all lasers".to_string(),
+            id => format!("laser {}", id),
         };
 
         let task = match self.header.home {
@@ -77,7 +77,7 @@ impl Display for MessageSendPack {
             false => format!("{} draw instructions", 1),
         };
 
-        write!(f, "Sending to {} with {}", projector, task,)
+        write!(f, "Sending to {} with {}", laser, task,)
     }
 }
 
@@ -93,7 +93,7 @@ impl MessageSendPack {
     pub fn home_message() -> Self {
         MessageSendPack {
             header: HeaderPack {
-                projector_id: 15.into(),
+                laser_id: 15.into(),
                 home: true,
                 enable: true,
                 ..Default::default()

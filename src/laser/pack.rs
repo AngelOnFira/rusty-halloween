@@ -34,7 +34,7 @@ pub trait CheckSum {
 #[packed_struct(bit_numbering = "msb0")]
 pub struct HeaderPack {
     #[packed_field(bits = "0..=3")]
-    pub projector_id: Integer<u8, Bits<4>>,
+    pub laser_id: Integer<u8, Bits<4>>,
     #[packed_field(bits = "4..=11")]
     pub point_count: Integer<u8, Bits<8>>,
     #[packed_field(bits = "12")]
@@ -118,7 +118,7 @@ mod tests {
         assert_eq!(
             [0x00, 0x00, 0x00, 0x00],
             HeaderPack {
-                projector_id: 0.into(),
+                laser_id: 0.into(),
                 point_count: 0.into(),
                 home: false,
                 enable: false,
@@ -140,7 +140,7 @@ mod tests {
         assert_eq!(
             [0x12, 0x0c, 0x00, 0x00],
             HeaderPack {
-                projector_id: 1.into(),
+                laser_id: 1.into(),
                 point_count: 32.into(),
                 home: true,
                 enable: true,
@@ -152,7 +152,7 @@ mod tests {
         assert_eq!(
             [0x12, 0x0f, 0xF0, 0x00],
             HeaderPack {
-                projector_id: 1.into(),
+                laser_id: 1.into(),
                 point_count: 32.into(),
                 home: true,
                 enable: true,
@@ -173,7 +173,7 @@ mod tests {
         assert_eq!(
             [0xf0, 0x00, 0x10, 0x01],
             HeaderPack {
-                projector_id: 0xF.into(),
+                laser_id: 0xF.into(),
                 speed_profile: 1.into(),
                 ..HeaderPack::default()
             }
@@ -183,7 +183,7 @@ mod tests {
         assert_eq!(
             [81, 143, 144, 0],
             HeaderPack {
-                projector_id: 5.into(),
+                laser_id: 5.into(),
                 point_count: 24.into(),
                 home: true,
                 enable: true,
@@ -199,7 +199,7 @@ mod tests {
         assert_eq!(
             [0x20, 0xd6, 0x10, 0x01],
             HeaderPack {
-                projector_id: 2.into(),
+                laser_id: 2.into(),
                 point_count: 13.into(),
                 home: false,
                 enable: true,
@@ -215,7 +215,7 @@ mod tests {
         assert_eq!(
             [0x22, 0xb6, 0x10, 0x00],
             HeaderPack {
-                projector_id: 2.into(),
+                laser_id: 2.into(),
                 point_count: 43.into(),
                 home: false,
                 enable: true,

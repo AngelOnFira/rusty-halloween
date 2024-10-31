@@ -87,7 +87,7 @@ impl Config {
                         .map(|v| v.as_str().unwrap_or("").to_string())
                         .collect();
 
-                    if key.starts_with("projector-") {
+                    if key.starts_with("lp-") {
                         projectors.push(Projector {
                             id: value["id"].as_u64().unwrap_or(0) as u8,
                             format,
@@ -119,7 +119,7 @@ impl Config {
 
     pub fn get_dmx_state_var_position(&self, device_name: &str, var_name: &str) -> DmxStateIndex {
         // Look through either projectors or turrets
-        if let Some(project_num) = device_name.strip_prefix("projector-") {
+        if let Some(project_num) = device_name.strip_prefix("lp-") {
             let id = project_num.parse::<u8>().unwrap();
 
             // Find the index of the var_name in the format

@@ -256,7 +256,7 @@ impl ShowManager {
                         entry
                             .file_name()
                             .to_str()
-                            .map(|s| s.starts_with("instructions-"))
+                            .map(|s| s.starts_with("instructions-exported"))
                             .unwrap_or(false)
                     })
                     .collect::<Vec<_>>();
@@ -381,7 +381,7 @@ async fn show_task_loop(
                         .send(MessageKind::InternalMessage(InternalMessage::Laser(
                             MessageSendPack {
                                 header: HeaderPack {
-                                    projector_id: 15.into(),
+                                    laser_id: 15.into(),
                                     home: true,
                                     enable: true,
                                     configuration_mode: false,
@@ -605,7 +605,7 @@ async fn show_task_loop(
                                     .send(MessageKind::InternalMessage(InternalMessage::Laser(
                                         MessageSendPack::new(
                                             HeaderPack {
-                                                projector_id: (laser_number as u8).into(),
+                                                laser_id: (laser_number as u8).into(),
                                                 point_count: laser.point_count.into(),
                                                 home: false,
                                                 enable: true,
@@ -718,7 +718,7 @@ async fn show_task_loop(
                         .send(MessageKind::InternalMessage(InternalMessage::Laser(
                             MessageSendPack {
                                 header: HeaderPack {
-                                    projector_id: 16.into(),
+                                    laser_id: 16.into(),
                                     point_count: 0.into(),
                                     home: false,
                                     enable: true,

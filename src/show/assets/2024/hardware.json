@@ -54,7 +54,7 @@
         "protocol": "SERIAL",
         "id": 5
     },
-    "projector-1": {
+    "lp-1": {
         "protocol" : "DMX",
         "id": 1,
         "format": [

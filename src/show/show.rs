@@ -288,7 +288,7 @@ impl UnloadedShow {
                             lasers[index - 1] = laser;
                         }
                     }
-                } else if let Some(projector_num) = device_name.strip_prefix("projector-") {
+                } else if let Some(projector_num) = device_name.strip_prefix("lp-") {
                     if let Ok(index) = projector_num.parse::<usize>() {
                         if index <= MAX_PROJECTORS {
                             let projector = Projector {
