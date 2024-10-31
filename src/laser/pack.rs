@@ -54,7 +54,7 @@ pub struct HeaderPack {
     #[packed_field(bits = "17..=19")]
     pub speed_profile: Integer<u8, Bits<3>>,
     #[packed_field(bits = "20..=30")]
-    pub _reserved: ReservedZero<packed_bits::Bits<10>>,
+    pub _reserved: ReservedZero<packed_bits::Bits<11>>,
     #[packed_field(bits = "31")]
     pub checksum: bool,
 }

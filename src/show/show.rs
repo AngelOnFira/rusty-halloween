@@ -208,24 +208,28 @@ impl UnloadedShow {
                                         let point_count =
                                             points.unwrap().as_array().unwrap().len() as u8;
 
-                                        let hex = device_state
+                                        let hex_str = device_state
                                             .get("hex")
                                             .and_then(|v| v.as_str())
-                                            .unwrap_or("000")
-                                            .chars()
-                                            .map(|c| {
-                                                // If it's F, set to 7,
-                                                // otherwise if it's 0, set to
-                                                // 0. If it's anything else, panic.
-                                                match c {
+                                            .unwrap_or("000");
+
+                                        let hex: [u8; 3] = {
+                                            let mut values = hex_str
+                                                .chars()
+                                                .map(|c| match c {
                                                     'F' | 'f' => 7,
                                                     '0' => 0,
                                                     _ => panic!("Invalid hex value: {}", c),
-                                                }
-                                            })
-                                            .collect::<Vec<u8>>()
-                                            .try_into()
-                                            .unwrap();
+                                                })
+                                                .collect::<Vec<u8>>();
+
+                                            // Check that exactly one value is 7
+                                            if values.iter().filter(|&&x| x == 7).count() != 1 {
+                                                panic!("Exactly one color channel must be set to F in hex value: {}", hex_str);
+                                            }
+
+                                            values.try_into().unwrap()
+                                        };
 
                                         let value_lookup = [
                                             "bat",
