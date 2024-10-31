@@ -34,8 +34,8 @@ impl UartController {
                 self.uart.write(chunk)?;
             }
 
-            // Force a flush
-            self.uart.flush()?;
+            // Block until the data is sent
+            self.uart.drain()?;
         }
 
         Ok(())
