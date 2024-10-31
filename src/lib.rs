@@ -29,6 +29,8 @@ pub enum InternalMessage {
     DmxUpdateState(Vec<DmxStateVarPosition>),
     /// DMX send request
     DmxSendRequest,
+    /// Zero out all DMX channels
+    DmxZeroOut,
 }
 
 // Add new enum for audio controller messages

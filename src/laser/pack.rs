@@ -41,12 +41,16 @@ pub struct HeaderPack {
     pub home: bool,
     #[packed_field(bits = "13")]
     pub enable: bool,
+    // Always false
     #[packed_field(bits = "14")]
     pub configuration_mode: bool,
+    // Always false
     #[packed_field(bits = "15")]
     pub draw_boundary: bool,
+    // Always false
     #[packed_field(bits = "16")]
     pub oneshot: bool,
+    // Should be in
     #[packed_field(bits = "17..=19")]
     pub speed_profile: Integer<u8, Bits<3>>,
     #[packed_field(bits = "20..=30")]
@@ -71,6 +75,7 @@ impl CheckSum for HeaderPack {
 #[derive(PackedStruct, Default, Debug, PartialEq, Clone)]
 #[packed_struct(bit_numbering = "msb0")]
 pub struct PatternPack {
+    // TODO: Check this
     #[packed_field(bits = "0..=7")]
     pub pattern_id: Integer<u8, Bits<8>>,
     #[packed_field(bits = "8..=10")]

@@ -1,4 +1,5 @@
 use std::fmt::Debug;
+use log::error;
 use tokio::sync::mpsc;
 
 use crate::{config::Config, show::prelude::DmxStateVarPosition, uart::UartMessage};
@@ -12,6 +13,7 @@ const DMX_CHANNELS: usize = 255;
 pub enum DmxMessage {
     Send,
     UpdateState(Vec<DmxStateVarPosition>),
+    ZeroOut,
 }
 
 pub struct DmxState {
@@ -61,6 +63,19 @@ impl DmxState {
                         let index = index as usize - 1;
 
                         self.values[index] = value;
+                    }
+                }
+                DmxMessage::ZeroOut => {
+                    // Zero out all channels
+                    self.values = [0; DMX_CHANNELS];
+                    
+                    // Send the zeroed state
+                    let mut data = Vec::new();
+                    data.push(0xA0); // Add header
+                    data.extend_from_slice(&self.values);
+                    
+                    if let Err(e) = uart_tx.send(UartMessage::DMX(data)).await {
+                        error!("Failed to send zeroed DMX data: {}", e);
                     }
                 }
             }

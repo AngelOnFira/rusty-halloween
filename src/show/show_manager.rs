@@ -458,7 +458,9 @@ async fn show_task_loop(
 
                                     match last_song {
                                         Some(ref last_song) => {
-                                            if &unloaded_show.name != last_song || attempts >= MAX_ATTEMPTS {
+                                            if &unloaded_show.name != last_song
+                                                || attempts >= MAX_ATTEMPTS
+                                            {
                                                 break unloaded_show;
                                             }
                                             attempts += 1;
@@ -695,22 +697,15 @@ async fn show_task_loop(
                         .await
                         .unwrap();
 
+                    // Zero out DMX channels
+                    show_manager
+                        .message_queue
+                        .send(MessageKind::InternalMessage(InternalMessage::DmxZeroOut))
+                        .await
+                        .unwrap();
+
                     // Remove the current song from the ShowManager
                     show_manager.current_show = None;
-
-                    // // Print the state of the show manager
-                    // info!(
-                    //     "Current show: {:?}, Next show: {:?}, Queue {:?}",
-                    //     match show_manager.current_show {
-                    //         Some(ref show) => show.name.clone(),
-                    //         None => "None".to_string(),
-                    //     },
-                    //     match show_manager.next_show {
-                    //         Some(ref show) => show.name.clone(),
-                    //         None => "None".to_string(),
-                    //     },
-                    //     show_job_queue
-                    // );
 
                     // Now that this show is done, try loading the next show in
                     // the queue

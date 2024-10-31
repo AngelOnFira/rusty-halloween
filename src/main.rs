@@ -150,8 +150,8 @@ async fn main() -> Result<(), Error> {
                             .await
                             .unwrap();
                     }
-                    InternalMessage::DmxSendRequest => {
-                        info!("DMX send request received");
+                    InternalMessage::DmxSendRequest | InternalMessage::DmxZeroOut => {
+                        info!("DMX request received");
                         dmx_tx.send(DmxMessage::Send).await.unwrap();
                     }
                 },

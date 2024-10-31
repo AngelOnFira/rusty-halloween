@@ -272,8 +272,13 @@ impl UnloadedShow {
                                         let value_config = device_state.get("value").unwrap();
                                         let value = value_lookup
                                             .iter()
-                                            .position(|&v| v == value_config.as_str().unwrap())
-                                            .unwrap_or(0)
+                                            .position(|&v| {
+                                                v == value_config
+                                                    .as_str()
+                                                    .unwrap()
+                                                    .replace("-", "_")
+                                            })
+                                            .unwrap()
                                             as u8;
 
                                         Some(Laser {
