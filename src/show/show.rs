@@ -168,8 +168,6 @@ impl UnloadedShow {
 
             // Process each device in the frame
             for (device_name, device_state) in frame {
-                dbg!(&device_name);
-                dbg!(&device_state);
                 if let Some(light_num) = device_name.strip_prefix("light-") {
                     if let Ok(index) = light_num.parse::<usize>() {
                         if index <= MAX_LIGHTS {
@@ -211,15 +209,20 @@ impl UnloadedShow {
                                         let point_count =
                                             points.unwrap().as_array().unwrap().len() as u8;
 
-                                        dbg!(device_state.get("hex"));
-
                                         let hex = device_state
                                             .get("hex")
                                             .and_then(|v| v.as_str())
                                             .unwrap_or("000")
                                             .chars()
                                             .map(|c| {
-                                                u8::from_str_radix(&c.to_string(), 16).unwrap()
+                                                // If it's F, set to 7,
+                                                // otherwise if it's 0, set to
+                                                // 0. If it's anything else, panic.
+                                                match c {
+                                                    'F' | 'f' => 7,
+                                                    '0' => 0,
+                                                    _ => panic!("Invalid hex value: {}", c),
+                                                }
                                             })
                                             .collect::<Vec<u8>>()
                                             .try_into()
@@ -333,28 +336,6 @@ impl UnloadedShow {
                         }
                     }
                 } else {
-                    // // Assume any other device is DMX
-                    // let device_config = &hardware[device_name];
-                    // let id = device_config["id"].as_u64().unwrap();
-                    // let format = device_config["format"].as_array().unwrap();
-
-                    // let mut values = vec![0u8; format.len()];
-
-                    // for (i, channel_type) in format.iter().enumerate() {
-                    //     if let Some(channel_name) = channel_type.as_str() {
-                    //         if !channel_name.is_empty() {
-                    //             if let Some(value) = device_state.get(channel_name) {
-                    //                 values[i] = value.as_u64().unwrap_or(0) as u8;
-                    //             }
-                    //         }
-                    //     }
-                    // }
-
-                    // dmx_states.push(DmxState {
-                    //     device_name: device_name.to_string(),
-                    //     channel_id: id,
-                    //     values,
-                    // });
                     panic!("Unknown device: {}", device_name);
                 }
             }
@@ -370,8 +351,6 @@ impl UnloadedShow {
 
         // Sort frames by timestamp
         frames.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
-
-        dbg!(&frames);
 
         UnloadedShow {
             name: show_name.to_string(),

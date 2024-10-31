@@ -281,9 +281,9 @@ impl ShowManager {
                     .into_iter()
                     .filter_map(|entry| {
                         let path = entry.path();
-                        let file_name = entry.file_name().to_str()?.to_string();
                         let show = UnloadedShow::load_show_file(&path, &config);
-                        Some((file_name, show))
+                        let unique_name = format!("{}-{}", name, entry.file_name().to_str()?);
+                        Some((unique_name, show))
                     })
                     .collect::<ShowMap>()
             })
@@ -435,26 +435,36 @@ async fn show_task_loop(
                         }
                         ShowChoice::Random { last_song } => {
                             // Pick a random show from the show manager list
-                            let unloaded_show = loop {
-                                let unloaded_show = match show_manager
-                                    .shows
-                                    .values()
-                                    .choose(&mut rand::thread_rng())
-                                {
-                                    Some(show) => show.clone(),
-                                    None => {
-                                        error!("There are no shows to play");
-                                        continue;
-                                    }
-                                };
+                            let unloaded_show = {
+                                for show in show_manager.shows.values() {
+                                    dbg!(&show.name);
+                                }
 
-                                match last_song {
-                                    Some(ref last_song) => {
-                                        if &unloaded_show.name != last_song {
-                                            break unloaded_show;
+                                let mut attempts = 0;
+                                const MAX_ATTEMPTS: u8 = 5;
+
+                                loop {
+                                    let unloaded_show = match show_manager
+                                        .shows
+                                        .values()
+                                        .choose(&mut rand::thread_rng())
+                                    {
+                                        Some(show) => show.clone(),
+                                        None => {
+                                            error!("There are no shows to play");
+                                            continue;
                                         }
+                                    };
+
+                                    match last_song {
+                                        Some(ref last_song) => {
+                                            if &unloaded_show.name != last_song || attempts >= MAX_ATTEMPTS {
+                                                break unloaded_show;
+                                            }
+                                            attempts += 1;
+                                        }
+                                        None => break unloaded_show,
                                     }
-                                    None => break unloaded_show,
                                 }
                             };
 

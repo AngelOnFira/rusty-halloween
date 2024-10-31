@@ -41,7 +41,7 @@ impl DmxState {
             match message {
                 DmxMessage::Send => {
                     // Debug print the values
-                    println!("{:?}", self);
+                    // println!("{:?}", self);
 
                     let mut data = Vec::new();
 
