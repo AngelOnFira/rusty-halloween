@@ -66,8 +66,8 @@ impl UartController {
                     }
                 }
             }
-            // Add a 50ms delay before the next data is handled
-            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+            // // Add a 50ms delay before the next data is handled
+            // tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
         }
     }
 }
