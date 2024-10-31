@@ -11,7 +11,7 @@ use kira::{
     sound::{
         static_sound::{StaticSoundData, StaticSoundSettings},
         FromFileError,
-    },
+    }, tween::Tween,
 };
 use log::{error, info};
 use rust_embed::RustEmbed;
@@ -66,18 +66,21 @@ impl Audio {
             match message {
                 AudioMessage::Play(sound) => {
                     info!("Playing sound: {}", sound.name);
-                    if let Some(manager) = self.manager.as_mut() {
+                    // Create a new audio manager instance for each play
+                    if let Ok(mut manager) = AudioManager::<CpalBackend>::new(AudioManagerSettings::default()) {
                         if let Err(e) = manager.play(sound.stream) {
                             error!("Failed to play audio: {}", e);
                         }
+                        // Store the new manager
+                        self.manager = Some(manager);
+                    } else {
+                        error!("Failed to create new audio manager");
                     }
                 }
                 AudioMessage::Stop => {
                     info!("Stopping audio playback");
                     if let Some(manager) = self.manager.as_mut() {
-                        // TODO: Implement stop functionality
-                        // This will depend on how you want to handle stopping - either
-                        // stopping all sounds or specific ones
+                        manager.pause(Tween::default()).unwrap();
                     }
                 }
             }

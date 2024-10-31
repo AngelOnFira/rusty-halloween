@@ -2,7 +2,7 @@ use crate::{
     config::Config,
     laser::pack::PatternPack,
     prelude::{pack::HeaderPack, MessageSendPack},
-    show::LaserDataFrame,
+    show::{LaserDataFrame, MAX_LIGHTS},
     InternalMessage, MessageKind,
 };
 use log::{error, info};
@@ -638,6 +638,15 @@ async fn show_task_loop(
                                     )))
                                     .await
                                     .unwrap();
+
+                                // Print the point count, pattern id, and hex values
+                                info!(
+                                    "Laser {} has {} points, pattern {}, hex {:?}",
+                                    laser_number,
+                                    laser.point_count,
+                                    laser.value,
+                                    laser.hex
+                                );
                             }
                         }
 
@@ -703,6 +712,18 @@ async fn show_task_loop(
                         .send(MessageKind::InternalMessage(InternalMessage::DmxZeroOut))
                         .await
                         .unwrap();
+
+                    // Turn off all lights (MAX_LIGHTS is defined in show/mod.rs)
+                    for light_id in 1..=MAX_LIGHTS {
+                        show_manager
+                            .message_queue
+                            .send(MessageKind::InternalMessage(InternalMessage::Light {
+                                light_id: light_id as u8,
+                                enable: false,
+                            }))
+                            .await
+                            .unwrap();
+                    }
 
                     // Remove the current song from the ShowManager
                     show_manager.current_show = None;

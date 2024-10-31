@@ -37,6 +37,11 @@ impl UartController {
             // Block until the data is sent
             self.uart.drain()?;
         }
+        // Print out the array of bytes that were sent in binary format
+        // for byte in &data {
+        //     print!("{:08b} ", byte);
+        // }
+        // println!();
 
         Ok(())
     }
@@ -45,6 +50,12 @@ impl UartController {
         while let Some(message) = rx.recv().await {
             match message {
                 UartMessage::Laser(data) => {
+                    // Print out the array of bytes that were sent in binary format
+                    for byte in &data {
+                        print!("{:08b} ", byte);
+                    }
+                    println!();
+
                     if let Err(e) = self.send_data(data) {
                         error!("Failed to send projector data: {}", e);
                     }

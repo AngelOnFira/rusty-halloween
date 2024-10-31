@@ -164,7 +164,6 @@ impl UnloadedShow {
             let mut lasers = vec![None; MAX_LASERS];
             let mut projectors = vec![None; MAX_PROJECTORS];
             let mut turrets = vec![None; MAX_TURRETS];
-            // let mut dmx_states = Vec::new();
 
             // Process each device in the frame
             for (device_name, device_state) in frame {
@@ -345,13 +344,17 @@ impl UnloadedShow {
                 }
             }
 
-            frames.push(Frame {
+            let frame = Frame {
                 timestamp,
                 lights,
                 lasers,
                 projectors,
                 turrets,
-            });
+            };
+
+            // dbg!("Frame: {:?}", &frame);
+
+            frames.push(frame);
         }
 
         // Sort frames by timestamp
