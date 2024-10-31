@@ -33,6 +33,9 @@ impl UartController {
             for chunk in data.chunks(8) {
                 self.uart.write(chunk)?;
             }
+
+            // Force a flush
+            self.uart.flush()?;
         }
 
         Ok(())
@@ -45,8 +48,6 @@ impl UartController {
                     if let Err(e) = self.send_data(data) {
                         error!("Failed to send projector data: {}", e);
                     }
-                    // // Sleep for the calculated delay (as in your original code)
-                    // tokio::time::sleep(std::time::Duration::from_millis(10)).await;
                 }
                 UartMessage::DMX(data) => {
                     if let Err(e) = self.send_data(data) {
