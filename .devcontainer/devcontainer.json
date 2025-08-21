@@ -10,6 +10,14 @@
 	},
 	"features": {
 		"ghcr.io/devcontainers/features/docker-in-docker:2": {}
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"atopile.atopile",
+				"anysphere.cursorpyright"
+			]
+		}
 	}
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
