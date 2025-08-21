@@ -635,6 +635,7 @@ dependencies = [
  "heapless",
  "log",
  "once_cell",
+ "rgb",
  "serde",
  "serde_json",
  "smart-leds",
@@ -1161,6 +1162,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c6a884d2998352bb4daf0183589aec883f16a6da1f4dde84d8e2e9a5409a1ce"
 dependencies = [
  "bytemuck",
+ "serde",
 ]
 
 [[package]]
@@ -1790,6 +1792,8 @@ dependencies = [
 [[package]]
 name = "ws2812-esp32-rmt-driver"
 version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56c578740a03455e0a88e01c7233384c4e1c1fa9e181898547110b4911e98b69"
 dependencies = [
  "embuild 0.32.0",
  "esp-idf-hal",

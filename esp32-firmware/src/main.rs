@@ -1,26 +1,29 @@
 use anyhow::Result;
-use esp_idf_hal::gpio::Gpio18;
-use esp_idf_hal::peripheral::Peripheral;
-use esp_idf_hal::peripherals::Peripherals;
-use esp_idf_hal::rmt::RmtChannel;
+use esp_idf_hal::{
+    gpio::Gpio18, peripheral::Peripheral, peripherals::Peripherals, rmt::RmtChannel,
+};
 use esp_idf_sys::{
     self as sys, esp, esp_event_base_t, esp_event_handler_register, esp_event_loop_create_default,
-    esp_mesh_get_layer, esp_mesh_get_total_node_num, esp_mesh_init, esp_mesh_is_device_active,
-    esp_mesh_is_root, esp_mesh_recv, esp_mesh_send, esp_mesh_set_ap_authmode, esp_mesh_set_config,
-    esp_mesh_set_max_layer, esp_mesh_set_vote_percentage, esp_mesh_start, esp_netif_init, esp_random,
-    esp_wifi_init, esp_wifi_set_storage, esp_wifi_start, g_wifi_default_wpa_crypto_funcs,
-    g_wifi_osi_funcs, mesh_addr_t, mesh_cfg_t, mesh_data_t, mesh_router_t, nvs_flash_init,
-    wifi_init_config_t, wifi_storage_t_WIFI_STORAGE_RAM, ESP_EVENT_ANY_ID, IP_EVENT, MESH_EVENT,
+    esp_mesh_get_layer, esp_mesh_get_total_node_num, esp_mesh_get_tsf_time, esp_mesh_init,
+    esp_mesh_is_device_active, esp_mesh_is_root, esp_mesh_recv, esp_mesh_send,
+    esp_mesh_set_ap_authmode, esp_mesh_set_config, esp_mesh_set_max_layer,
+    esp_mesh_set_vote_percentage, esp_mesh_start, esp_netif_init, esp_random, esp_wifi_init,
+    esp_wifi_set_storage, esp_wifi_start, g_wifi_default_wpa_crypto_funcs, g_wifi_osi_funcs,
+    mesh_addr_t, mesh_cfg_t, mesh_data_t, mesh_router_t, nvs_flash_init, wifi_init_config_t,
+    wifi_storage_t_WIFI_STORAGE_RAM, ESP_EVENT_ANY_ID, IP_EVENT, MESH_EVENT,
     WIFI_INIT_CONFIG_MAGIC,
 };
 use log::*;
+use serde::{Deserialize, Serialize};
 use smart_leds::{SmartLedsWrite, RGB8};
-use std::collections::HashMap;
-use std::os::raw::c_void;
-use std::ptr;
-use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::{Duration, Instant};
+use std::{
+    collections::HashMap,
+    os::raw::c_void,
+    ptr,
+    sync::{Arc, Mutex},
+    thread,
+    time::{Duration, Instant},
+};
 use ws2812_esp32_rmt_driver::Ws2812Esp32Rmt;
 
 const MESH_ID: [u8; 6] = [0x77, 0x77, 0x77, 0x77, 0x77, 0x77];
@@ -30,23 +33,23 @@ const MESH_PASSWORD: &str = "mesh_password_123";
 const ENV_FILE: &str = include_str!("../.env");
 
 // Simple function to extract a value from the .env content
-fn parse_env_value(key: &str) -> String {
+fn get_embedded_env_value(key: &str) -> String {
     let search_pattern = format!("{}=", key);
-    
+
     for line in ENV_FILE.lines() {
         let line = line.trim();
-        
+
         // Skip comments and empty lines
         if line.starts_with('#') || line.is_empty() {
             continue;
         }
-        
+
         if let Some(value) = line.strip_prefix(&search_pattern) {
             // Remove surrounding quotes if present and return
             return value.trim_matches('"').trim_matches('\'').to_string();
         }
     }
-    
+
     panic!("Environment variable '{}' not found in .env file. Make sure your .env file contains a line like: {}=your_value", key, key);
 }
 
@@ -164,7 +167,10 @@ impl MeshNode {
             let err = esp_mesh_send(&broadcast_addr, &mesh_data, flag, ptr::null(), 0);
             if err == sys::ESP_OK {
                 // Record the challenge
-                self.pending_challenges.lock().unwrap().insert(challenge_id, Instant::now());
+                self.pending_challenges
+                    .lock()
+                    .unwrap()
+                    .insert(challenge_id, Instant::now());
                 *self.total_challenges_sent.lock().unwrap() += 1;
                 true
             } else {
@@ -174,7 +180,13 @@ impl MeshNode {
     }
 
     fn handle_challenge_response(&self, challenge_id: u32) {
-        if self.pending_challenges.lock().unwrap().remove(&challenge_id).is_some() {
+        if self
+            .pending_challenges
+            .lock()
+            .unwrap()
+            .remove(&challenge_id)
+            .is_some()
+        {
             *self.total_responses_received.lock().unwrap() += 1;
         }
     }
@@ -192,8 +204,10 @@ impl MeshNode {
 
         if challenges_sent > 0 {
             let success_rate = (responses_received as f32 / challenges_sent as f32) * 100.0;
-            info!("📊 PACKET LOSS STATS: Sent: {}, Received: {}, Pending: {}, Success: {:.1}%",
-                  challenges_sent, responses_received, pending_count, success_rate);
+            info!(
+                "📊 PACKET LOSS STATS: Sent: {}, Received: {}, Pending: {}, Success: {:.1}%",
+                challenges_sent, responses_received, pending_count, success_rate
+            );
         }
     }
 
@@ -450,17 +464,16 @@ fn init_mesh() -> Result<()> {
         // Configure mesh using mesh_cfg_t structure
         let mesh_id = mesh_addr_t { addr: MESH_ID };
 
-        info!(
-            "Router SSID: {}, Password length: {}",
-            ROUTER_SSID,
-            ROUTER_PASSWORD.len()
-        );
+        let ssid = get_embedded_env_value("ROUTER_SSID");
+        let pass = get_embedded_env_value("ROUTER_PASSWORD");
 
-        let ssid_bytes = ROUTER_SSID.as_bytes();
+        info!("Router SSID: {}, Password length: {}", ssid, pass.len());
+
+        let ssid_bytes = ssid.as_bytes();
         let mut router_ssid = [0u8; 32];
         router_ssid[..ssid_bytes.len()].copy_from_slice(ssid_bytes);
 
-        let pass_bytes = ROUTER_PASSWORD.as_bytes();
+        let pass_bytes = pass.as_bytes();
         let mut router_password = [0u8; 64];
         router_password[..pass_bytes.len()].copy_from_slice(pass_bytes);
 
@@ -548,7 +561,7 @@ fn init_mesh() -> Result<()> {
     Ok(())
 }
 
-fn mesh_rx_task(node: Arc<MeshNode>) {
+fn mesh_rx_task(node: Arc<MeshNode>, state: Arc<Mutex<State>>) {
     let mut rx_buf = vec![0u8; 1500];
     let mut from_addr = mesh_addr_t { addr: [0; 6] };
     let mut flag = 0i32;
@@ -599,7 +612,10 @@ fn mesh_rx_task(node: Arc<MeshNode>) {
                                 }
                                 "challenge_response" => {
                                     if let Some(challenge_id) = command["id"].as_u64() {
-                                        info!("📥 Received response for challenge ID: {}", challenge_id);
+                                        info!(
+                                            "📥 Received response for challenge ID: {}",
+                                            challenge_id
+                                        );
                                         node.handle_challenge_response(challenge_id as u32);
                                     }
                                 }
@@ -612,7 +628,6 @@ fn mesh_rx_task(node: Arc<MeshNode>) {
                                             }
                                         }
                                     }
-
                                 }
                                 _ => {
                                     warn!("Unknown message type: {}", msg_type);
@@ -721,12 +736,13 @@ fn mesh_tx_task(node: Arc<MeshNode>) {
                     let err = esp_mesh_send(&broadcast_addr, &mesh_data, flag, ptr::null(), 0);
 
                     if err == sys::ESP_OK {
-                        info!("Color command sent successfully on attempt {}: RGB({}, {}, {})",
-                              attempt, color.0, color.1, color.2);
                         success = true;
                         break;
                     } else {
-                        warn!("Failed to send color command on attempt {}: error {}", attempt, err);
+                        warn!(
+                            "Failed to send color command on attempt {}: error {}",
+                            attempt, err
+                        );
                         if attempt < 3 {
                             thread::sleep(Duration::from_millis(100)); // Brief delay before retry
                         }
@@ -734,8 +750,7 @@ fn mesh_tx_task(node: Arc<MeshNode>) {
                 }
 
                 if !success {
-                    warn!("All attempts to send color command failed for RGB({}, {}, {})",
-                          color.0, color.1, color.2);
+                    warn!("All attempts to send color command failed",);
                 }
 
                 // Send packet loss test challenges every 5 seconds
