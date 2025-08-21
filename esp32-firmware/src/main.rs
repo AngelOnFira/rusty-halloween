@@ -450,20 +450,17 @@ fn init_mesh() -> Result<()> {
         // Configure mesh using mesh_cfg_t structure
         let mesh_id = mesh_addr_t { addr: MESH_ID };
 
-        let router_ssid_str = parse_env_value("ROUTER_SSID");
-        let router_password_str = parse_env_value("ROUTER_PASSWORD");
-
         info!(
             "Router SSID: {}, Password length: {}",
-            router_ssid_str,
-            router_password_str.len()
+            ROUTER_SSID,
+            ROUTER_PASSWORD.len()
         );
 
-        let ssid_bytes = router_ssid_str.as_bytes();
+        let ssid_bytes = ROUTER_SSID.as_bytes();
         let mut router_ssid = [0u8; 32];
         router_ssid[..ssid_bytes.len()].copy_from_slice(ssid_bytes);
 
-        let pass_bytes = router_password_str.as_bytes();
+        let pass_bytes = ROUTER_PASSWORD.as_bytes();
         let mut router_password = [0u8; 64];
         router_password[..pass_bytes.len()].copy_from_slice(pass_bytes);
 
@@ -476,6 +473,13 @@ fn init_mesh() -> Result<()> {
         };
 
         // Create mesh AP configuration
+        info!(
+            "Mesh password: '{}' (length: {})",
+            MESH_PASSWORD,
+            MESH_PASSWORD.len()
+        );
+
+        // Ensure password is properly formatted and null-terminated
         let mesh_ap_password = MESH_PASSWORD.as_bytes();
         let mut mesh_ap_pwd = [0u8; 64];
         for (i, &byte) in mesh_ap_password.iter().enumerate() {
@@ -839,28 +843,41 @@ fn main() -> Result<()> {
     let node_rx = Arc::clone(&node);
     let state_clone = state.clone();
     thread::spawn(move || {
-        mesh_rx_task(node_rx);
+        mesh_rx_task(node_rx, state_clone);
     });
 
     let node_tx = Arc::clone(&node);
     let state_clone = state.clone();
     thread::spawn(move || {
-        mesh_tx_task(node_tx);
+        mesh_tx_task(node_tx, state_clone);
     });
 
     let node_monitor = Arc::clone(&node);
     thread::spawn(move || {
         monitor_task(node_monitor);
     });
-    // TODO: Implement color synchronization task
-    // let node_clone = node.clone();
-    // let state_clone = state.clone();
-    // thread::spawn(move || {
-    //     loop {
-    //         // This would implement the color synchronization logic
-    //         thread::sleep(Duration::from_millis(100));
-    //     }
-    // });
+    let node_clone= node.clone();
+    let state_clone = state.clone();
+    thread::spawn(move || {
+        let current_time = esp_mesh_get_tsf_time();
+        // Sleep until next item, or for a set amount of time if no items
+        let state_lock= state.lock().unwrap();
+
+        let times = state_lock.hashmap.keys().collect();
+        times.sorted();
+        let nextTime= times.filter(|time| time > current_time).first().unwrap();
+
+        if(nextTime<currentTime + 50){
+        node_clone.set_color(color.0, color.1, color.2);
+        }
+
+        thread::sleep(Duration::from_millis());
+
+
+        // Check the next item
+        // Change the colour
+        // Sleep for the next amount of time
+    });
 
     info!("Mesh node started. Waiting for connections...");
     info!("WS2812 (GPIO18): Real addressable RGB LED with precise RMT timing!");
