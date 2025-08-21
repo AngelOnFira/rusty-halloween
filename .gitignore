@@ -1,4 +1,7 @@
 /target
 /shows
+/shows\ copy
 .DS_Store
 /exports
+**/.embuild/
+**/.env
