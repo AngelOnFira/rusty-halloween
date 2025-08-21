@@ -57,6 +57,175 @@ const MESH_CHANNEL: u8 = 6;
 const MESH_MAX_LAYER: i32 = 6;
 const MESH_AP_CONNECTIONS: i32 = 6;
 
+struct State {
+    instructions: Instructions,
+}
+
+/// A list of unique instructions sorted by timestamp
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
+struct Instructions {
+    pub instructions: Vec<Instruction>,
+}
+
+enum InstructionStatus {
+    /// If we should sleep for some amount of time before the next instruction
+    Sleep(i64),
+    /// If we should set the color immediately
+    SetColor(RGB8),
+}
+
+impl Instructions {
+    fn new() -> Self {
+        Self {
+            instructions: Vec::new(),
+        }
+    }
+
+    fn get_current_time(&self) -> i64 {
+        unsafe { esp_mesh_get_tsf_time() }
+    }
+
+    /// Add an instruction to the list
+    fn add_instruction(&mut self, instruction: Instruction) {
+        self.instructions.push(instruction);
+        self.instructions.sort_by_key(|i| i.timestamp);
+    }
+
+    /// Get the instructions between the current time and the current time + seconds
+    fn get_next_seconds_instructions(&self, seconds: i64) -> Vec<Instruction> {
+        let current_time = self.get_current_time();
+        self.instructions
+            .iter()
+            .filter(|i| i.timestamp >= current_time && i.timestamp < current_time + seconds)
+            .cloned()
+            .collect()
+    }
+
+    /// Calculate how much of a buffer is left in the instructions list
+    fn get_buffer_left(&self) -> i64 {
+        let current_time = self.get_current_time();
+        let next_instruction = self.instructions.first();
+        if next_instruction.is_none() {
+            return 0;
+        }
+
+        let next_instruction = next_instruction.unwrap();
+
+        let buffer_left = next_instruction.timestamp - current_time;
+
+        if buffer_left < 0 {
+            return 0;
+        }
+
+        buffer_left
+    }
+
+    /// Get the next instruction, or find out if we should sleep for some amount
+    /// of time. There are a few cases:
+    ///
+    /// - If we check too early (the instruction is more than 50ms in the
+    ///   future), we should return an InstructionStatus::Sleep
+    /// - If we check too late (the instruction is more than 50ms in the past),
+    ///   drop that instruction, and log that we're late.
+    /// - If we check at the right time (the instruction is within 50ms of the
+    ///   current time), we should return an InstructionStatus::SetColor
+    ///
+    /// In any case where we set the colour, we should clean this instruction
+    /// from the list.
+    fn get_next_instruction(&mut self) -> InstructionStatus {
+        // Get the next instruction
+        let next_instruction = self.instructions.first();
+
+        // If there's no next instruction, we should sleep for 100ms
+        if next_instruction.is_none() {
+            return InstructionStatus::Sleep(100);
+        }
+
+        // Get the next instruction
+        let next_instruction = next_instruction.unwrap();
+
+        // If the next instruction is in the past, we should drop it. We add a
+        // 50ms buffer to account for the time it takes to process the
+        // instruction, and this much drift shouldn't be noticeable.
+        if next_instruction.timestamp < self.get_current_time() - 50 {
+            self.instructions.remove(0);
+            return InstructionStatus::Sleep(100);
+
+            // TODO: Log that we're late
+        }
+
+        // If the next instruction is in the future, we should return an InstructionStatus::Sleep
+        if next_instruction.timestamp > self.get_current_time() + 50 {
+            return InstructionStatus::Sleep(
+                next_instruction.timestamp - self.get_current_time() - 10,
+            );
+        }
+
+        // If the next instruction is at the current time, we should return an InstructionStatus::SetColor
+        let instruction = self.instructions.remove(0);
+        return InstructionStatus::SetColor(instruction.color);
+    }
+
+    /// Combine a new list of instructions that will be buffered. A list will
+    /// either come from the mesh root, or the mesh root might store the list it
+    /// just generated. For this, there might be overlap with the current list,
+    /// so we should only add timestamps that we don't have.
+    fn combine_instructions(&mut self, instructions: Vec<Instruction>) {
+        // Remove any instructions that are already in the list
+        let new_instructions: Vec<Instruction> = instructions
+            .iter()
+            .filter(|i| !self.instructions.contains(i))
+            .cloned()
+            .collect();
+
+        // Add the new instructions
+        self.instructions.extend(new_instructions);
+
+        // Sort the instructions by timestamp
+        self.instructions.sort_by_key(|i| i.timestamp);
+    }
+
+    /// Generate a random list of new instructions for the next number of
+    /// seconds passed in. This should only be called by the root node.
+    fn generate_random_instructions(&mut self, seconds: i64) {
+        let mut instructions = Vec::new();
+
+        // Start with the current time
+        let mut current_time = self.get_current_time();
+
+        while current_time < self.get_current_time() + seconds {
+            // Generate a random color
+            let color = unsafe {
+                RGB8::new(
+                    (esp_random() % 256) as u8,
+                    (esp_random() % 256) as u8,
+                    (esp_random() % 256) as u8,
+                )
+            };
+
+            // Add the instruction to the list
+            instructions.push(Instruction {
+                timestamp: current_time,
+                color,
+            });
+
+            // Add a random delay between 100ms and 1000ms
+            unsafe {
+                current_time += (esp_random() % 1000 + 200) as i64;
+            }
+        }
+
+        // Add the instructions to the list
+        self.combine_instructions(instructions);
+    }
+}
+
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
+struct Instruction {
+    timestamp: i64,
+    color: RGB8,
+}
+
 // WS2812 controller using ESP32 RMT peripheral
 struct WS2812Controller {
     driver: Arc<Mutex<Ws2812Esp32Rmt<'static>>>,
@@ -655,19 +824,9 @@ fn mesh_rx_task(node: Arc<MeshNode>, state: Arc<Mutex<State>>) {
     }
 }
 
-fn mesh_tx_task(node: Arc<MeshNode>) {
+fn mesh_tx_task(node: Arc<MeshNode>, state: Arc<Mutex<State>>) {
     let mut counter = 0u32;
     let mut _challenge_counter = 0u32;
-
-    // Generate random colors with very low brightness (0-63 instead of 0-255)
-    let generate_random_color = || {
-        unsafe {
-            let r = (esp_random() % 64) as u8;
-            let g = (esp_random() % 64) as u8;
-            let b = (esp_random() % 64) as u8;
-            (r, g, b)
-        }
-    };
 
     loop {
         thread::sleep(Duration::from_secs(5)); // Send updates every 5 second
@@ -680,42 +839,18 @@ fn mesh_tx_task(node: Arc<MeshNode>) {
             let is_root = esp_mesh_is_root();
 
             if is_root {
-                let color = generate_random_color();
-
-                // Generate colours for the next 30 seconds
-                let hashmap = HashMap::new();
+                // Lock the state
+                let mut state_lock = state.lock().unwrap();
 
                 // If we only have a few seconds of data left, generate more
-                //
-                let current_time = esp_mesh_get_tsf_time();
-
-                if(hashmap.keys().max()<current_time+2000){
-
-                // Start at current time, add an amount of time between light changes
-                let time_reached = current_time + 30_000;
-                let current_added_data_time = current_time + 2000;
-
-                while(current_added_data_time <time_reached){
-                    // Add a random number of ms to the current added time
-                    let time = 500 + esp_random() % 1500;
-                    let color = generate_random_color();
-                    // Add a new random colour to the hashmap at this time
-                    hashmap.insert(time,color);
+                if state_lock.instructions.get_buffer_left() < 5000 {
+                    state_lock.instructions.generate_random_instructions(5);
                 }
 
                 // Send the next 5 seconds of colours to all nodes
-
-                // Everyone relies on this list on when to change colours
-
-                // Set our own color immediately
-                node.set_color(color.0, color.1, color.2);
-
-                // Send color command to all nodes
                 let color_command = serde_json::json!({
                     "type": "data",
-                    "data": hashmap.iter().filter(|(timestamp, _)| {
-                        timestamp >current_time && timestamp <current_time+5000
-                    }).collect::<Vec<(i32,(u8,u8,u8))>>(),
+                    "data": state_lock.instructions.get_next_seconds_instructions(5),
                 });
 
                 let message = color_command.to_string();
@@ -847,12 +982,9 @@ fn main() -> Result<()> {
     init_mesh()?;
 
     info!("Starting mesh tasks...");
-    struct State {
-        hashmap: HashMap<i32, (u8,u8,u8)>
-    }
 
-    let state = Arc::new(Mutex::new(State {
-        hashmap: HashMap::new(),
+    let state: Arc<Mutex<State>> = Arc::new(Mutex::new(State {
+        instructions: Instructions::new(),
     }));
 
     let node_rx = Arc::clone(&node);
@@ -871,27 +1003,22 @@ fn main() -> Result<()> {
     thread::spawn(move || {
         monitor_task(node_monitor);
     });
-    let node_clone= node.clone();
+    
+    let node_clone = node.clone();
     let state_clone = state.clone();
-    thread::spawn(move || {
-        let current_time = esp_mesh_get_tsf_time();
-        // Sleep until next item, or for a set amount of time if no items
-        let state_lock= state.lock().unwrap();
+    thread::spawn(move || loop {
+        let mut state_lock = state_clone.lock().unwrap();
 
-        let times = state_lock.hashmap.keys().collect();
-        times.sorted();
-        let nextTime= times.filter(|time| time > current_time).first().unwrap();
+        let instruction = state_lock.instructions.get_next_instruction();
 
-        if(nextTime<currentTime + 50){
-        node_clone.set_color(color.0, color.1, color.2);
+        match instruction {
+            InstructionStatus::Sleep(duration) => {
+                thread::sleep(Duration::from_millis(duration as u64));
+            }
+            InstructionStatus::SetColor(color) => {
+                node_clone.set_color(color.r, color.g, color.b);
+            }
         }
-
-        thread::sleep(Duration::from_millis());
-
-
-        // Check the next item
-        // Change the colour
-        // Sleep for the next amount of time
     });
 
     info!("Mesh node started. Waiting for connections...");
