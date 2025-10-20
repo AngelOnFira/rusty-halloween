@@ -625,7 +625,7 @@ async fn show_task_loop(
                                                 draw_boundary: false,
                                                 oneshot: false,
                                                 // speed_profile: laser.speed_profile.into(),
-                                                speed_profile: 1.into(),
+                                                speed_profile: 6.into(),
                                                 ..Default::default()
                                             },
                                             LaserDataFrame {

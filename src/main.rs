@@ -42,7 +42,7 @@ async fn main() -> Result<(), Error> {
 
     // Load the config file
     info!("Loading config...");
-    let config = Config::load_from_json("src/show/assets/2024/hardware.json")?;
+    let config = Config::load_from_json("config/hardware.json")?;
 
     // // Set up the local audio storage
     // info!("Starting audio system...");
