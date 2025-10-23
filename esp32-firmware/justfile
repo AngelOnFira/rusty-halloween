@@ -1,0 +1,40 @@
+# Flash debug build with OTA partitions (FAST - no verification)
+flash-debug:
+    cargo build
+    espflash flash \
+        --chip esp32s2 \
+        --partition-table partitions.csv \
+        --flash-size 4mb \
+        --baud 921600 \
+        --no-verify \
+        --monitor \
+        target/xtensa-esp32s2-espidf/debug/esp32-mesh-firmware
+
+# Flash release build with OTA partitions (verified)
+flash-release:
+    cargo build --release
+    espflash flash \
+        --chip esp32s2 \
+        --partition-table partitions.csv \
+        --flash-size 4mb \
+        --baud 921600 \
+        --monitor \
+        target/xtensa-esp32s2-espidf/release/esp32-mesh-firmware
+
+# Monitor serial output without flashing
+monitor:
+    espflash monitor
+
+# Erase entire flash
+erase:
+    espflash erase-flash --chip esp32
+
+# Build and flash debug
+build-flash-debug:
+    cargo build
+    just flash-debug
+
+# Build and flash release
+build-flash-release:
+    cargo build --release
+    just flash-release

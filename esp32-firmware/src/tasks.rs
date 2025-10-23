@@ -2,7 +2,7 @@ use crate::instructions::{Instructions, InstructionStatus};
 use crate::node::MeshNode;
 use crate::ota::OtaManager;
 use esp_idf_sys::{
-    self as sys, esp_mesh_get_layer, esp_mesh_get_total_node_num, esp_mesh_is_device_active,
+    esp_mesh_get_layer, esp_mesh_get_total_node_num, esp_mesh_is_device_active,
     esp_mesh_is_root, esp_mesh_recv, esp_mesh_send, esp_random, mesh_addr_t, mesh_data_t, ESP_OK,
 };
 use log::*;
@@ -98,8 +98,9 @@ pub fn mesh_rx_task(node: Arc<MeshNode>, state: Arc<Mutex<State>>) {
                                     if let Ok(ota_msg) = serde_json::from_value::<OtaMessage>(command) {
                                         if let OtaMessage::OtaStart { version, total_chunks, firmware_size } = ota_msg {
                                             info!("🚀 OTA Update starting: v{} ({} chunks, {} bytes)", version, total_chunks, firmware_size);
-                                            let mut state_lock = state.lock().unwrap();
-                                            if let Err(e) = state_lock.ota_manager.lock().unwrap().start_ota_reception(total_chunks, firmware_size) {
+                                            let state_lock = state.lock().unwrap();
+                                            let mut ota_guard = state_lock.ota_manager.lock().unwrap();
+                                            if let Err(e) = ota_guard.start_ota_reception(total_chunks, firmware_size) {
                                                 warn!("Failed to start OTA reception: {:?}", e);
                                             }
                                         }
@@ -109,8 +110,9 @@ pub fn mesh_rx_task(node: Arc<MeshNode>, state: Arc<Mutex<State>>) {
                                     use crate::ota::OtaMessage;
                                     if let Ok(ota_msg) = serde_json::from_value::<OtaMessage>(command) {
                                         if let OtaMessage::OtaChunk { chunk } = ota_msg {
-                                            let mut state_lock = state.lock().unwrap();
-                                            match state_lock.ota_manager.lock().unwrap().handle_chunk(chunk.clone()) {
+                                            let state_lock = state.lock().unwrap();
+                                            let mut ota_guard = state_lock.ota_manager.lock().unwrap();
+                                            match ota_guard.handle_chunk(chunk.clone()) {
                                                 Ok(complete) => {
                                                     // Send ACK
                                                     // TODO: Implement ACK sending
@@ -128,9 +130,7 @@ pub fn mesh_rx_task(node: Arc<MeshNode>, state: Arc<Mutex<State>>) {
                                 "ota_reboot" => {
                                     info!("🔄 Received OTA reboot command - rebooting in 2 seconds...");
                                     thread::sleep(Duration::from_secs(2));
-                                    unsafe {
-                                        esp_idf_sys::esp_restart();
-                                    }
+                                    esp_idf_sys::esp_restart();
                                 }
                                 "ota_cancel" => {
                                     if let Some(reason) = command["reason"].as_str() {

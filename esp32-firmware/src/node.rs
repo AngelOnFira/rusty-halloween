@@ -1,7 +1,7 @@
 use crate::hardware::WS2812Controller;
 use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_sys::{
-    self as sys, esp_mesh_send, esp_random, mesh_addr_t, mesh_data_t, ESP_OK,
+    esp_mesh_send, mesh_addr_t, mesh_data_t, ESP_OK,
 };
 use log::*;
 use smart_leds::RGB8;

@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use crc::{Crc, CRC_32_ISO_HDLC};
-use esp_idf_svc::ota::{EspOta, EspOtaUpdate};
+use esp_ota::OtaUpdate;
 use log::*;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -150,14 +150,20 @@ impl NodeProgress {
     }
 }
 
+/// OTA subsystem handle - represents the state of the OTA subsystem
+enum OtaHandle {
+    /// No OTA in progress
+    None,
+    /// Currently receiving OTA update
+    Updating(OtaUpdate),
+}
+
 /// OTA Manager - handles entire OTA process
 pub struct OtaManager {
     /// Current OTA state
     state: Arc<Mutex<OtaState>>,
-    /// ESP OTA instance
-    ota: Option<EspOta>,
-    /// Active OTA update (for child nodes receiving chunks)
-    update: Option<EspOtaUpdate>,
+    /// OTA subsystem handle (transitions between Ready and Updating states)
+    ota_handle: OtaHandle,
     /// Firmware chunks (for root node distribution)
     chunks: Vec<FirmwareChunk>,
     /// Node progress tracking (for root node)
@@ -177,8 +183,7 @@ impl OtaManager {
     pub fn new() -> Result<Self> {
         Ok(Self {
             state: Arc::new(Mutex::new(OtaState::Idle)),
-            ota: None,
-            update: None,
+            ota_handle: OtaHandle::None,
             chunks: Vec::new(),
             node_progress: Arc::new(Mutex::new(HashMap::new())),
             received_chunks_buffer: Arc::new(Mutex::new(HashMap::new())),
@@ -186,14 +191,6 @@ impl OtaManager {
             total_chunks: 0,
             target_version: None,
         })
-    }
-
-    /// Initialize OTA subsystem
-    pub fn init(&mut self) -> Result<()> {
-        info!("Initializing OTA subsystem...");
-        self.ota = Some(EspOta::new().context("Failed to initialize OTA")?);
-        info!("OTA subsystem initialized");
-        Ok(())
     }
 
     /// Get current OTA state
@@ -230,7 +227,7 @@ impl OtaManager {
         let mut client = Client::wrap(connection);
 
         // Make HTTP GET request
-        let mut request = client
+        let request = client
             .get(url)
             .context("Failed to create GET request")?;
 
@@ -338,13 +335,11 @@ impl OtaManager {
         self.next_expected_sequence = 0;
         self.received_chunks_buffer.lock().unwrap().clear();
 
-        // Initialize OTA update
-        let ota = self.ota.as_mut().context("OTA not initialized")?;
-        let update = ota
-            .initiate_update()
-            .context("Failed to initiate OTA update")?;
+        // Begin OTA update - this erases the next OTA partition
+        let update = OtaUpdate::begin()
+            .map_err(|e| anyhow::anyhow!("Failed to begin OTA update: {:?}", e))?;
 
-        self.update = Some(update);
+        self.ota_handle = OtaHandle::Updating(update);
 
         *self.state.lock().unwrap() = OtaState::Receiving {
             received_chunks: 0,
@@ -421,29 +416,46 @@ impl OtaManager {
 
     /// Write a single chunk to OTA partition (in sequence)
     fn write_chunk_to_ota(&mut self, chunk: &FirmwareChunk) -> Result<()> {
-        let update = self.update.as_mut().context("No active OTA update")?;
+        if let OtaHandle::Updating(update) = &mut self.ota_handle {
+            update
+                .write(&chunk.data)
+                .map_err(|e| anyhow::anyhow!("Failed to write chunk to OTA partition: {:?}", e))?;
 
-        update
-            .write(&chunk.data)
-            .context("Failed to write chunk to OTA partition")?;
-
-        self.next_expected_sequence += 1;
-
-        Ok(())
+            self.next_expected_sequence += 1;
+            Ok(())
+        } else {
+            anyhow::bail!("No active OTA update")
+        }
     }
 
     /// Finalize OTA update
     fn finalize_ota(&mut self) -> Result<()> {
         info!("Finalizing OTA update...");
 
-        let update = self.update.take().context("No active OTA update")?;
+        // Take ownership of the Updating variant and transition to None
+        let ota_handle = std::mem::replace(&mut self.ota_handle, OtaHandle::None);
+        if let OtaHandle::Updating(update) = ota_handle {
+            // Finalize the update (validates image)
+            let mut completed = update
+                .finalize()
+                .map_err(|e| anyhow::anyhow!("Failed to finalize OTA update: {:?}", e))?;
 
-        update
-            .complete()
-            .context("Failed to complete OTA update")?;
+            // Set as boot partition
+            completed
+                .set_as_boot_partition()
+                .map_err(|e| anyhow::anyhow!("Failed to set boot partition: {:?}", e))?;
 
-        info!("OTA update finalized successfully");
-        Ok(())
+            // Mark app as valid immediately after setting boot partition
+            // This confirms the new firmware is ready and prevents rollback
+            // Only called here after OTA completes, NOT on every boot
+            esp_ota::mark_app_valid();
+
+            info!("OTA update finalized successfully - will boot into new firmware on restart");
+            info!("New firmware marked as valid - rollback cancelled");
+            Ok(())
+        } else {
+            anyhow::bail!("No active OTA update")
+        }
     }
 
     /// Get missing chunks (child node only)
@@ -495,31 +507,12 @@ impl OtaManager {
     }
 
     /// Mark firmware as valid after successful boot
-    pub fn mark_valid(&mut self) -> Result<()> {
+    /// This should be called on first boot after an OTA update to prevent rollback
+    pub fn mark_valid(&self) -> Result<()> {
         info!("Marking current firmware as valid...");
-
-        let ota = self.ota.as_ref().context("OTA not initialized")?;
-        let running_slot = ota.get_running_slot()?;
-
-        info!("Running from OTA slot: {:?}", running_slot);
-
-        // Mark the running slot as valid to prevent rollback
-        unsafe {
-            let err = esp_idf_sys::esp_ota_mark_app_valid_cancel_rollback();
-            if err != esp_idf_sys::ESP_OK {
-                anyhow::bail!("Failed to mark app as valid: error {}", err);
-            }
-        }
-
+        esp_ota::mark_app_valid();
         info!("Firmware marked as valid - rollback cancelled");
         Ok(())
-    }
-
-    /// Check if we're running from an OTA partition (vs factory)
-    pub fn is_running_ota(&self) -> Result<bool> {
-        let ota = self.ota.as_ref().context("OTA not initialized")?;
-        let running_slot = ota.get_running_slot()?;
-        Ok(!running_slot.label.contains("factory"))
     }
 
     /// Get current running firmware version

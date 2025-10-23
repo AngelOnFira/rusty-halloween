@@ -638,6 +638,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "esp-ota"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a9b278d487aa6b341c936f0d16ba42d1ae32e8000f4168c36110480817b5d3c7"
+dependencies = [
+ "embuild 0.33.1",
+ "esp-idf-sys",
+]
+
+[[package]]
 name = "esp32-mesh-firmware"
 version = "0.1.0"
 dependencies = [
@@ -648,6 +658,7 @@ dependencies = [
  "esp-idf-hal",
  "esp-idf-svc",
  "esp-idf-sys",
+ "esp-ota",
  "heapless",
  "log",
  "once_cell",

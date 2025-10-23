@@ -32,18 +32,10 @@ fn main() -> Result<()> {
 
     info!("ESP32 Mesh Firmware v{} Starting...", FIRMWARE_VERSION);
 
-    // Initialize OTA subsystem
-    info!("Initializing OTA subsystem...");
-    let mut ota_manager = OtaManager::new()?;
-    ota_manager.init()?;
-
-    // Mark firmware as valid (prevents rollback after OTA update)
-    if ota_manager.is_running_ota()? {
-        info!("Running from OTA partition, marking firmware as valid...");
-        ota_manager.mark_valid()?;
-    } else {
-        info!("Running from factory partition");
-    }
+    // Initialize OTA manager
+    // Note: mark_app_valid() is NOT called on startup - it's only called
+    // after completing an OTA update in finalize_ota()
+    let ota_manager = OtaManager::new()?;
 
     let peripherals = Peripherals::take().unwrap();
     let node = Arc::new(MeshNode::new(peripherals)?);
