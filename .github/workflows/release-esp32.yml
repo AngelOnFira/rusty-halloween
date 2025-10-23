@@ -55,7 +55,7 @@ jobs:
     - name: Build firmware
       working-directory: ./esp32-firmware
       run: |
-        . ~/esp/esp-idf/export.sh
+        # . ~/esp/esp-idf/export.sh
         cargo build --release
 
     - name: Install cargo-binstall
