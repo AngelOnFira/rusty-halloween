@@ -25,20 +25,20 @@ jobs:
         buildtargets: esp32s2
         ldproxy: true
 
-    - name: Install ESP-IDF dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y git wget flex bison gperf python3 \
-          python3-pip python3-venv cmake ninja-build ccache libffi-dev \
-          libssl-dev dfu-util libusb-1.0-0
+    # - name: Install ESP-IDF dependencies
+    #   run: |
+    #     sudo apt-get update
+    #     sudo apt-get install -y git wget flex bison gperf python3 \
+    #       python3-pip python3-venv cmake ninja-build ccache libffi-dev \
+    #       libssl-dev dfu-util libusb-1.0-0
 
-    - name: Install ESP-IDF
-      run: |
-        mkdir -p ~/esp
-        cd ~/esp
-        git clone -b v5.3.2 --recursive https://github.com/espressif/esp-idf.git
-        cd esp-idf
-        ./install.sh esp32s2
+    # - name: Install ESP-IDF
+    #   run: |
+    #     mkdir -p ~/esp
+    #     cd ~/esp
+    #     git clone -b v5.3.2 --recursive https://github.com/espressif/esp-idf.git
+    #     cd esp-idf
+    #     ./install.sh esp32s2
 
     - name: Create .env file
       working-directory: ./esp32-firmware
@@ -51,6 +51,12 @@ jobs:
       run: |
         . ~/esp/esp-idf/export.sh
         cargo build --release
+
+    - name: Install cargo-binstall
+      uses: cargo-bins/cargo-binstall@main
+
+    - name: Install espflash
+      run: cargo binstall espflash -y
 
     - name: Create firmware binary
       working-directory: ./esp32-firmware
