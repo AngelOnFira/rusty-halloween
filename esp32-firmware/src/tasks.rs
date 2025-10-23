@@ -1,5 +1,6 @@
 use crate::instructions::{Instructions, InstructionStatus};
 use crate::node::MeshNode;
+use crate::ota::OtaManager;
 use esp_idf_sys::{
     self as sys, esp_mesh_get_layer, esp_mesh_get_total_node_num, esp_mesh_is_device_active,
     esp_mesh_is_root, esp_mesh_recv, esp_mesh_send, esp_random, mesh_addr_t, mesh_data_t, ESP_OK,
@@ -12,9 +13,10 @@ use std::{
     time::Duration,
 };
 
-/// Application state containing the instruction queue
+/// Application state containing the instruction queue and OTA manager
 pub struct State {
     pub instructions: Instructions,
+    pub ota_manager: Arc<Mutex<OtaManager>>,
 }
 
 /// Task for receiving mesh messages
@@ -55,7 +57,7 @@ pub fn mesh_rx_task(node: Arc<MeshNode>, state: Arc<Mutex<State>>) {
                     data_str
                 );
 
-                // Parse JSON commands (color, challenges, responses) with better error handling
+                // Parse JSON commands (color, challenges, responses, OTA) with better error handling
                 match serde_json::from_str::<serde_json::Value>(data_str) {
                     Ok(command) => {
                         // Handle different message types
@@ -84,6 +86,55 @@ pub fn mesh_rx_task(node: Arc<MeshNode>, state: Arc<Mutex<State>>) {
                                                 info!("Received data item: {}", value);
                                             }
                                         }
+                                    }
+                                }
+                                // OTA message types
+                                "check_update" => {
+                                    info!("🔄 Received check_update command");
+                                    // This will be handled by the root node in mesh_tx_task
+                                }
+                                "ota_start" => {
+                                    use crate::ota::OtaMessage;
+                                    if let Ok(ota_msg) = serde_json::from_value::<OtaMessage>(command) {
+                                        if let OtaMessage::OtaStart { version, total_chunks, firmware_size } = ota_msg {
+                                            info!("🚀 OTA Update starting: v{} ({} chunks, {} bytes)", version, total_chunks, firmware_size);
+                                            let mut state_lock = state.lock().unwrap();
+                                            if let Err(e) = state_lock.ota_manager.lock().unwrap().start_ota_reception(total_chunks, firmware_size) {
+                                                warn!("Failed to start OTA reception: {:?}", e);
+                                            }
+                                        }
+                                    }
+                                }
+                                "ota_chunk" => {
+                                    use crate::ota::OtaMessage;
+                                    if let Ok(ota_msg) = serde_json::from_value::<OtaMessage>(command) {
+                                        if let OtaMessage::OtaChunk { chunk } = ota_msg {
+                                            let mut state_lock = state.lock().unwrap();
+                                            match state_lock.ota_manager.lock().unwrap().handle_chunk(chunk.clone()) {
+                                                Ok(complete) => {
+                                                    // Send ACK
+                                                    // TODO: Implement ACK sending
+                                                    if complete {
+                                                        info!("✅ OTA update complete! Ready to reboot.");
+                                                    }
+                                                }
+                                                Err(e) => {
+                                                    warn!("Failed to handle OTA chunk {}: {:?}", chunk.sequence, e);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                "ota_reboot" => {
+                                    info!("🔄 Received OTA reboot command - rebooting in 2 seconds...");
+                                    thread::sleep(Duration::from_secs(2));
+                                    unsafe {
+                                        esp_idf_sys::esp_restart();
+                                    }
+                                }
+                                "ota_cancel" => {
+                                    if let Some(reason) = command["reason"].as_str() {
+                                        warn!("❌ OTA update cancelled: {}", reason);
                                     }
                                 }
                                 _ => {
@@ -272,6 +323,106 @@ pub fn instruction_execution_task(node: Arc<MeshNode>, state: Arc<Mutex<State>>)
             InstructionStatus::SetColor(color) => {
                 node.set_color(color.r, color.g, color.b);
                 // Lock is automatically released when state_lock goes out of scope
+            }
+        }
+    }
+}
+
+/// Task for OTA distribution (root node only)
+pub fn ota_distribution_task(_node: Arc<MeshNode>, state: Arc<Mutex<State>>) {
+    use crate::ota::OtaMessage;
+
+    loop {
+        thread::sleep(Duration::from_secs(1));
+
+        unsafe {
+            if !esp_mesh_is_root() {
+                continue;
+            }
+        }
+
+        // Check if OTA manager has work to do
+        let state_lock = state.lock().unwrap();
+        let ota_state = state_lock.ota_manager.lock().unwrap().get_state();
+        drop(state_lock);
+
+        match ota_state {
+            crate::ota::OtaState::Distributing { total_chunks, .. } => {
+                // Send chunks to mesh
+                let state_lock = state.lock().unwrap();
+                let ota_manager = state_lock.ota_manager.lock().unwrap();
+                let chunks = ota_manager.get_all_chunks();
+
+                for chunk in chunks {
+                    let ota_msg = OtaMessage::OtaChunk {
+                        chunk: chunk.clone(),
+                    };
+
+                    let message = serde_json::to_string(&ota_msg).unwrap();
+                    let broadcast_addr = mesh_addr_t { addr: [0xFF; 6] };
+
+                    let mesh_data = mesh_data_t {
+                        data: message.as_ptr() as *mut u8,
+                        size: message.len() as u16,
+                        proto: 0,
+                        tos: 0,
+                    };
+
+                    let flag = 0x01; // MESH_DATA_GROUP flag
+
+                    unsafe {
+                        let err = esp_mesh_send(&broadcast_addr, &mesh_data, flag, ptr::null(), 0);
+                        if err == ESP_OK {
+                            info!("📤 Sent OTA chunk {}/{}", chunk.sequence + 1, total_chunks);
+                        } else {
+                            warn!("Failed to send OTA chunk {}: {}", chunk.sequence, err);
+                        }
+                    }
+
+                    // Small delay between chunks to avoid overwhelming the mesh
+                    thread::sleep(Duration::from_millis(100));
+                }
+
+                drop(ota_manager);
+                drop(state_lock);
+
+                // After sending all chunks, wait for nodes to complete
+                info!("All chunks sent. Waiting for nodes to complete...");
+                thread::sleep(Duration::from_secs(5));
+
+                // Check if all nodes are ready
+                let state_lock = state.lock().unwrap();
+                let ota_manager = state_lock.ota_manager.lock().unwrap();
+                if ota_manager.all_nodes_ready() {
+                    info!("✅ All nodes ready! Sending reboot command...");
+
+                    // Send reboot command
+                    let reboot_msg = OtaMessage::OtaReboot;
+                    let message = serde_json::to_string(&reboot_msg).unwrap();
+                    let broadcast_addr = mesh_addr_t { addr: [0xFF; 6] };
+
+                    let mesh_data = mesh_data_t {
+                        data: message.as_ptr() as *mut u8,
+                        size: message.len() as u16,
+                        proto: 0,
+                        tos: 0,
+                    };
+
+                    let flag = 0x01;
+
+                    unsafe {
+                        esp_mesh_send(&broadcast_addr, &mesh_data, flag, ptr::null(), 0);
+                    }
+
+                    // Reboot ourselves
+                    thread::sleep(Duration::from_secs(2));
+                    unsafe {
+                        esp_idf_sys::esp_restart();
+                    }
+                }
+            }
+            _ => {
+                // No OTA in progress
             }
         }
     }

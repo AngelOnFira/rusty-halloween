@@ -2,8 +2,10 @@ mod hardware;
 mod instructions;
 mod mesh;
 mod node;
+mod ota;
 mod tasks;
 mod utils;
+mod version;
 
 use anyhow::Result;
 use esp_idf_hal::peripherals::Peripherals;
@@ -17,13 +19,31 @@ use std::{
 use instructions::Instructions;
 use mesh::{init_mesh, init_wifi};
 use node::MeshNode;
-use tasks::{instruction_execution_task, mesh_rx_task, mesh_tx_task, monitor_task, State};
+use ota::OtaManager;
+use tasks::{
+    instruction_execution_task, mesh_rx_task, mesh_tx_task, monitor_task,
+    ota_distribution_task, State,
+};
+use version::FIRMWARE_VERSION;
 
 fn main() -> Result<()> {
     esp_idf_sys::link_patches();
     esp_idf_svc::log::EspLogger::initialize_default();
 
-    info!("ESP32 Mesh Demo Starting...");
+    info!("ESP32 Mesh Firmware v{} Starting...", FIRMWARE_VERSION);
+
+    // Initialize OTA subsystem
+    info!("Initializing OTA subsystem...");
+    let mut ota_manager = OtaManager::new()?;
+    ota_manager.init()?;
+
+    // Mark firmware as valid (prevents rollback after OTA update)
+    if ota_manager.is_running_ota()? {
+        info!("Running from OTA partition, marking firmware as valid...");
+        ota_manager.mark_valid()?;
+    } else {
+        info!("Running from factory partition");
+    }
 
     let peripherals = Peripherals::take().unwrap();
     let node = Arc::new(MeshNode::new(peripherals)?);
@@ -38,6 +58,7 @@ fn main() -> Result<()> {
 
     let state: Arc<Mutex<State>> = Arc::new(Mutex::new(State {
         instructions: Instructions::new(),
+        ota_manager: Arc::new(Mutex::new(ota_manager)),
     }));
 
     let node_rx = Arc::clone(&node);
@@ -63,10 +84,18 @@ fn main() -> Result<()> {
         instruction_execution_task(node_execution, state_execution);
     });
 
+    let node_ota = Arc::clone(&node);
+    let state_ota = state.clone();
+    thread::spawn(move || {
+        ota_distribution_task(node_ota, state_ota);
+    });
+
     info!("Mesh node started. Waiting for connections...");
     info!("WS2812 (GPIO18): Real addressable RGB LED with precise RMT timing!");
     info!("Status colors: Off=disconnected, Blue=child node, Green=root node");
     info!("Root node will send synchronized color updates every second");
+    info!("Firmware version: v{}", FIRMWARE_VERSION);
+    info!("OTA updates: Ready");
 
     loop {
         thread::sleep(Duration::from_secs(1));

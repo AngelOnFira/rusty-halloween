@@ -8,3 +8,22 @@ CONFIG_ESP_MAIN_TASK_STACK_SIZE=8000
 # Workaround for https://github.com/espressif/esp-idf/issues/7631
 #CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=n
 #CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=n
+
+# OTA Configuration
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="../../../../../../partitions.csv"
+CONFIG_PARTITION_TABLE_FILENAME="../../../../../../partitions.csv"
+
+# Flash size configuration (ESP32-S2-DEVKITC-1R has 4MB)
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="4MB"
+
+# Enable OTA rollback functionality
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+CONFIG_BOOTLOADER_APP_ANTI_ROLLBACK=n
+
+# Rollback timeout (revert to previous firmware if not marked valid within 30 seconds)
+CONFIG_BOOTLOADER_APP_ROLLBACK_TIMEOUT_SECONDS=30
+
+# HTTP client buffer size for OTA downloads
+CONFIG_ESP_HTTP_CLIENT_BUFFER_SIZE=4096
