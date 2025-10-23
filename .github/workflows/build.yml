@@ -1,0 +1,48 @@
+name: Build ESP32 Firmware
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf-rust:esp32s2_v5.3.2_1.84.0.0
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Create .env file
+      working-directory: ./esp32-firmware
+      run: |
+        echo "ROUTER_SSID=\"${{ secrets.ROUTER_SSID }}\"" > .env
+        echo "ROUTER_PASSWORD=\"${{ secrets.ROUTER_PASSWORD }}\"" >> .env
+
+    - name: Build firmware
+      working-directory: ./esp32-firmware
+      run: |
+        . $IDF_PATH/export.sh
+        cargo build --release
+
+    - name: Create firmware binary
+      working-directory: ./esp32-firmware
+      run: |
+        espflash save-image \
+          --chip esp32s2 \
+          --merge \
+          --partition-table partitions.csv \
+          --skip-padding \
+          target/xtensa-esp32s2-espidf/release/esp32-mesh-firmware \
+          esp32-mesh-firmware.bin
+
+    - name: Upload firmware artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: esp32-mesh-firmware
+        path: esp32-firmware/esp32-mesh-firmware.bin
+        retention-days: 30

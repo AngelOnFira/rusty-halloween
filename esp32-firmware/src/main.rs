@@ -30,7 +30,11 @@ fn main() -> Result<()> {
     esp_idf_sys::link_patches();
     esp_idf_svc::log::EspLogger::initialize_default();
 
-    info!("ESP32 Mesh Firmware v{} Starting...", FIRMWARE_VERSION);
+    info!("╔══════════════════════════════════════════════════════╗");
+    info!("║  ESP32 Mesh Firmware                                 ║");
+    info!("║  Version: {:<43} ║", FIRMWARE_VERSION);
+    info!("║  Built:   {:<43} ║", version::BUILD_TIMESTAMP);
+    info!("╚══════════════════════════════════════════════════════╝");
 
     // Initialize OTA manager
     // Note: mark_app_valid() is NOT called on startup - it's only called

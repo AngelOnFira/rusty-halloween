@@ -5,8 +5,11 @@ use serde::Deserialize;
 /// Current firmware version - update this when releasing new versions
 pub const FIRMWARE_VERSION: &str = "0.1.0";
 
+/// Build timestamp - automatically set at compile time
+pub const BUILD_TIMESTAMP: &str = env!("BUILD_TIMESTAMP");
+
 /// GitHub repository information
-pub const GITHUB_REPO_OWNER: &str = "your-username"; // TODO: Update with actual repo
+pub const GITHUB_REPO_OWNER: &str = "AngelOnFira";
 pub const GITHUB_REPO_NAME: &str = "rusty-halloween";
 
 /// Semantic version structure for comparison

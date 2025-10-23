@@ -1,0 +1,55 @@
+name: Release ESP32 Firmware
+
+on:
+  push:
+    tags:
+      - 'esp32-v*'
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf-rust:esp32s2_v5.3.2_1.84.0.0
+
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Create .env file
+      working-directory: ./esp32-firmware
+      run: |
+        echo "ROUTER_SSID=\"${{ secrets.ROUTER_SSID }}\"" > .env
+        echo "ROUTER_PASSWORD=\"${{ secrets.ROUTER_PASSWORD }}\"" >> .env
+
+    - name: Get version from tag
+      id: version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+    - name: Build firmware
+      working-directory: ./esp32-firmware
+      run: |
+        . $IDF_PATH/export.sh
+        cargo build --release
+
+    - name: Create firmware binary
+      working-directory: ./esp32-firmware
+      run: |
+        espflash save-image \
+          --chip esp32s2 \
+          --merge \
+          --partition-table partitions.csv \
+          --skip-padding \
+          target/xtensa-esp32s2-espidf/release/esp32-mesh-firmware \
+          esp32-mesh-firmware-${{ steps.version.outputs.VERSION }}.bin
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: esp32-firmware/esp32-mesh-firmware-${{ steps.version.outputs.VERSION }}.bin
+        generate_release_notes: true
+        draft: false
+        prerelease: false
