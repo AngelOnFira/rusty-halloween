@@ -200,11 +200,88 @@ impl OtaManager {
 
     /// Check GitHub for updates (root node only)
     pub fn check_for_updates(&mut self) -> Result<Option<GitHubRelease>> {
-        info!("Checking for firmware updates...");
-        // This will be implemented with HTTP client
-        // For now, return None
-        warn!("Update checking not yet implemented");
-        Ok(None)
+        use crate::version::{is_update_available, GITHUB_REPO_NAME, GITHUB_REPO_OWNER};
+        use embedded_svc::http::client::Client;
+        use esp_idf_svc::http::client::{Configuration, EspHttpConnection};
+
+        info!("Checking GitHub for firmware updates...");
+
+        let url = format!(
+            "https://api.github.com/repos/{}/{}/releases/latest",
+            GITHUB_REPO_OWNER, GITHUB_REPO_NAME
+        );
+
+        info!("Querying GitHub API: {}", url);
+
+        let connection = EspHttpConnection::new(&Configuration {
+            buffer_size: Some(4096),
+            timeout: Some(std::time::Duration::from_secs(30)),
+            ..Default::default()
+        })?;
+
+        let mut client = Client::wrap(connection);
+
+        // Make HTTP GET request
+        let request = client
+            .get(&url)
+            .context("Failed to create GET request")?;
+
+        // Submit request and get response
+        let mut response = request.submit().context("Failed to submit request")?;
+
+        let status = response.status();
+        info!("GitHub API response status: {}", status);
+
+        if status != 200 {
+            anyhow::bail!("GitHub API request failed with status: {}", status);
+        }
+
+        // Read response body into string
+        let mut json_data = String::new();
+        let mut buffer = [0u8; 1024];
+
+        loop {
+            match response.read(&mut buffer) {
+                Ok(0) => break, // EOF
+                Ok(n) => {
+                    let chunk = std::str::from_utf8(&buffer[..n])
+                        .context("Invalid UTF-8 in response")?;
+                    json_data.push_str(chunk);
+                }
+                Err(e) => {
+                    anyhow::bail!("Failed to read response: {:?}", e);
+                }
+            }
+        }
+
+        debug!("GitHub API response: {} bytes", json_data.len());
+
+        // Parse JSON response
+        let release: GitHubRelease = serde_json::from_str(&json_data)
+            .context("Failed to parse GitHub release JSON")?;
+
+        info!(
+            "Latest release: {} (tag: {})",
+            release.name, release.tag_name
+        );
+
+        // Parse version from tag and check if update is available
+        let latest_version = release.version()?;
+
+        if is_update_available(&latest_version)? {
+            info!(
+                "✨ Update available! Current: v{}, Latest: v{}",
+                crate::version::FIRMWARE_VERSION,
+                latest_version
+            );
+            Ok(Some(release))
+        } else {
+            info!(
+                "Already running latest version: v{}",
+                crate::version::FIRMWARE_VERSION
+            );
+            Ok(None)
+        }
     }
 
     /// Download firmware from GitHub (root node only)

@@ -167,6 +167,7 @@ pub fn mesh_rx_task(node: Arc<MeshNode>, state: Arc<Mutex<State>>) {
 pub fn mesh_tx_task(node: Arc<MeshNode>, state: Arc<Mutex<State>>) {
     let mut counter = 0u32;
     let mut _challenge_counter = 0u32;
+    let mut ota_check_done = false; // Only check for OTA updates once
 
     loop {
         thread::sleep(Duration::from_secs(5)); // Send updates every 5 second
@@ -179,6 +180,85 @@ pub fn mesh_tx_task(node: Arc<MeshNode>, state: Arc<Mutex<State>>) {
             let is_root = esp_mesh_is_root();
 
             if is_root {
+                // Check for OTA updates as soon as root node gets IP address
+                // Uses event-driven state tracking instead of arbitrary timer
+                let has_ip = *crate::mesh::HAS_IP.lock().unwrap();
+                if !ota_check_done && has_ip {
+                    info!("🔍 Checking for firmware updates from GitHub...");
+                    info!("Root node connected with IP - checking for OTA updates");
+                    ota_check_done = true; // Only check once
+
+                    let state_lock = state.lock().unwrap();
+                    let mut ota_manager = state_lock.ota_manager.lock().unwrap();
+
+                    match ota_manager.check_for_updates() {
+                        Ok(Some(release)) => {
+                            info!("📦 Update available! Release: {}", release.name);
+
+                            // Get the firmware asset
+                            if let Some(asset) = release.get_firmware_asset() {
+                                info!("📥 Firmware asset: {} ({} bytes)", asset.name, asset.size);
+
+                                // Parse version from tag
+                                match release.version() {
+                                    Ok(version) => {
+                                        // Trigger OTA update
+                                        info!("🚀 Starting OTA update to v{}...", version);
+                                        if let Err(e) = ota_manager.trigger_ota_update(
+                                            &asset.browser_download_url,
+                                            version.to_string(),
+                                            asset.size as u32,
+                                        ) {
+                                            warn!("Failed to trigger OTA update: {:?}", e);
+                                        } else {
+                                            info!("✅ OTA update triggered successfully!");
+
+                                            // Broadcast OTA start message to all nodes
+                                            drop(ota_manager);
+                                            drop(state_lock);
+
+                                            let ota_start_msg = crate::ota::OtaMessage::OtaStart {
+                                                version: version.to_string(),
+                                                total_chunks: 0, // Will be updated by distribution task
+                                                firmware_size: asset.size as u32,
+                                            };
+
+                                            let message = serde_json::to_string(&ota_start_msg).unwrap();
+                                            let broadcast_addr = mesh_addr_t { addr: [0xFF; 6] };
+
+                                            let mesh_data = mesh_data_t {
+                                                data: message.as_ptr() as *mut u8,
+                                                size: message.len() as u16,
+                                                proto: 0,
+                                                tos: 0,
+                                            };
+
+                                            let flag = 0x01;
+
+                                            let err = esp_mesh_send(&broadcast_addr, &mesh_data, flag, ptr::null(), 0);
+                                            if err == ESP_OK {
+                                                info!("📡 Broadcasted OTA start message to mesh");
+                                            } else {
+                                                warn!("Failed to broadcast OTA start: {}", err);
+                                            }
+                                        }
+                                    }
+                                    Err(e) => {
+                                        warn!("Failed to parse version from release: {:?}", e);
+                                    }
+                                }
+                            } else {
+                                warn!("No firmware binary found in release assets");
+                            }
+                        }
+                        Ok(None) => {
+                            info!("✅ Already running latest firmware version");
+                        }
+                        Err(e) => {
+                            warn!("Failed to check for updates: {:?}", e);
+                        }
+                    }
+                }
                 // Lock the state
                 let mut state_lock = state.lock().unwrap();
 
@@ -295,8 +375,12 @@ pub fn monitor_task(node: Arc<MeshNode>) {
             *node.is_connected.lock().unwrap() = is_active;
             *node.layer.lock().unwrap() = layer;
 
+            // Sync IP connectivity state
+            let has_ip = *crate::mesh::HAS_IP.lock().unwrap();
+            *node.has_ip.lock().unwrap() = has_ip;
+
             info!(
-                "Status - Root: {is_root}, Layer: {layer}, Active: {is_active}, Total Nodes: {total_nodes}"
+                "Status - Root: {is_root}, Layer: {layer}, Active: {is_active}, Has IP: {has_ip}, Total Nodes: {total_nodes}"
             );
 
             // Don't override synchronized colors - only show status when disconnected

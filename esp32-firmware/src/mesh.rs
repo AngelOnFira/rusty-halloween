@@ -11,7 +11,8 @@ use esp_idf_sys::{
     IP_EVENT, MESH_EVENT, WIFI_INIT_CONFIG_MAGIC,
 };
 use log::*;
-use std::{os::raw::c_void, ptr};
+use once_cell::sync::Lazy;
+use std::{os::raw::c_void, ptr, sync::{Arc, Mutex}};
 
 // Mesh network configuration constants
 pub const MESH_ID: [u8; 6] = [0x77, 0x77, 0x77, 0x77, 0x77, 0x77];
@@ -19,6 +20,17 @@ pub const MESH_PASSWORD: &str = "mesh_password_123";
 pub const MESH_CHANNEL: u8 = 6;
 pub const MESH_MAX_LAYER: i32 = 6;
 pub const MESH_AP_CONNECTIONS: i32 = 6;
+
+/// Global flag indicating root node has received IP address
+/// Set by IP_EVENT_STA_GOT_IP event handler, read by OTA check logic
+pub static HAS_IP: Lazy<Arc<Mutex<bool>>> = Lazy::new(|| Arc::new(Mutex::new(false)));
+
+/// Global network interface pointers for DHCP management
+/// STA interface used by root node to connect to external router
+/// AP interface used for mesh network communication
+/// Stored as usize (pointer as integer) for thread safety
+pub static STA_NETIF: Lazy<Arc<Mutex<usize>>> = Lazy::new(|| Arc::new(Mutex::new(0)));
+pub static AP_NETIF: Lazy<Arc<Mutex<usize>>> = Lazy::new(|| Arc::new(Mutex::new(0)));
 
 /// Mesh event handler callback for WiFi and mesh events
 unsafe extern "C" fn mesh_event_handler(
@@ -52,6 +64,35 @@ unsafe extern "C" fn mesh_event_handler(
                         parent_mac[4],
                         parent_mac[5]
                     );
+                }
+
+                // If this node is root, start DHCP client immediately
+                if esp_mesh_is_root() {
+                    info!("🌐 Node is now root - starting DHCP client for external IP");
+                    let sta_netif_addr = *STA_NETIF.lock().unwrap();
+                    if sta_netif_addr != 0 {
+                        let sta_netif = sta_netif_addr as *mut sys::esp_netif_obj;
+
+                        // Stop any existing DHCP session first
+                        let stop_result = sys::esp_netif_dhcpc_stop(sta_netif);
+                        if stop_result == sys::ESP_OK || stop_result == sys::ESP_ERR_ESP_NETIF_DHCP_ALREADY_STOPPED {
+                            debug!("DHCP client stopped (result: {})", stop_result);
+                        } else {
+                            warn!("Failed to stop DHCP client: {}", stop_result);
+                        }
+
+                        // Start DHCP client to obtain IP from router
+                        let start_result = sys::esp_netif_dhcpc_start(sta_netif);
+                        if start_result == sys::ESP_OK {
+                            info!("✅ DHCP client started - requesting IP from router");
+                        } else if start_result == sys::ESP_ERR_ESP_NETIF_DHCP_ALREADY_STARTED {
+                            info!("ℹ️  DHCP client already running");
+                        } else {
+                            error!("❌ Failed to start DHCP client: {}", start_result);
+                        }
+                    } else {
+                        error!("❌ STA netif is null - cannot start DHCP");
+                    }
                 }
             }
             sys::mesh_event_id_t_MESH_EVENT_PARENT_DISCONNECTED => {
@@ -117,7 +158,25 @@ unsafe extern "C" fn mesh_event_handler(
                 info!("Root switch acknowledged");
             }
             sys::mesh_event_id_t_MESH_EVENT_TODS_STATE => {
-                info!("TODS state update");
+                // TODS (To Distribution System) indicates connection to external network
+                // This event fires AFTER the root node gets an IP via DHCP
+                // DHCP is already started in PARENT_CONNECTED, this is just for verification
+                if !event_data.is_null() {
+                    let tods_state_ptr = event_data as *const sys::mesh_event_toDS_state_t;
+                    let tods_state = *tods_state_ptr;
+
+                    if esp_mesh_is_root() {
+                        if tods_state != 0 {
+                            info!("✅ TODS connected (state: {}) - Root has external network access", tods_state);
+                        } else {
+                            info!("ℹ️  TODS disconnected (state: 0) - Waiting for IP from router");
+                        }
+                    } else {
+                        debug!("TODS state update: {} (non-root node)", tods_state);
+                    }
+                } else {
+                    warn!("TODS state event with null data");
+                }
             }
             sys::mesh_event_id_t_MESH_EVENT_ROOT_FIXED => {
                 let is_root = esp_mesh_is_root();
@@ -128,7 +187,33 @@ unsafe extern "C" fn mesh_event_handler(
             }
         }
     } else if event_base == IP_EVENT && event_id as u32 == sys::ip_event_t_IP_EVENT_STA_GOT_IP {
-        info!("Station got IP");
+        // Set global flag that we have IP address
+        *HAS_IP.lock().unwrap() = true;
+
+        if !event_data.is_null() {
+            let event = event_data as *const sys::ip_event_got_ip_t;
+            let ip = (*event).ip_info.ip;
+            let gw = (*event).ip_info.gw;
+            let netmask = (*event).ip_info.netmask;
+            info!(
+                "✅ Station got IP: {}.{}.{}.{}, Gateway: {}.{}.{}.{}, Netmask: {}.{}.{}.{}",
+                (ip.addr & 0xFF),
+                ((ip.addr >> 8) & 0xFF),
+                ((ip.addr >> 16) & 0xFF),
+                ((ip.addr >> 24) & 0xFF),
+                (gw.addr & 0xFF),
+                ((gw.addr >> 8) & 0xFF),
+                ((gw.addr >> 16) & 0xFF),
+                ((gw.addr >> 24) & 0xFF),
+                (netmask.addr & 0xFF),
+                ((netmask.addr >> 8) & 0xFF),
+                ((netmask.addr >> 16) & 0xFF),
+                ((netmask.addr >> 24) & 0xFF),
+            );
+            info!("🌐 Root node has internet connectivity - OTA updates enabled");
+        } else {
+            info!("✅ Station got IP - OTA updates enabled");
+        }
     }
 }
 
@@ -144,6 +229,11 @@ pub fn init_wifi() -> Result<()> {
         let mut sta_netif: *mut sys::esp_netif_obj = std::ptr::null_mut();
         let mut ap_netif: *mut sys::esp_netif_obj = std::ptr::null_mut();
         sys::esp_netif_create_default_wifi_mesh_netifs(&mut sta_netif, &mut ap_netif);
+
+        // Save netif pointers globally for DHCP management (as usize for thread safety)
+        *STA_NETIF.lock().unwrap() = sta_netif as usize;
+        *AP_NETIF.lock().unwrap() = ap_netif as usize;
+        info!("Network interfaces created - STA: {:p}, AP: {:p}", sta_netif, ap_netif);
 
         // Create proper WiFi configuration
         let cfg = wifi_init_config_t {
@@ -174,6 +264,8 @@ pub fn init_wifi() -> Result<()> {
             rx_mgmt_buf_type: 0,
             tx_hetb_queue_num: 0,
         };
+
+        // let cfg = WIFI_INIT_CONFIG_DEFAULT();
 
         esp!(esp_wifi_init(&cfg))?;
         esp!(esp_wifi_set_storage(wifi_storage_t_WIFI_STORAGE_RAM))?;

@@ -18,6 +18,7 @@ pub struct MeshNode {
     pub led: WS2812Controller,
     pub is_root: Arc<Mutex<bool>>,
     pub is_connected: Arc<Mutex<bool>>,
+    pub has_ip: Arc<Mutex<bool>>, // Root node has IP address (internet connectivity)
     pub layer: Arc<Mutex<i32>>,
     pub current_color: Arc<Mutex<RGB8>>,
     // Packet loss testing
@@ -35,6 +36,7 @@ impl MeshNode {
             led,
             is_root: Arc::new(Mutex::new(false)),
             is_connected: Arc::new(Mutex::new(false)),
+            has_ip: Arc::new(Mutex::new(false)),
             layer: Arc::new(Mutex::new(-1)),
             current_color: Arc::new(Mutex::new(RGB8::new(0, 0, 0))),
             pending_challenges: Arc::new(Mutex::new(HashMap::new())),
