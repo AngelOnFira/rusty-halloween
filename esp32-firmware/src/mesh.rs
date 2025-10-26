@@ -198,6 +198,27 @@ unsafe extern "C" fn mesh_event_handler(
                 let is_root = esp_mesh_is_root();
                 info!("Root fixed: {is_root}");
             }
+            sys::mesh_event_id_t_MESH_EVENT_NO_PARENT_FOUND => {
+                warn!("⚠️  No parent found - searching for mesh network");
+            }
+            sys::mesh_event_id_t_MESH_EVENT_FIND_NETWORK => {
+                info!("🔍 Finding mesh network...");
+            }
+            sys::mesh_event_id_t_MESH_EVENT_ROUTER_SWITCH => {
+                if !event_data.is_null() {
+                    let event = event_data as *const sys::mesh_event_router_switch_t;
+                    let bssid = (*event).bssid;
+                    let channel = (*event).channel;
+                    info!(
+                        "🔄 Router switch: New BSSID {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}, Channel {}",
+                        bssid[0], bssid[1], bssid[2],
+                        bssid[3], bssid[4], bssid[5],
+                        channel
+                    );
+                } else {
+                    info!("🔄 Router switch occurred");
+                }
+            }
             _ => {
                 debug!("Unknown mesh event: {event_id}");
             }
@@ -215,7 +236,7 @@ unsafe extern "C" fn mesh_event_handler(
                     let gw = (*event).ip_info.gw;
                     let netmask = (*event).ip_info.netmask;
                     info!(
-                        "✅ Station got IP: {}.{}.{}.{}, Gateway: {}.{}.{}.{}, Netmask: {}.{}.{}.{}",
+                        "✅ IP: {}.{}.{}.{}, Gateway: {}.{}.{}.{}, Netmask: {}.{}.{}.{}",
                         (ip.addr & 0xFF),
                         ((ip.addr >> 8) & 0xFF),
                         ((ip.addr >> 16) & 0xFF),
@@ -232,17 +253,30 @@ unsafe extern "C" fn mesh_event_handler(
                     info!("🌐 Root node has internet connectivity - OTA updates enabled");
                 }
             }
-            sys::ip_event_t_IP_EVENT_STA_LOST_IP
-            | sys::ip_event_t_IP_EVENT_AP_STAIPASSIGNED
-            | sys::ip_event_t_IP_EVENT_GOT_IP6
-            | sys::ip_event_t_IP_EVENT_ETH_GOT_IP
-            | sys::ip_event_t_IP_EVENT_ETH_LOST_IP
-            | sys::ip_event_t_IP_EVENT_PPP_GOT_IP
-            | sys::ip_event_t_IP_EVENT_PPP_LOST_IP => {
-                info!("✅ IP event: {event_id}");
+            sys::ip_event_t_IP_EVENT_STA_LOST_IP => {
+                warn!("❌ Station lost IP - DHCP failed or connection lost");
+                *HAS_IP.lock().unwrap() = false;
+            }
+            sys::ip_event_t_IP_EVENT_AP_STAIPASSIGNED => {
+                info!("ℹ️  IP event: AP station assigned IP (event {})", event_id);
+            }
+            sys::ip_event_t_IP_EVENT_GOT_IP6 => {
+                info!("ℹ️  IP event: Got IPv6 (event {})", event_id);
+            }
+            sys::ip_event_t_IP_EVENT_ETH_GOT_IP => {
+                info!("ℹ️  IP event: Ethernet got IP (event {})", event_id);
+            }
+            sys::ip_event_t_IP_EVENT_ETH_LOST_IP => {
+                warn!("⚠️  IP event: Ethernet lost IP (event {})", event_id);
+            }
+            sys::ip_event_t_IP_EVENT_PPP_GOT_IP => {
+                info!("ℹ️  IP event: PPP got IP (event {})", event_id);
+            }
+            sys::ip_event_t_IP_EVENT_PPP_LOST_IP => {
+                warn!("⚠️  IP event: PPP lost IP (event {})", event_id);
             }
             _ => {
-                info!("✅ Station got IP - OTA updates enabled");
+                debug!("Unknown IP event: {}", event_id);
             }
         }
     }
@@ -314,113 +348,122 @@ pub fn init_wifi() -> Result<()> {
         info!("WiFi started");
     }
 
-    let channel_bitmap = wifi_scan_channel_bitmap_t {
-        // Do all 2.4ghz channels
-        ghz_2_channels: 0xFFFF,
-        ghz_5_channels: 0,
-    };
+    // Commented out: WiFi scan for 2.4GHz router selection
+    // This was causing issues with mesh initialization
+    // Mesh will auto-select best 2.4GHz router
+    // scan_for_2ghz_router()?;
 
-    let ssid = get_embedded_env_value("ROUTER_SSID");
-    let ssid_cstring = CString::new(ssid.clone()).unwrap();
-    let ssid_cstring_ptr = ssid_cstring.as_ptr() as *mut u8;
+    Ok(())
+}
 
-    let scan_config: *const wifi_scan_config_t = &wifi_scan_config_t {
-        ssid: ssid_cstring_ptr,
-        bssid: std::ptr::null_mut(),
-        channel: 0,
-        show_hidden: false,
-        scan_type: sys::wifi_scan_type_t_WIFI_SCAN_TYPE_ACTIVE,
-        scan_time: wifi_scan_time_t {
-            active: wifi_active_scan_time_t {
-                min: 100,
-                max: 1000,
-            },
-            passive: 0,
-        },
-        home_chan_dwell_time: 100,
-        channel_bitmap,
-    };
-
+/// Scan for 2.4GHz routers and select the best one
+/// NOTE: Currently commented out - mesh auto-selects router
+/// This function is preserved for potential future debugging
+#[allow(dead_code)]
+fn scan_for_2ghz_router() -> Result<()> {
     unsafe {
-        // Sleep for 1 second
-        // std::thread::sleep(std::time::Duration::from_secs(1));
+        let channel_bitmap = wifi_scan_channel_bitmap_t {
+            // Do all 2.4ghz channels
+            ghz_2_channels: 0xFFFF,
+            ghz_5_channels: 0,
+        };
+
+        let ssid = get_embedded_env_value("ROUTER_SSID");
+        let ssid_cstring = CString::new(ssid.clone()).unwrap();
+        let ssid_cstring_ptr = ssid_cstring.as_ptr() as *mut u8;
+
+        let scan_config: *const wifi_scan_config_t = &wifi_scan_config_t {
+            ssid: ssid_cstring_ptr,
+            bssid: std::ptr::null_mut(),
+            channel: 0,
+            show_hidden: false,
+            scan_type: sys::wifi_scan_type_t_WIFI_SCAN_TYPE_ACTIVE,
+            scan_time: wifi_scan_time_t {
+                active: wifi_active_scan_time_t {
+                    min: 100,
+                    max: 1000,
+                },
+                passive: 0,
+            },
+            home_chan_dwell_time: 100,
+            channel_bitmap,
+        };
+
         info!("Stopping WiFi scan");
         esp!(esp_wifi_scan_stop())?;
         info!("Starting WiFi scan");
         esp!(esp_wifi_scan_start(scan_config, true))?;
-    }
 
-    // Print the results, then panic for now
-    info!("Getting WiFi scan results");
-    let mut scan_results: [wifi_ap_record_t; 30] = unsafe { std::mem::zeroed() };
-    let mut ap_count: u16 = 30; // Max APs we can store
+        // Get scan results
+        info!("Getting WiFi scan results");
+        let mut scan_results: [wifi_ap_record_t; 30] = std::mem::zeroed();
+        let mut ap_count: u16 = 30; // Max APs we can store
 
-    unsafe {
         esp!(esp_wifi_scan_get_ap_records(
             &mut ap_count,
             scan_results.as_mut_ptr()
         ))?;
-    }
 
-    info!("Printing WiFi scan results (found {} APs)", ap_count);
+        info!("Printing WiFi scan results (found {} APs)", ap_count);
 
-    // Filter for 2.4GHz APs (channels 1-13) and find the one with best RSSI
-    let mut best_2ghz_ap: Option<&wifi_ap_record_t> = None;
-    let mut best_rssi: i8 = i8::MIN;
+        // Filter for 2.4GHz APs (channels 1-13) and find the one with best RSSI
+        let mut best_2ghz_ap: Option<&wifi_ap_record_t> = None;
+        let mut best_rssi: i8 = i8::MIN;
 
-    for result in scan_results.iter().take(ap_count as usize) {
-        // Convert SSID bytes to string for comparison
-        let ssid_bytes: Vec<u8> = result
-            .ssid
-            .iter()
-            .take_while(|&&b| b != 0)
-            .copied()
-            .collect();
-        let ap_ssid = String::from_utf8_lossy(&ssid_bytes);
+        for result in scan_results.iter().take(ap_count as usize) {
+            // Convert SSID bytes to string for comparison
+            let ssid_bytes: Vec<u8> = result
+                .ssid
+                .iter()
+                .take_while(|&&b| b != 0)
+                .copied()
+                .collect();
+            let ap_ssid = String::from_utf8_lossy(&ssid_bytes);
 
-        let is_2ghz = result.primary >= 1 && result.primary <= 13;
-        let band = if is_2ghz { "2.4GHz" } else { "5GHz" };
+            let is_2ghz = result.primary >= 1 && result.primary <= 13;
+            let band = if is_2ghz { "2.4GHz" } else { "5GHz" };
 
-        info!(
-            "  SSID: {}, BSSID: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}, Channel: {} ({}), RSSI: {}",
-            ap_ssid,
-            result.bssid[0],
-            result.bssid[1],
-            result.bssid[2],
-            result.bssid[3],
-            result.bssid[4],
-            result.bssid[5],
-            result.primary,
-            band,
-            result.rssi
-        );
+            info!(
+                "  SSID: {}, BSSID: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}, Channel: {} ({}), RSSI: {}",
+                ap_ssid,
+                result.bssid[0],
+                result.bssid[1],
+                result.bssid[2],
+                result.bssid[3],
+                result.bssid[4],
+                result.bssid[5],
+                result.primary,
+                band,
+                result.rssi
+            );
 
-        // Check if this is a 2.4GHz AP matching our target SSID
-        if is_2ghz && ap_ssid == ssid.as_str() && result.rssi > best_rssi {
-            best_2ghz_ap = Some(result);
-            best_rssi = result.rssi;
+            // Check if this is a 2.4GHz AP matching our target SSID
+            if is_2ghz && ap_ssid == ssid.as_str() && result.rssi > best_rssi {
+                best_2ghz_ap = Some(result);
+                best_rssi = result.rssi;
+            }
         }
-    }
 
-    // Store the selected BSSID or error if none found
-    if let Some(ap) = best_2ghz_ap {
-        *ROUTER_BSSID.lock().unwrap() = ap.bssid;
-        info!(
-            "✅ Selected 2.4GHz AP: BSSID {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}, Channel: {}, RSSI: {}",
-            ap.bssid[0],
-            ap.bssid[1],
-            ap.bssid[2],
-            ap.bssid[3],
-            ap.bssid[4],
-            ap.bssid[5],
-            ap.primary,
-            ap.rssi
-        );
-    } else {
-        return Err(anyhow::anyhow!(
-            "❌ No 2.4GHz AP found with SSID '{}'. ESP-MESH requires 2.4GHz!",
-            ssid
-        ));
+        // Store the selected BSSID or error if none found
+        if let Some(ap) = best_2ghz_ap {
+            *ROUTER_BSSID.lock().unwrap() = ap.bssid;
+            info!(
+                "✅ Selected 2.4GHz AP: BSSID {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}, Channel: {}, RSSI: {}",
+                ap.bssid[0],
+                ap.bssid[1],
+                ap.bssid[2],
+                ap.bssid[3],
+                ap.bssid[4],
+                ap.bssid[5],
+                ap.primary,
+                ap.rssi
+            );
+        } else {
+            return Err(anyhow::anyhow!(
+                "❌ No 2.4GHz AP found with SSID '{}'. ESP-MESH requires 2.4GHz!",
+                ssid
+            ));
+        }
     }
 
     Ok(())
