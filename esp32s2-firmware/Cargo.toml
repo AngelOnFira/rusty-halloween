@@ -48,6 +48,7 @@ embassy-time = { version = "0.5.0", features = ["defmt"] }
 esp-radio = { version = "0.16.0", features = [
   "defmt",
   "esp-alloc",
+  "esp-now",
   "esp32s2",
   "smoltcp",
   "unstable",
@@ -69,6 +70,20 @@ smoltcp = { version = "0.12.0", default-features = false, features = [
 
 critical-section = "1.2.0"
 static_cell      = "2.1.1"
+
+# Serialization and collections
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+postcard = { version = "1.0", default-features = false, features = ["use-crc", "heapless"] }
+heapless = { version = "0.7.17", features = ["serde"] }
+crc = "3.0"
+
+# Embassy sync primitives
+embassy-sync = { version = "0.6.0", features = ["defmt"] }
+
+# LED control
+smart-leds = "0.4"
+smart-leds-trait = "0.3"
+ws2812-spi = { version = "0.5", default-features = false }
 
 
 [profile.dev]
