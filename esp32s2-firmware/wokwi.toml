@@ -1,0 +1,5 @@
+[wokwi]
+version = 1
+gdbServerPort = 3333
+elf = "target/xtensa-esp32s2-none-elf/debug/esp32s2-firmware"
+firmware = "target/xtensa-esp32s2-none-elf/debug/esp32s2-firmware"

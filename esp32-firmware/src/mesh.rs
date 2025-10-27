@@ -339,11 +339,12 @@ pub fn init_wifi() -> Result<()> {
 
     unsafe {
         esp!(esp_wifi_init(&cfg))?;
+        esp!(esp_wifi_set_mode(sys::wifi_ps_type_t_WIFI_PS_NONE))?;
         info!("WiFi initialized");
         esp!(esp_wifi_set_storage(wifi_storage_t_WIFI_STORAGE_RAM))?;
         info!("WiFi storage set to RAM");
-        esp!(esp_wifi_set_mode(sys::wifi_mode_t_WIFI_MODE_STA))?;
-        info!("WiFi mode set to STA");
+        // esp!(esp_wifi_set_mode(sys::wifi_mode_t_WIFI_MODE_APSTA))?;
+        info!("WiFi mode set to STA/AP");
         esp!(esp_wifi_start())?;
         info!("WiFi started");
     }
@@ -505,22 +506,10 @@ pub fn init_mesh() -> Result<()> {
         let mut router_password = [0u8; 64];
         router_password[..pass_bytes.len()].copy_from_slice(pass_bytes);
 
-        // Get the 2.4GHz BSSID selected during WiFi scan
-        let router_bssid = *ROUTER_BSSID.lock().unwrap();
-        info!(
-            "Using 2.4GHz router BSSID: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-            router_bssid[0],
-            router_bssid[1],
-            router_bssid[2],
-            router_bssid[3],
-            router_bssid[4],
-            router_bssid[5]
-        );
-
         let router = mesh_router_t {
             ssid: router_ssid,
             ssid_len: ssid_bytes.len() as u8,
-            bssid: router_bssid, // Use specific 2.4GHz BSSID from scan
+            bssid: [0; 6], // Allow mesh to auto-select any router with matching SSID
             password: router_password,
             allow_router_switch: true,
         };
