@@ -1,14 +1,344 @@
+//! OTA state transitions and business logic
+
+use super::{types::*, GLOBAL_STATE};
 use anyhow::{Context, Result};
 use crc::{Crc, CRC_32_ISO_HDLC};
+use esp_idf_svc::sys as sys;
 use esp_ota::OtaUpdate;
 use log::*;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
+    marker::PhantomData,
     sync::{Arc, Mutex},
 };
 
 use crate::version::{GitHubRelease, Version};
+
+// =============================================================================
+// OTA State Transitions
+// =============================================================================
+
+/// OTA Idle state - ready to start OTA operations
+impl<W, M, S> WifiMeshState<W, M, S, OtaIdle> {
+    /// Begin OTA download (root node only)
+    /// Transitions from Idle → Downloading
+    pub fn begin_ota_download(self, firmware_url: String, firmware_size: u32, version: String)
+        -> anyhow::Result<WifiMeshState<W, M, S, OtaDownloading>>
+    {
+        info!("Beginning OTA download: v{} ({} bytes) from {}", version, firmware_size, firmware_url);
+
+        // Update global state
+        if let Some(state) = GLOBAL_STATE.lock().unwrap().as_mut() {
+            state.ota_state = OtaStateRuntime::Downloading;
+            state.ota_data.firmware_url = Some(firmware_url);
+            state.ota_data.total_size = firmware_size;
+            state.ota_data.progress = 0;
+            state.ota_data.target_version = Some(version);
+        }
+
+        Ok(WifiMeshState {
+            _wifi_mode: PhantomData,
+            _mesh_state: PhantomData,
+            _scan_state: PhantomData,
+            _ota_state: PhantomData,
+            is_root: self.is_root,
+            layer: self.layer,
+            has_ip: self.has_ip,
+            current_channel: self.current_channel,
+            mesh_id: self.mesh_id,
+            sta_netif: self.sta_netif,
+            ap_netif: self.ap_netif,
+        })
+    }
+
+    /// Begin OTA reception (child node only)
+    /// Transitions from Idle → Receiving
+    pub fn begin_ota_reception(self, total_chunks: u32, firmware_size: u32)
+        -> anyhow::Result<WifiMeshState<W, M, S, OtaReceiving>>
+    {
+        info!("Beginning OTA reception: {} chunks ({} bytes)", total_chunks, firmware_size);
+
+        // Update global state
+        if let Some(state) = GLOBAL_STATE.lock().unwrap().as_mut() {
+            state.ota_state = OtaStateRuntime::Receiving;
+            state.ota_data.total_chunks = total_chunks;
+            state.ota_data.total_size = firmware_size;
+            state.ota_data.progress = 0;
+            state.ota_data.next_expected_sequence = 0;
+            state.ota_data.received_chunks_buffer.clear();
+        }
+
+        Ok(WifiMeshState {
+            _wifi_mode: PhantomData,
+            _mesh_state: PhantomData,
+            _scan_state: PhantomData,
+            _ota_state: PhantomData,
+            is_root: self.is_root,
+            layer: self.layer,
+            has_ip: self.has_ip,
+            current_channel: self.current_channel,
+            mesh_id: self.mesh_id,
+            sta_netif: self.sta_netif,
+            ap_netif: self.ap_netif,
+        })
+    }
+}
+
+/// OTA Downloading state (root node)
+impl<W, M, S> WifiMeshState<W, M, S, OtaDownloading> {
+    /// Complete download and transition to distributing
+    /// Transitions from Downloading → Distributing
+    pub fn complete_download(self, firmware_data: Vec<u8>)
+        -> anyhow::Result<WifiMeshState<W, M, S, OtaDistributing>>
+    {
+        info!("Completing OTA download, fragmenting firmware...");
+
+        // Fragment firmware into chunks
+        let total_chunks = (firmware_data.len() + CHUNK_SIZE - 1) / CHUNK_SIZE;
+        let version = GLOBAL_STATE.lock().unwrap()
+            .as_ref()
+            .and_then(|s| s.ota_data.target_version.clone())
+            .unwrap_or_else(|| "unknown".to_string());
+
+        let mut chunks = Vec::new();
+        for (i, chunk_data) in firmware_data.chunks(CHUNK_SIZE).enumerate() {
+            let chunk = FirmwareChunk::new(
+                i as u32,
+                total_chunks as u32,
+                version.clone(),
+                chunk_data.to_vec()
+            );
+            chunks.push(chunk);
+        }
+
+        // Update global state
+        if let Some(state) = GLOBAL_STATE.lock().unwrap().as_mut() {
+            state.ota_state = OtaStateRuntime::Distributing;
+            state.ota_data.chunks = chunks;
+            state.ota_data.total_chunks = total_chunks as u32;
+        }
+
+        info!("Firmware fragmented into {} chunks, ready to distribute", total_chunks);
+
+        Ok(WifiMeshState {
+            _wifi_mode: PhantomData,
+            _mesh_state: PhantomData,
+            _scan_state: PhantomData,
+            _ota_state: PhantomData,
+            is_root: self.is_root,
+            layer: self.layer,
+            has_ip: self.has_ip,
+            current_channel: self.current_channel,
+            mesh_id: self.mesh_id,
+            sta_netif: self.sta_netif,
+            ap_netif: self.ap_netif,
+        })
+    }
+
+    /// Cancel OTA and return to idle
+    pub fn cancel_ota(self) -> WifiMeshState<W, M, S, OtaIdle> {
+        info!("Cancelling OTA download");
+
+        if let Some(state) = GLOBAL_STATE.lock().unwrap().as_mut() {
+            state.ota_state = OtaStateRuntime::Idle;
+            *state.ota_data_mut() = OtaRuntimeData::new();
+        }
+
+        WifiMeshState {
+            _wifi_mode: PhantomData,
+            _mesh_state: PhantomData,
+            _scan_state: PhantomData,
+            _ota_state: PhantomData,
+            is_root: self.is_root,
+            layer: self.layer,
+            has_ip: self.has_ip,
+            current_channel: self.current_channel,
+            mesh_id: self.mesh_id,
+            sta_netif: self.sta_netif,
+            ap_netif: self.ap_netif,
+        }
+    }
+}
+
+/// OTA Distributing state (root node)
+impl<W, M, S> WifiMeshState<W, M, S, OtaDistributing> {
+    /// Complete distribution (all nodes ready) and transition to ready to reboot
+    /// Transitions from Distributing → ReadyToReboot
+    pub fn complete_distribution(self)
+        -> anyhow::Result<WifiMeshState<W, M, S, OtaReadyToReboot>>
+    {
+        info!("All nodes ready, transitioning to ready to reboot");
+
+        if let Some(state) = GLOBAL_STATE.lock().unwrap().as_mut() {
+            state.ota_state = OtaStateRuntime::ReadyToReboot;
+        }
+
+        Ok(WifiMeshState {
+            _wifi_mode: PhantomData,
+            _mesh_state: PhantomData,
+            _scan_state: PhantomData,
+            _ota_state: PhantomData,
+            is_root: self.is_root,
+            layer: self.layer,
+            has_ip: self.has_ip,
+            current_channel: self.current_channel,
+            mesh_id: self.mesh_id,
+            sta_netif: self.sta_netif,
+            ap_netif: self.ap_netif,
+        })
+    }
+
+    /// Cancel OTA and return to idle
+    pub fn cancel_ota(self) -> WifiMeshState<W, M, S, OtaIdle> {
+        info!("Cancelling OTA distribution");
+
+        if let Some(state) = GLOBAL_STATE.lock().unwrap().as_mut() {
+            state.ota_state = OtaStateRuntime::Idle;
+            *state.ota_data_mut() = OtaRuntimeData::new();
+        }
+
+        WifiMeshState {
+            _wifi_mode: PhantomData,
+            _mesh_state: PhantomData,
+            _scan_state: PhantomData,
+            _ota_state: PhantomData,
+            is_root: self.is_root,
+            layer: self.layer,
+            has_ip: self.has_ip,
+            current_channel: self.current_channel,
+            mesh_id: self.mesh_id,
+            sta_netif: self.sta_netif,
+            ap_netif: self.ap_netif,
+        }
+    }
+}
+
+/// OTA Receiving state (child node)
+impl<W, M, S> WifiMeshState<W, M, S, OtaReceiving> {
+    /// Complete reception (all chunks received and validated)
+    /// Transitions from Receiving → ReadyToReboot
+    pub fn complete_reception(self)
+        -> anyhow::Result<WifiMeshState<W, M, S, OtaReadyToReboot>>
+    {
+        info!("All chunks received and validated, transitioning to ready to reboot");
+
+        if let Some(state) = GLOBAL_STATE.lock().unwrap().as_mut() {
+            state.ota_state = OtaStateRuntime::ReadyToReboot;
+        }
+
+        Ok(WifiMeshState {
+            _wifi_mode: PhantomData,
+            _mesh_state: PhantomData,
+            _scan_state: PhantomData,
+            _ota_state: PhantomData,
+            is_root: self.is_root,
+            layer: self.layer,
+            has_ip: self.has_ip,
+            current_channel: self.current_channel,
+            mesh_id: self.mesh_id,
+            sta_netif: self.sta_netif,
+            ap_netif: self.ap_netif,
+        })
+    }
+
+    /// Cancel OTA and return to idle
+    pub fn cancel_ota(self) -> WifiMeshState<W, M, S, OtaIdle> {
+        info!("Cancelling OTA reception");
+
+        if let Some(state) = GLOBAL_STATE.lock().unwrap().as_mut() {
+            state.ota_state = OtaStateRuntime::Idle;
+            *state.ota_data_mut() = OtaRuntimeData::new();
+        }
+
+        WifiMeshState {
+            _wifi_mode: PhantomData,
+            _mesh_state: PhantomData,
+            _scan_state: PhantomData,
+            _ota_state: PhantomData,
+            is_root: self.is_root,
+            layer: self.layer,
+            has_ip: self.has_ip,
+            current_channel: self.current_channel,
+            mesh_id: self.mesh_id,
+            sta_netif: self.sta_netif,
+            ap_netif: self.ap_netif,
+        }
+    }
+}
+
+/// OTA Ready to Reboot state
+impl<W, M, S> WifiMeshState<W, M, S, OtaReadyToReboot> {
+    /// Reboot the device (never returns)
+    pub fn reboot(self) -> ! {
+        info!("Rebooting device to apply OTA update...");
+        unsafe {
+            sys::esp_restart();
+        }
+    }
+
+    /// Cancel OTA and return to idle (in case of abort before reboot)
+    pub fn cancel_ota(self) -> WifiMeshState<W, M, S, OtaIdle> {
+        info!("Cancelling OTA before reboot");
+
+        if let Some(state) = GLOBAL_STATE.lock().unwrap().as_mut() {
+            state.ota_state = OtaStateRuntime::Idle;
+            *state.ota_data_mut() = OtaRuntimeData::new();
+        }
+
+        WifiMeshState {
+            _wifi_mode: PhantomData,
+            _mesh_state: PhantomData,
+            _scan_state: PhantomData,
+            _ota_state: PhantomData,
+            is_root: self.is_root,
+            layer: self.layer,
+            has_ip: self.has_ip,
+            current_channel: self.current_channel,
+            mesh_id: self.mesh_id,
+            sta_netif: self.sta_netif,
+            ap_netif: self.ap_netif,
+        }
+    }
+}
+
+// Keep OtaActive for backwards compatibility
+impl<W, M, S> WifiMeshState<W, M, S, OtaActive> {
+    /// Complete OTA operation and return to idle state.
+    /// Call this whether OTA succeeded or failed.
+    pub fn finish_ota(self) -> WifiMeshState<W, M, S, OtaIdle> {
+        info!("Finishing OTA operation");
+
+        // Update global state
+        if let Some(state) = GLOBAL_STATE.lock().unwrap().as_mut() {
+            state.ota_state = OtaStateRuntime::Idle;
+        }
+
+        WifiMeshState {
+            _wifi_mode: PhantomData,
+            _mesh_state: PhantomData,
+            _scan_state: PhantomData,
+            _ota_state: PhantomData,
+            is_root: self.is_root,
+            layer: self.layer,
+            has_ip: self.has_ip,
+            current_channel: self.current_channel,
+            mesh_id: self.mesh_id,
+            sta_netif: self.sta_netif,
+            ap_netif: self.ap_netif,
+        }
+    }
+
+    /// Query if OTA is currently active
+    /// (Always returns true for this state, provided for API consistency)
+    pub fn is_ota_active(&self) -> bool {
+        true
+    }
+}
+
+// =============================================================================
+// OTA Business Logic (Manager, Messages, Chunks)
+// =============================================================================
 
 /// OTA update chunk size (bytes) - sized for mesh transmission
 pub const CHUNK_SIZE: usize = 512;

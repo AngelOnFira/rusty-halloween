@@ -1,6 +1,116 @@
-use esp_idf_sys::*;
+//! WiFi scanning operations and network discovery
+
+use super::{types::*, wifi::ScanResults};
+use esp_idf_svc::sys::{
+    self as sys, esp,
+    nvs_handle_t, nvs_open, nvs_close, nvs_get_u8, nvs_set_u8, nvs_commit,
+    nvs_open_mode_t_NVS_READONLY, nvs_open_mode_t_NVS_READWRITE,
+    ESP_OK, ESP_ERR_NVS_NOT_FOUND, ESP_ERR_TIMEOUT,
+    wifi_ap_record_t, wifi_scan_config_t, wifi_scan_type_t_WIFI_SCAN_TYPE_ACTIVE,
+    wifi_scan_time_t, wifi_active_scan_time_t, wifi_scan_channel_bitmap_t,
+    esp_wifi_scan_start, esp_wifi_scan_get_ap_num, esp_wifi_scan_get_ap_records,
+    esp_mesh_scan_get_ap_ie_len,
+};
 use log::{error, info, warn};
-use std::{ffi::CString, ptr};
+use std::{ffi::CString, marker::PhantomData, ptr};
+
+// =============================================================================
+// Scan Operations (Automatic Transitions)
+// =============================================================================
+
+/// Scan results container
+
+
+impl<O> WifiMeshState<Sta, MeshInactive, NotScanning, O> {
+    /// Perform a WiFi scan and return results.
+    /// WiFi is already in STA mode and mesh is inactive, so we can scan directly.
+    ///
+    /// This is the simple case - use when you're already in a scan-ready state.
+    pub fn scan(self) -> Result<(ScanResults, Self), sys::EspError> {
+        info!("Starting WiFi scan (already in STA mode, mesh inactive)");
+
+        unsafe {
+            // Stop any previous scan
+            sys::esp_wifi_scan_stop();
+
+            // Configure scan
+            let scan_config = sys::wifi_scan_config_t {
+                ssid: core::ptr::null_mut(),
+                bssid: core::ptr::null_mut(),
+                channel: 0,
+                show_hidden: false,
+                scan_type: sys::wifi_scan_type_t_WIFI_SCAN_TYPE_ACTIVE,
+                scan_time: sys::wifi_scan_time_t {
+                    active: sys::wifi_active_scan_time_t {
+                        min: 100,
+                        max: 300,
+                    },
+                    passive: 0,
+                },
+                home_chan_dwell_time: 0,
+                channel_bitmap: sys::wifi_scan_channel_bitmap_t {
+                    ghz_2_channels: 0xFFFF, // Scan all 2.4GHz channels
+                    ghz_5_channels: 0,      // Don't scan 5GHz
+                },
+            };
+
+            // Start scan (blocking until complete)
+            sys::esp!(sys::esp_wifi_scan_start(&scan_config, true))?;
+            info!("Scan completed successfully");
+
+            // Get results
+            let mut ap_count: u16 = 0;
+            sys::esp!(sys::esp_wifi_scan_get_ap_num(&mut ap_count))?;
+
+            let mut aps: Vec<sys::wifi_ap_record_t> = vec![
+                std::mem::zeroed();
+                ap_count as usize
+            ];
+
+            let mut actual_count = ap_count;
+            sys::esp!(sys::esp_wifi_scan_get_ap_records(&mut actual_count, aps.as_mut_ptr()))?;
+            aps.truncate(actual_count as usize);
+
+            info!("Found {} access points", actual_count);
+
+            let results = ScanResults {
+                aps,
+                count: actual_count as usize,
+            };
+
+            Ok((results, self))
+        }
+    }
+}
+
+impl<O> WifiMeshState<StaAp, MeshInactive, NotScanning, O> {
+    /// Perform a WiFi scan with automatic mode transition.
+    ///
+    /// This automatically:
+    /// 1. Switches from STAAP to STA mode (required for scanning)
+    /// 2. Performs the scan
+    /// 3. Switches back to STAAP mode
+    ///
+    /// Use this when mesh is inactive but you're in STAAP mode.
+    pub fn scan(self) -> Result<(ScanResults, Self), sys::EspError> {
+        info!("Starting WiFi scan with automatic mode transition (STAAP -> STA -> scan -> STAAP)");
+
+        // Step 1: Switch to STA mode
+        let sta_state = self.set_sta_mode()?;
+
+        // Step 2: Perform scan
+        let (results, sta_state) = sta_state.scan()?;
+
+        // Step 3: Switch back to STAAP mode
+        let staap_state = sta_state.set_staap_mode()?;
+
+        Ok((results, staap_state))
+    }
+}
+
+// =============================================================================
+// Network Discovery and NVS Persistence
+// =============================================================================
 
 /// NVS namespace for storing mesh configuration
 const NVS_NAMESPACE: &str = "mesh_config";

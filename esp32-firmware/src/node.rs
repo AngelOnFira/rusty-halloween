@@ -1,13 +1,10 @@
 use crate::hardware::WS2812Controller;
+use crate::state::{mesh_send, BROADCAST_ADDR};
 use esp_idf_hal::peripherals::Peripherals;
-use esp_idf_sys::{
-    esp_mesh_send, mesh_addr_t, mesh_data_t, ESP_OK,
-};
 use log::*;
 use smart_leds::RGB8;
 use std::{
     collections::HashMap,
-    ptr,
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
@@ -75,30 +72,18 @@ impl MeshNode {
         });
 
         let message = challenge_command.to_string();
-        let broadcast_addr = mesh_addr_t { addr: [0xFF; 6] };
-
-        let mesh_data = mesh_data_t {
-            data: message.as_ptr() as *mut u8,
-            size: message.len() as u16,
-            proto: 0,
-            tos: 0,
-        };
-
         let flag = 0x01; // MESH_DATA_GROUP flag
 
-        unsafe {
-            let err = esp_mesh_send(&broadcast_addr, &mesh_data, flag, ptr::null(), 0);
-            if err == ESP_OK {
-                // Record the challenge
-                self.pending_challenges
-                    .lock()
-                    .unwrap()
-                    .insert(challenge_id, Instant::now());
-                *self.total_challenges_sent.lock().unwrap() += 1;
-                true
-            } else {
-                false
-            }
+        if mesh_send(&BROADCAST_ADDR, message.as_bytes(), flag).is_ok() {
+            // Record the challenge
+            self.pending_challenges
+                .lock()
+                .unwrap()
+                .insert(challenge_id, Instant::now());
+            *self.total_challenges_sent.lock().unwrap() += 1;
+            true
+        } else {
+            false
         }
     }
 
@@ -141,24 +126,12 @@ impl MeshNode {
         });
 
         let message = response_command.to_string();
-        let broadcast_addr = mesh_addr_t { addr: [0xFF; 6] };
-
-        let mesh_data = mesh_data_t {
-            data: message.as_ptr() as *mut u8,
-            size: message.len() as u16,
-            proto: 0,
-            tos: 0,
-        };
-
         let flag = 0x01; // MESH_DATA_GROUP flag
 
-        unsafe {
-            let err = esp_mesh_send(&broadcast_addr, &mesh_data, flag, ptr::null(), 0);
-            if err == ESP_OK {
-                info!("📤 Sent challenge response for ID: {}", challenge_id);
-            } else {
-                warn!("Failed to send challenge response: {}", err);
-            }
+        if mesh_send(&BROADCAST_ADDR, message.as_bytes(), flag).is_ok() {
+            info!("📤 Sent challenge response for ID: {}", challenge_id);
+        } else {
+            warn!("Failed to send challenge response");
         }
     }
 }

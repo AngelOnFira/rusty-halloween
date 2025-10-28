@@ -1,9 +1,6 @@
 mod hardware;
 mod instructions;
-mod mesh;
 mod node;
-mod ota;
-mod scan;
 mod state;
 mod tasks;
 mod utils;
@@ -19,11 +16,12 @@ use std::{
 };
 
 use instructions::Instructions;
-use mesh::{init_wifi, MESH_ID};
 use node::MeshNode;
-use ota::OtaManager;
-use scan::{load_channel_from_nvs, save_channel_to_nvs, scan_with_retry, NetworkDiscovery};
-use state::{InitialState, MeshConfig};
+use state::{
+    InitialState, MeshConfig, MESH_ID,
+    OtaManager, NetworkDiscovery,
+    load_channel_from_nvs, save_channel_to_nvs, scan_with_retry,
+};
 use tasks::{
     instruction_execution_task, mesh_rx_task, mesh_tx_task, monitor_task,
     ota_distribution_task, ApplicationState,
@@ -49,11 +47,8 @@ fn main() -> Result<()> {
     let peripherals = Peripherals::take().unwrap();
     let node = Arc::new(MeshNode::new(peripherals)?);
 
-    info!("Initializing WiFi...");
-    init_wifi()?;
-
-    // Initialize state machine
-    info!("Initializing state machine...");
+    // Initialize state machine (this also initializes WiFi)
+    info!("Initializing state machine and WiFi...");
     let wifi_state = InitialState::new();
     let wifi_state = wifi_state.initialize_wifi()?;
 

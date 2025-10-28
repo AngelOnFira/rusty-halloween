@@ -1,14 +1,14 @@
 use crate::instructions::{Instructions, InstructionStatus};
 use crate::node::MeshNode;
-use crate::ota::OtaManager;
-use crate::state;
-use esp_idf_sys::{
-    esp_mesh_get_total_node_num, esp_mesh_is_device_active,
-    esp_mesh_recv, esp_mesh_send, esp_random, mesh_addr_t, mesh_data_t, ESP_OK,
+use crate::state::{
+    self,
+    mesh_send, mesh_recv, is_mesh_active, get_mesh_node_count,
+    BROADCAST_ADDR,
+    OtaManager, OtaMessage, OtaState,
 };
+use esp_idf_sys::{esp_random, mesh_addr_t, ESP_OK};
 use log::*;
 use std::{
-    ptr,
     sync::{Arc, Mutex},
     thread,
     time::Duration,
@@ -22,41 +22,24 @@ pub struct ApplicationState {
 
 /// Task for receiving mesh messages
 pub fn mesh_rx_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
-    let mut rx_buf = vec![0u8; 1500];
-    let mut from_addr = mesh_addr_t { addr: [0; 6] };
-    let mut flag = 0i32;
-
     loop {
-        let mut mesh_data = mesh_data_t {
-            data: rx_buf.as_mut_ptr(),
-            size: rx_buf.len() as u16,
-            proto: 0,
-            tos: 0,
-        };
-
-        unsafe {
-            let err = esp_mesh_recv(
-                &mut from_addr,
-                &mut mesh_data,
-                5000,
-                &mut flag,
-                ptr::null_mut(),
-                0,
-            );
-
-            if err == ESP_OK {
-                let data_str = std::str::from_utf8(&rx_buf[..mesh_data.size as usize])
+        // Use state machine's mesh_recv helper
+        match mesh_recv(5000) {
+            Ok(msg) => {
+                let data_str = std::str::from_utf8(&msg.data)
                     .unwrap_or("Invalid UTF-8");
-                info!(
-                    "Received from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}: {}",
-                    from_addr.addr[0],
-                    from_addr.addr[1],
-                    from_addr.addr[2],
-                    from_addr.addr[3],
-                    from_addr.addr[4],
-                    from_addr.addr[5],
-                    data_str
-                );
+                unsafe {
+                    info!(
+                        "Received from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}: {}",
+                        msg.from_addr.addr[0],
+                        msg.from_addr.addr[1],
+                        msg.from_addr.addr[2],
+                        msg.from_addr.addr[3],
+                        msg.from_addr.addr[4],
+                        msg.from_addr.addr[5],
+                        data_str
+                    );
+                }
 
                 // Parse JSON commands (color, challenges, responses, OTA) with better error handling
                 match serde_json::from_str::<serde_json::Value>(data_str) {
@@ -95,7 +78,6 @@ pub fn mesh_rx_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
                                     // This will be handled by the root node in mesh_tx_task
                                 }
                                 "ota_start" => {
-                                    use crate::ota::OtaMessage;
                                     if let Ok(ota_msg) = serde_json::from_value::<OtaMessage>(command) {
                                         if let OtaMessage::OtaStart { version, total_chunks, firmware_size } = ota_msg {
                                             info!("🚀 OTA Update starting: v{} ({} chunks, {} bytes)", version, total_chunks, firmware_size);
@@ -108,7 +90,6 @@ pub fn mesh_rx_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
                                     }
                                 }
                                 "ota_chunk" => {
-                                    use crate::ota::OtaMessage;
                                     if let Ok(ota_msg) = serde_json::from_value::<OtaMessage>(command) {
                                         if let OtaMessage::OtaChunk { chunk } = ota_msg {
                                             let state_lock = state.lock().unwrap();
@@ -131,7 +112,9 @@ pub fn mesh_rx_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
                                 "ota_reboot" => {
                                     info!("🔄 Received OTA reboot command - rebooting in 2 seconds...");
                                     thread::sleep(Duration::from_secs(2));
-                                    esp_idf_sys::esp_restart();
+                                    unsafe {
+                                        esp_idf_sys::esp_restart();
+                                    }
                                 }
                                 "ota_cancel" => {
                                     if let Some(reason) = command["reason"].as_str() {
@@ -158,6 +141,9 @@ pub fn mesh_rx_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
                     }
                 }
             }
+            Err(_) => {
+                // Timeout or error receiving message (expected, don't log)
+            }
         }
 
         thread::sleep(Duration::from_millis(10));
@@ -173,11 +159,11 @@ pub fn mesh_tx_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
     loop {
         thread::sleep(Duration::from_secs(5)); // Send updates every 5 second
 
-        unsafe {
-            if !esp_mesh_is_device_active() {
-                continue;
-            }
+        if !is_mesh_active() {
+            continue;
+        }
 
+        unsafe {
             let is_root_node = state::is_root();
 
             if is_root_node {
@@ -218,29 +204,19 @@ pub fn mesh_tx_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
                                             drop(ota_manager);
                                             drop(state_lock);
 
-                                            let ota_start_msg = crate::ota::OtaMessage::OtaStart {
+                                            let ota_start_msg = OtaMessage::OtaStart {
                                                 version: version.to_string(),
                                                 total_chunks: 0, // Will be updated by distribution task
                                                 firmware_size: asset.size as u32,
                                             };
 
                                             let message = serde_json::to_string(&ota_start_msg).unwrap();
-                                            let broadcast_addr = mesh_addr_t { addr: [0xFF; 6] };
-
-                                            let mesh_data = mesh_data_t {
-                                                data: message.as_ptr() as *mut u8,
-                                                size: message.len() as u16,
-                                                proto: 0,
-                                                tos: 0,
-                                            };
-
                                             let flag = 0x01;
 
-                                            let err = esp_mesh_send(&broadcast_addr, &mesh_data, flag, ptr::null(), 0);
-                                            if err == ESP_OK {
+                                            if mesh_send(&BROADCAST_ADDR, message.as_bytes(), flag).is_ok() {
                                                 info!("📡 Broadcasted OTA start message to mesh");
                                             } else {
-                                                warn!("Failed to broadcast OTA start: {}", err);
+                                                warn!("Failed to broadcast OTA start");
                                             }
                                         }
                                     }
@@ -275,30 +251,16 @@ pub fn mesh_tx_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
                 });
 
                 let message = color_command.to_string();
-                let broadcast_addr = mesh_addr_t { addr: [0xFF; 6] };
-
-                let mesh_data = mesh_data_t {
-                    data: message.as_ptr() as *mut u8,
-                    size: message.len() as u16,
-                    proto: 0,
-                    tos: 0,
-                };
-
                 let flag = 0x01; // MESH_DATA_GROUP flag
 
                 // Try sending the message up to 3 times for better reliability
                 let mut success = false;
                 for attempt in 1..=3 {
-                    let err = esp_mesh_send(&broadcast_addr, &mesh_data, flag, ptr::null(), 0);
-
-                    if err == ESP_OK {
+                    if mesh_send(&BROADCAST_ADDR, message.as_bytes(), flag).is_ok() {
                         success = true;
                         break;
                     } else {
-                        warn!(
-                            "Failed to send color command on attempt {}: error {}",
-                            attempt, err
-                        );
+                        warn!("Failed to send color command on attempt {}", attempt);
                         if attempt < 3 {
                             thread::sleep(Duration::from_millis(100)); // Brief delay before retry
                         }
@@ -306,7 +268,7 @@ pub fn mesh_tx_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
                 }
 
                 if !success {
-                    warn!("All attempts to send color command failed",);
+                    warn!("All attempts to send color command failed");
                 }
 
                 // Send packet loss test challenges every 5 seconds
@@ -330,28 +292,17 @@ pub fn mesh_tx_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
                 // Non-root nodes can send periodic status updates
                 if counter % 10 == 0 {
                     let current_layer = state::layer();
-                    let total_nodes = esp_mesh_get_total_node_num();
+                    let total_nodes = get_mesh_node_count();
                     let message = format!(
                         "Status from layer {current_layer} (nodes: {total_nodes}, count: {counter})"
                     );
 
-                    let broadcast_addr = mesh_addr_t { addr: [0xFF; 6] };
-
-                    let mesh_data = mesh_data_t {
-                        data: message.as_ptr() as *mut u8,
-                        size: message.len() as u16,
-                        proto: 0,
-                        tos: 0,
-                    };
-
                     let flag = 0x01; // MESH_DATA_GROUP flag
 
-                    let err = esp_mesh_send(&broadcast_addr, &mesh_data, flag, ptr::null(), 0);
-
-                    if err == ESP_OK {
+                    if mesh_send(&BROADCAST_ADDR, message.as_bytes(), flag).is_ok() {
                         info!("Status message sent: {message}");
                     } else {
-                        warn!("Failed to send status: {err:?}");
+                        warn!("Failed to send status");
                     }
                 }
 
@@ -366,11 +317,12 @@ pub fn monitor_task(node: Arc<MeshNode>) {
     loop {
         thread::sleep(Duration::from_secs(5));
 
+        let is_root_node = state::is_root();
+        let current_layer = state::layer();
+        let is_active = is_mesh_active();
+        let total_nodes = get_mesh_node_count();
+
         unsafe {
-            let is_root_node = state::is_root();
-            let current_layer = state::layer();
-            let is_active = esp_mesh_is_device_active();
-            let total_nodes = esp_mesh_get_total_node_num();
 
             *node.is_root.lock().unwrap() = is_root_node;
             *node.is_connected.lock().unwrap() = is_active;
@@ -415,8 +367,6 @@ pub fn instruction_execution_task(node: Arc<MeshNode>, state: Arc<Mutex<Applicat
 
 /// Task for OTA distribution (root node only)
 pub fn ota_distribution_task(_node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
-    use crate::ota::OtaMessage;
-
     loop {
         thread::sleep(Duration::from_secs(1));
 
@@ -431,7 +381,7 @@ pub fn ota_distribution_task(_node: Arc<MeshNode>, state: Arc<Mutex<ApplicationS
         drop(state_lock);
 
         match ota_state {
-            crate::ota::OtaState::Distributing { total_chunks, .. } => {
+            OtaState::Distributing { total_chunks, .. } => {
                 // Send chunks to mesh
                 let state_lock = state.lock().unwrap();
                 let ota_manager = state_lock.ota_manager.lock().unwrap();
@@ -443,24 +393,12 @@ pub fn ota_distribution_task(_node: Arc<MeshNode>, state: Arc<Mutex<ApplicationS
                     };
 
                     let message = serde_json::to_string(&ota_msg).unwrap();
-                    let broadcast_addr = mesh_addr_t { addr: [0xFF; 6] };
-
-                    let mesh_data = mesh_data_t {
-                        data: message.as_ptr() as *mut u8,
-                        size: message.len() as u16,
-                        proto: 0,
-                        tos: 0,
-                    };
-
                     let flag = 0x01; // MESH_DATA_GROUP flag
 
-                    unsafe {
-                        let err = esp_mesh_send(&broadcast_addr, &mesh_data, flag, ptr::null(), 0);
-                        if err == ESP_OK {
-                            info!("📤 Sent OTA chunk {}/{}", chunk.sequence + 1, total_chunks);
-                        } else {
-                            warn!("Failed to send OTA chunk {}: {}", chunk.sequence, err);
-                        }
+                    if mesh_send(&BROADCAST_ADDR, message.as_bytes(), flag).is_ok() {
+                        info!("📤 Sent OTA chunk {}/{}", chunk.sequence + 1, total_chunks);
+                    } else {
+                        warn!("Failed to send OTA chunk {}", chunk.sequence);
                     }
 
                     // Small delay between chunks to avoid overwhelming the mesh
@@ -483,20 +421,9 @@ pub fn ota_distribution_task(_node: Arc<MeshNode>, state: Arc<Mutex<ApplicationS
                     // Send reboot command
                     let reboot_msg = OtaMessage::OtaReboot;
                     let message = serde_json::to_string(&reboot_msg).unwrap();
-                    let broadcast_addr = mesh_addr_t { addr: [0xFF; 6] };
-
-                    let mesh_data = mesh_data_t {
-                        data: message.as_ptr() as *mut u8,
-                        size: message.len() as u16,
-                        proto: 0,
-                        tos: 0,
-                    };
-
                     let flag = 0x01;
 
-                    unsafe {
-                        esp_mesh_send(&broadcast_addr, &mesh_data, flag, ptr::null(), 0);
-                    }
+                    let _ = mesh_send(&BROADCAST_ADDR, message.as_bytes(), flag);
 
                     // Reboot ourselves
                     thread::sleep(Duration::from_secs(2));
