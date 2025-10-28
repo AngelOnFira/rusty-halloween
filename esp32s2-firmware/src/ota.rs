@@ -302,3 +302,90 @@ pub async fn reset() {
         manager.reset();
     }
 }
+
+/// HTTP download configuration
+pub struct DownloadConfig<'a> {
+    pub url: &'a str,
+    pub version: &'a str,
+}
+
+/// Download firmware from HTTP URL
+/// Returns the firmware data as a Vec<u8> if successful
+pub async fn download_firmware<'a>(
+    stack: &embassy_net::Stack<'a>,
+    config: &DownloadConfig<'_>,
+) -> Result<Vec<u8, 131072>, ()> { // 128KB max firmware size
+    use reqwless::client::HttpClient;
+    use reqwless::request::Method;
+    use embassy_net::tcp::client::{TcpClient, TcpClientState};
+    use embassy_net::dns::DnsSocket;
+
+    info!("🌐 Starting firmware download from {}", config.url);
+
+    // Create TCP client for HTTP
+    static TCP_STATE: embassy_sync::blocking_mutex::Mutex<
+        embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
+        core::cell::RefCell<Option<TcpClientState<1, 4096, 4096>>>
+    > = embassy_sync::blocking_mutex::Mutex::new(core::cell::RefCell::new(None));
+
+    let tcp_state = TCP_STATE.lock(|s| {
+        let mut s = s.borrow_mut();
+        if s.is_none() {
+            *s = Some(TcpClientState::new());
+        }
+        unsafe { core::ptr::read(s.as_ref().unwrap() as *const _) }
+    });
+
+    let tcp_client = TcpClient::new(*stack, &tcp_state);
+    let dns = DnsSocket::new(*stack);
+
+    let mut client = HttpClient::new(&tcp_client, &dns);
+
+    info!("Making HTTP GET request to: {}", config.url);
+
+    // Make HTTP GET request
+    let mut request = client.request(Method::GET, config.url).await.map_err(|e| {
+        error!("Failed to create request: {:?}", e);
+    })?;
+
+    let mut rx_buf = [0; 4096];
+    let response = request.send(&mut rx_buf).await.map_err(|e| {
+        error!("Failed to send request: {:?}", e);
+    })?;
+
+    let status = response.status;
+    info!("HTTP Response Status: {}", status.0);
+
+    if status.0 != 200 {
+        error!("HTTP request failed with status {}", status.0);
+        return Err(());
+    }
+
+    // Read response body
+    let mut firmware_data: Vec<u8, 131072> = Vec::new();
+    let mut reader = response.body().reader();
+
+    // Use embedded_io_async 0.6 which reqwless uses
+    use embedded_io_async_06::Read as Read06;
+
+    loop {
+        let mut chunk = [0u8; 512];
+        match Read06::read(&mut reader, &mut chunk).await {
+            Ok(0) => break, // EOF
+            Ok(n) => {
+                if firmware_data.extend_from_slice(&chunk[..n]).is_err() {
+                    error!("Firmware too large for buffer");
+                    return Err(());
+                }
+                debug!("Downloaded {} bytes, total: {}", n, firmware_data.len());
+            }
+            Err(_) => {
+                error!("Read error");
+                return Err(());
+            }
+        }
+    }
+
+    info!("✅ Download complete: {} bytes", firmware_data.len());
+    Ok(firmware_data)
+}

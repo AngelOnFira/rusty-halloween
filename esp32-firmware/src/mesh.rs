@@ -9,7 +9,7 @@ use esp_idf_sys::{
     g_wifi_default_wpa_crypto_funcs, g_wifi_osi_funcs, mesh_addr_t, mesh_cfg_t, mesh_router_t,
     nvs_flash_init, wifi_active_scan_time_t, wifi_ap_record_t, wifi_init_config_t,
     wifi_scan_channel_bitmap_t, wifi_scan_config_t, wifi_scan_time_t,
-    wifi_storage_t_WIFI_STORAGE_RAM, ESP_EVENT_ANY_ID, IP_EVENT, MESH_EVENT,
+    wifi_storage_t_WIFI_STORAGE_RAM, ESP_EVENT_ANY_ID, IP_EVENT, MESH_EVENT, WIFI_EVENT,
     WIFI_INIT_CONFIG_MAGIC,
 };
 use log::*;
@@ -53,13 +53,13 @@ unsafe extern "C" fn mesh_event_handler(
     if event_base == MESH_EVENT {
         match event_id as u32 {
             sys::mesh_event_id_t_MESH_EVENT_STARTED => {
-                info!("Mesh started");
+                info!("Mesh event: Mesh started");
             }
             sys::mesh_event_id_t_MESH_EVENT_STOPPED => {
-                info!("Mesh stopped");
+                info!("Mesh event: Mesh stopped");
             }
             sys::mesh_event_id_t_MESH_EVENT_PARENT_CONNECTED => {
-                info!("Parent connected");
+                info!("Mesh event: Parent connected");
                 let layer = esp_mesh_get_layer();
                 info!("Layer: {layer}");
 
@@ -79,7 +79,7 @@ unsafe extern "C" fn mesh_event_handler(
 
                 // If this node is root, start DHCP client immediately
                 if esp_mesh_is_root() {
-                    info!("🌐 Node is now root - starting DHCP client for external IP");
+                    info!("Mesh event: Node is now root - starting DHCP client for external IP");
                     let sta_netif_addr = *STA_NETIF.lock().unwrap();
                     if sta_netif_addr != 0 {
                         let sta_netif = sta_netif_addr as *mut sys::esp_netif_obj;
@@ -113,12 +113,12 @@ unsafe extern "C" fn mesh_event_handler(
                     let event = event_data as *const sys::mesh_event_disconnected_t;
                     let reason = (*event).reason;
                     info!(
-                        "Parent disconnected, reason: {} ({})",
+                        "Mesh event: Parent disconnected, reason: {} ({})",
                         reason,
                         get_disconnect_reason_string(reason)
                     );
                 } else {
-                    info!("Parent disconnected");
+                    info!("Mesh event: Parent disconnected");
                 }
             }
             sys::mesh_event_id_t_MESH_EVENT_CHILD_CONNECTED => {
@@ -126,7 +126,7 @@ unsafe extern "C" fn mesh_event_handler(
                     let event = event_data as *const sys::mesh_event_child_connected_t;
                     let child_mac = (*event).mac;
                     info!(
-                        "Child connected: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                        "Mesh event: Child connected: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
                         child_mac[0],
                         child_mac[1],
                         child_mac[2],
@@ -135,7 +135,7 @@ unsafe extern "C" fn mesh_event_handler(
                         child_mac[5]
                     );
                 } else {
-                    info!("Child connected");
+                    info!("Mesh event: Child connected");
                 }
             }
             sys::mesh_event_id_t_MESH_EVENT_CHILD_DISCONNECTED => {
@@ -143,7 +143,7 @@ unsafe extern "C" fn mesh_event_handler(
                     let event = event_data as *const sys::mesh_event_child_disconnected_t;
                     let child_mac = (*event).mac;
                     info!(
-                        "Child disconnected: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                        "Mesh event: Child disconnected: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
                         child_mac[0],
                         child_mac[1],
                         child_mac[2],
@@ -152,25 +152,26 @@ unsafe extern "C" fn mesh_event_handler(
                         child_mac[5]
                     );
                 } else {
-                    info!("Child disconnected");
+                    info!("Mesh event: Child disconnected");
                 }
             }
             sys::mesh_event_id_t_MESH_EVENT_ROOT_ADDRESS => {
-                info!("Root address changed");
+                info!("Mesh event: Root address changed");
             }
             sys::mesh_event_id_t_MESH_EVENT_VOTE_STARTED => {
-                info!("Vote started");
+                info!("Mesh event: Vote started");
             }
             sys::mesh_event_id_t_MESH_EVENT_VOTE_STOPPED => {
-                info!("Vote stopped");
+                info!("Mesh event: Vote stopped");
             }
             sys::mesh_event_id_t_MESH_EVENT_ROOT_SWITCH_REQ => {
-                info!("Root switch request");
+                info!("Mesh event: Root switch request");
             }
             sys::mesh_event_id_t_MESH_EVENT_ROOT_SWITCH_ACK => {
-                info!("Root switch acknowledged");
+                info!("Mesh event: Root switch acknowledged");
             }
             sys::mesh_event_id_t_MESH_EVENT_TODS_STATE => {
+                info!("Mesh event: TODS state");
                 // TODS (To Distribution System) indicates connection to external network
                 // This event fires AFTER the root node gets an IP via DHCP
                 // DHCP is already started in PARENT_CONNECTED, this is just for verification
@@ -196,13 +197,13 @@ unsafe extern "C" fn mesh_event_handler(
             }
             sys::mesh_event_id_t_MESH_EVENT_ROOT_FIXED => {
                 let is_root = esp_mesh_is_root();
-                info!("Root fixed: {is_root}");
+                info!("Mesh event: Root fixed: {is_root}");
             }
             sys::mesh_event_id_t_MESH_EVENT_NO_PARENT_FOUND => {
-                warn!("⚠️  No parent found - searching for mesh network");
+                warn!("Mesh event: No parent found - searching for mesh network");
             }
             sys::mesh_event_id_t_MESH_EVENT_FIND_NETWORK => {
-                info!("🔍 Finding mesh network...");
+                info!("Mesh event: Finding mesh network...");
             }
             sys::mesh_event_id_t_MESH_EVENT_ROUTER_SWITCH => {
                 if !event_data.is_null() {
@@ -210,13 +211,13 @@ unsafe extern "C" fn mesh_event_handler(
                     let bssid = (*event).bssid;
                     let channel = (*event).channel;
                     info!(
-                        "🔄 Router switch: New BSSID {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}, Channel {}",
+                        "Mesh event: Router switch: New BSSID {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}, Channel {}",
                         bssid[0], bssid[1], bssid[2],
                         bssid[3], bssid[4], bssid[5],
                         channel
                     );
                 } else {
-                    info!("🔄 Router switch occurred");
+                    info!("Mesh event: Router switch occurred");
                 }
             }
             _ => {
@@ -226,7 +227,7 @@ unsafe extern "C" fn mesh_event_handler(
     } else if event_base == IP_EVENT {
         match event_id as u32 {
             sys::ip_event_t_IP_EVENT_STA_GOT_IP => {
-                info!("✅ Station got IP");
+                info!("IP event: Station got IP");
                 // Set global flag that we have IP address
                 *HAS_IP.lock().unwrap() = true;
 
@@ -254,29 +255,176 @@ unsafe extern "C" fn mesh_event_handler(
                 }
             }
             sys::ip_event_t_IP_EVENT_STA_LOST_IP => {
-                warn!("❌ Station lost IP - DHCP failed or connection lost");
+                warn!("IP event: Station lost IP - DHCP failed or connection lost");
                 *HAS_IP.lock().unwrap() = false;
             }
             sys::ip_event_t_IP_EVENT_AP_STAIPASSIGNED => {
-                info!("ℹ️  IP event: AP station assigned IP (event {})", event_id);
+                info!("IP event: AP station assigned IP (event {})", event_id);
             }
             sys::ip_event_t_IP_EVENT_GOT_IP6 => {
-                info!("ℹ️  IP event: Got IPv6 (event {})", event_id);
+                info!("IP event: Got IPv6 (event {})", event_id);
             }
             sys::ip_event_t_IP_EVENT_ETH_GOT_IP => {
-                info!("ℹ️  IP event: Ethernet got IP (event {})", event_id);
+                info!("IP event: Ethernet got IP (event {})", event_id);
             }
             sys::ip_event_t_IP_EVENT_ETH_LOST_IP => {
-                warn!("⚠️  IP event: Ethernet lost IP (event {})", event_id);
+                warn!("IP event: Ethernet lost IP (event {})", event_id);
             }
             sys::ip_event_t_IP_EVENT_PPP_GOT_IP => {
-                info!("ℹ️  IP event: PPP got IP (event {})", event_id);
+                info!("IP event: PPP got IP (event {})", event_id);
             }
             sys::ip_event_t_IP_EVENT_PPP_LOST_IP => {
-                warn!("⚠️  IP event: PPP lost IP (event {})", event_id);
+                warn!("IP event: PPP lost IP (event {})", event_id);
             }
             _ => {
                 debug!("Unknown IP event: {}", event_id);
+            }
+        }
+    } else if event_base == WIFI_EVENT {
+        match event_id as u32 {
+            sys::wifi_event_t_WIFI_EVENT_WIFI_READY => {
+                info!("Wifi event: WIFI_READY");
+            }
+            sys::wifi_event_t_WIFI_EVENT_SCAN_DONE => {
+                info!("Wifi event: SCAN_DONE");
+            }
+            sys::wifi_event_t_WIFI_EVENT_STA_START => {
+                info!("Wifi event: STA_START");
+            }
+            sys::wifi_event_t_WIFI_EVENT_STA_STOP => {
+                info!("Wifi event: STA_STOP");
+            }
+            sys::wifi_event_t_WIFI_EVENT_STA_CONNECTED => {
+                info!("Wifi event: STA_CONNECTED");
+            }
+            sys::wifi_event_t_WIFI_EVENT_STA_DISCONNECTED => {
+                info!("Wifi event: STA_DISCONNECTED");
+            }
+            sys::wifi_event_t_WIFI_EVENT_STA_AUTHMODE_CHANGE => {
+                info!("Wifi event: STA_AUTHMODE_CHANGE");
+            }
+            sys::wifi_event_t_WIFI_EVENT_STA_WPS_ER_SUCCESS => {
+                info!("Wifi event: STA_WPS_ER_SUCCESS");
+            }
+            sys::wifi_event_t_WIFI_EVENT_STA_WPS_ER_FAILED => {
+                info!("Wifi event: STA_WPS_ER_FAILED");
+            }
+            sys::wifi_event_t_WIFI_EVENT_STA_WPS_ER_TIMEOUT => {
+                info!("Wifi event: STA_WPS_ER_TIMEOUT");
+            }
+            sys::wifi_event_t_WIFI_EVENT_STA_WPS_ER_PIN => {
+                info!("Wifi event: STA_WPS_ER_PIN");
+            }
+            sys::wifi_event_t_WIFI_EVENT_STA_WPS_ER_PBC_OVERLAP => {
+                info!("Wifi event: STA_WPS_ER_PBC_OVERLAP");
+            }
+            sys::wifi_event_t_WIFI_EVENT_AP_START => {
+                info!("Wifi event: AP_START");
+            }
+            sys::wifi_event_t_WIFI_EVENT_AP_STOP => {
+                info!("Wifi event: AP_STOP");
+            }
+            sys::wifi_event_t_WIFI_EVENT_AP_STACONNECTED => {
+                info!("Wifi event: AP_STACONNECTED");
+            }
+            sys::wifi_event_t_WIFI_EVENT_AP_STADISCONNECTED => {
+                info!("Wifi event: AP_STADISCONNECTED");
+            }
+            sys::wifi_event_t_WIFI_EVENT_AP_PROBEREQRECVED => {
+                info!("Wifi event: AP_PROBEREQRECVED");
+            }
+            sys::wifi_event_t_WIFI_EVENT_FTM_REPORT => {
+                info!("Wifi event: FTM_REPORT");
+            }
+            sys::wifi_event_t_WIFI_EVENT_STA_BSS_RSSI_LOW => {
+                info!("Wifi event: STA_BSS_RSSI_LOW");
+            }
+            sys::wifi_event_t_WIFI_EVENT_ACTION_TX_STATUS => {
+                info!("Wifi event: ACTION_TX_STATUS");
+            }
+            sys::wifi_event_t_WIFI_EVENT_ROC_DONE => {
+                info!("Wifi event: ROC_DONE");
+            }
+            sys::wifi_event_t_WIFI_EVENT_STA_BEACON_TIMEOUT => {
+                info!("Wifi event: STA_BEACON_TIMEOUT");
+            }
+            sys::wifi_event_t_WIFI_EVENT_CONNECTIONLESS_MODULE_WAKE_INTERVAL_START => {
+                info!("Wifi event: CONNECTIONLESS_MODULE_WAKE_INTERVAL_START");
+            }
+            sys::wifi_event_t_WIFI_EVENT_AP_WPS_RG_SUCCESS => {
+                info!("Wifi event: AP_WPS_RG_SUCCESS");
+            }
+            sys::wifi_event_t_WIFI_EVENT_AP_WPS_RG_FAILED => {
+                info!("Wifi event: AP_WPS_RG_FAILED");
+            }
+            sys::wifi_event_t_WIFI_EVENT_AP_WPS_RG_TIMEOUT => {
+                info!("Wifi event: AP_WPS_RG_TIMEOUT");
+            }
+            sys::wifi_event_t_WIFI_EVENT_AP_WPS_RG_PIN => {
+                info!("Wifi event: AP_WPS_RG_PIN");
+            }
+            sys::wifi_event_t_WIFI_EVENT_AP_WPS_RG_PBC_OVERLAP => {
+                info!("Wifi event: AP_WPS_RG_PBC_OVERLAP");
+            }
+            sys::wifi_event_t_WIFI_EVENT_ITWT_SETUP => {
+                info!("Wifi event: ITWT_SETUP");
+            }
+            sys::wifi_event_t_WIFI_EVENT_ITWT_TEARDOWN => {
+                info!("Wifi event: ITWT_TEARDOWN");
+            }
+            sys::wifi_event_t_WIFI_EVENT_ITWT_PROBE => {
+                info!("Wifi event: ITWT_PROBE");
+            }
+            sys::wifi_event_t_WIFI_EVENT_ITWT_SUSPEND => {
+                info!("Wifi event: ITWT_SUSPEND");
+            }
+            sys::wifi_event_t_WIFI_EVENT_TWT_WAKEUP => {
+                info!("Wifi event: TWT_WAKEUP");
+            }
+            sys::wifi_event_t_WIFI_EVENT_BTWT_SETUP => {
+                info!("Wifi event: BTWT_SETUP");
+            }
+            sys::wifi_event_t_WIFI_EVENT_BTWT_TEARDOWN => {
+                info!("Wifi event: BTWT_TEARDOWN");
+            }
+            sys::wifi_event_t_WIFI_EVENT_NAN_STARTED => {
+                info!("Wifi event: NAN_STARTED");
+            }
+            sys::wifi_event_t_WIFI_EVENT_NAN_STOPPED => {
+                info!("Wifi event: NAN_STOPPED");
+            }
+            sys::wifi_event_t_WIFI_EVENT_NAN_SVC_MATCH => {
+                info!("Wifi event: NAN_SVC_MATCH");
+            }
+            sys::wifi_event_t_WIFI_EVENT_NAN_REPLIED => {
+                info!("Wifi event: NAN_REPLIED");
+            }
+            sys::wifi_event_t_WIFI_EVENT_NAN_RECEIVE => {
+                info!("Wifi event: NAN_RECEIVE");
+            }
+            sys::wifi_event_t_WIFI_EVENT_NDP_INDICATION => {
+                info!("Wifi event: NDP_INDICATION");
+            }
+            sys::wifi_event_t_WIFI_EVENT_NDP_CONFIRM => {
+                info!("Wifi event: NDP_CONFIRM");
+            }
+            sys::wifi_event_t_WIFI_EVENT_NDP_TERMINATED => {
+                info!("Wifi event: NDP_TERMINATED");
+            }
+            sys::wifi_event_t_WIFI_EVENT_HOME_CHANNEL_CHANGE => {
+                info!("Wifi event: HOME_CHANNEL_CHANGE");
+            }
+            sys::wifi_event_t_WIFI_EVENT_STA_NEIGHBOR_REP => {
+                info!("Wifi event: STA_NEIGHBOR_REP");
+            }
+            sys::wifi_event_t_WIFI_EVENT_AP_WRONG_PASSWORD => {
+                info!("Wifi event: AP_WRONG_PASSWORD");
+            }
+            sys::wifi_event_t_WIFI_EVENT_MAX => {
+                info!("Wifi event: MAX");
+            }
+            _ => {
+                debug!("Unknown WiFi event: {}", event_id);
             }
         }
     }
@@ -292,20 +440,20 @@ pub fn init_wifi() -> Result<()> {
         esp!(esp_event_loop_create_default())?;
     }
 
-    let mut sta_netif: *mut sys::esp_netif_obj = std::ptr::null_mut();
-    let mut ap_netif: *mut sys::esp_netif_obj = std::ptr::null_mut();
+    // let mut sta_netif: *mut sys::esp_netif_obj = std::ptr::null_mut();
+    // let mut ap_netif: *mut sys::esp_netif_obj = std::ptr::null_mut();
 
-    unsafe {
-        sys::esp_netif_create_default_wifi_mesh_netifs(&mut sta_netif, &mut ap_netif);
-    }
+    // unsafe {
+    //     sys::esp_netif_create_default_wifi_mesh_netifs(&mut sta_netif, &mut ap_netif);
+    // }
 
     // Save netif pointers globally for DHCP management (as usize for thread safety)
-    *STA_NETIF.lock().unwrap() = sta_netif as usize;
-    *AP_NETIF.lock().unwrap() = ap_netif as usize;
-    info!(
-        "Network interfaces created - STA: {:p}, AP: {:p}",
-        sta_netif, ap_netif
-    );
+    // *STA_NETIF.lock().unwrap() = sta_netif as usize;
+    // *AP_NETIF.lock().unwrap() = ap_netif as usize;
+    // info!(
+    //     "Network interfaces created - STA: {:p}, AP: {:p}",
+    //     sta_netif, ap_netif
+    // );
 
     // Create proper WiFi configuration
     let cfg = wifi_init_config_t {
@@ -339,20 +487,37 @@ pub fn init_wifi() -> Result<()> {
 
     unsafe {
         esp!(esp_wifi_init(&cfg))?;
-        esp!(esp_wifi_set_mode(sys::wifi_ps_type_t_WIFI_PS_NONE))?;
+        // esp!(esp_wifi_set_mode(sys::wifi_ps_type_t_WIFI_PS_NONE))?;
         info!("WiFi initialized");
-        esp!(esp_wifi_set_storage(wifi_storage_t_WIFI_STORAGE_RAM))?;
-        info!("WiFi storage set to RAM");
-        // esp!(esp_wifi_set_mode(sys::wifi_mode_t_WIFI_MODE_APSTA))?;
-        info!("WiFi mode set to STA/AP");
+        esp!(esp_wifi_set_storage(sys::wifi_storage_t_WIFI_STORAGE_FLASH))?;
+        info!("WiFi storage set to FLASH");
+        // info!("WiFi mode set to STA/AP");
         esp!(esp_wifi_start())?;
         info!("WiFi started");
-    }
 
-    // Commented out: WiFi scan for 2.4GHz router selection
-    // This was causing issues with mesh initialization
-    // Mesh will auto-select best 2.4GHz router
-    // scan_for_2ghz_router()?;
+        // Register event handlers
+        esp!(esp_event_handler_register(
+            MESH_EVENT,
+            ESP_EVENT_ANY_ID,
+            Some(mesh_event_handler),
+            ptr::null_mut()
+        ))?;
+
+        esp!(esp_event_handler_register(
+            IP_EVENT,
+            ESP_EVENT_ANY_ID,
+            Some(mesh_event_handler),
+            ptr::null_mut()
+        ))?;
+
+        // WIFI events
+        esp!(esp_event_handler_register(
+            WIFI_EVENT,
+            ESP_EVENT_ANY_ID,
+            Some(mesh_event_handler),
+            ptr::null_mut()
+        ))?;
+    }
 
     Ok(())
 }
@@ -362,17 +527,16 @@ pub fn init_wifi() -> Result<()> {
 /// This function is preserved for potential future debugging
 #[allow(dead_code)]
 fn scan_for_2ghz_router() -> Result<()> {
+    let channel_bitmap = wifi_scan_channel_bitmap_t {
+        // Do all 2.4ghz channels
+        ghz_2_channels: 0xFFFF,
+        ghz_5_channels: 0,
+    };
+
+    let ssid = get_embedded_env_value("ROUTER_SSID");
+    let ssid_cstring = CString::new(ssid.clone()).unwrap();
+    let ssid_cstring_ptr = ssid_cstring.as_ptr() as *mut u8;
     unsafe {
-        let channel_bitmap = wifi_scan_channel_bitmap_t {
-            // Do all 2.4ghz channels
-            ghz_2_channels: 0xFFFF,
-            ghz_5_channels: 0,
-        };
-
-        let ssid = get_embedded_env_value("ROUTER_SSID");
-        let ssid_cstring = CString::new(ssid.clone()).unwrap();
-        let ssid_cstring_ptr = ssid_cstring.as_ptr() as *mut u8;
-
         let scan_config: *const wifi_scan_config_t = &wifi_scan_config_t {
             ssid: ssid_cstring_ptr,
             bssid: std::ptr::null_mut(),
@@ -390,41 +554,48 @@ fn scan_for_2ghz_router() -> Result<()> {
             channel_bitmap,
         };
 
+        // Setting WiFi mode to STA for scan
+        info!("WiFi mode set to STA");
+        esp!(esp_wifi_set_mode(sys::wifi_mode_t_WIFI_MODE_STA))?;
+
         info!("Stopping WiFi scan");
         esp!(esp_wifi_scan_stop())?;
         info!("Starting WiFi scan");
         esp!(esp_wifi_scan_start(scan_config, true))?;
+    }
 
-        // Get scan results
-        info!("Getting WiFi scan results");
-        let mut scan_results: [wifi_ap_record_t; 30] = std::mem::zeroed();
-        let mut ap_count: u16 = 30; // Max APs we can store
+    // Get scan results
+    info!("Getting WiFi scan results");
+    let mut scan_results: [wifi_ap_record_t; 30] = unsafe { std::mem::zeroed() };
+    let mut ap_count: u16 = 30; // Max APs we can store
 
+    unsafe {
         esp!(esp_wifi_scan_get_ap_records(
             &mut ap_count,
             scan_results.as_mut_ptr()
         ))?;
+    }
 
-        info!("Printing WiFi scan results (found {} APs)", ap_count);
+    info!("Printing WiFi scan results (found {} APs)", ap_count);
 
-        // Filter for 2.4GHz APs (channels 1-13) and find the one with best RSSI
-        let mut best_2ghz_ap: Option<&wifi_ap_record_t> = None;
-        let mut best_rssi: i8 = i8::MIN;
+    // Filter for 2.4GHz APs (channels 1-13) and find the one with best RSSI
+    let mut best_2ghz_ap: Option<&wifi_ap_record_t> = None;
+    let mut best_rssi: i8 = i8::MIN;
 
-        for result in scan_results.iter().take(ap_count as usize) {
-            // Convert SSID bytes to string for comparison
-            let ssid_bytes: Vec<u8> = result
-                .ssid
-                .iter()
-                .take_while(|&&b| b != 0)
-                .copied()
-                .collect();
-            let ap_ssid = String::from_utf8_lossy(&ssid_bytes);
+    for result in scan_results.iter().take(ap_count as usize) {
+        // Convert SSID bytes to string for comparison
+        let ssid_bytes: Vec<u8> = result
+            .ssid
+            .iter()
+            .take_while(|&&b| b != 0)
+            .copied()
+            .collect();
+        let ap_ssid = String::from_utf8_lossy(&ssid_bytes);
 
-            let is_2ghz = result.primary >= 1 && result.primary <= 13;
-            let band = if is_2ghz { "2.4GHz" } else { "5GHz" };
+        let is_2ghz = result.primary >= 1 && result.primary <= 13;
+        let band = if is_2ghz { "2.4GHz" } else { "5GHz" };
 
-            info!(
+        info!(
                 "  SSID: {}, BSSID: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}, Channel: {} ({}), RSSI: {}",
                 ap_ssid,
                 result.bssid[0],
@@ -438,17 +609,17 @@ fn scan_for_2ghz_router() -> Result<()> {
                 result.rssi
             );
 
-            // Check if this is a 2.4GHz AP matching our target SSID
-            if is_2ghz && ap_ssid == ssid.as_str() && result.rssi > best_rssi {
-                best_2ghz_ap = Some(result);
-                best_rssi = result.rssi;
-            }
+        // Check if this is a 2.4GHz AP matching our target SSID
+        if is_2ghz && ap_ssid == ssid.as_str() && result.rssi > best_rssi {
+            best_2ghz_ap = Some(result);
+            best_rssi = result.rssi;
         }
+    }
 
-        // Store the selected BSSID or error if none found
-        if let Some(ap) = best_2ghz_ap {
-            *ROUTER_BSSID.lock().unwrap() = ap.bssid;
-            info!(
+    // Store the selected BSSID or error if none found
+    if let Some(ap) = best_2ghz_ap {
+        *ROUTER_BSSID.lock().unwrap() = ap.bssid;
+        info!(
                 "✅ Selected 2.4GHz AP: BSSID {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}, Channel: {}, RSSI: {}",
                 ap.bssid[0],
                 ap.bssid[1],
@@ -459,13 +630,19 @@ fn scan_for_2ghz_router() -> Result<()> {
                 ap.primary,
                 ap.rssi
             );
-        } else {
-            return Err(anyhow::anyhow!(
-                "❌ No 2.4GHz AP found with SSID '{}'. ESP-MESH requires 2.4GHz!",
-                ssid
-            ));
-        }
+    } else {
+        return Err(anyhow::anyhow!(
+            "❌ No 2.4GHz AP found with SSID '{}'. ESP-MESH requires 2.4GHz!",
+            ssid
+        ));
     }
+
+    // Reset the WiFi mode to APSTA
+    unsafe {
+        esp!(esp_wifi_set_mode(sys::wifi_mode_t_WIFI_MODE_APSTA))?;
+    }
+
+    info!("WiFi mode reset to APSTA");
 
     Ok(())
 }
@@ -473,22 +650,14 @@ fn scan_for_2ghz_router() -> Result<()> {
 /// Initialize mesh network
 pub fn init_mesh() -> Result<()> {
     unsafe {
+        // WiFi scan for 2.4GHz router selection. We need this as we need to know
+        // the router's channel to set the mesh channel
+        scan_for_2ghz_router()?;
+
+        
+
+
         esp!(esp_mesh_init())?;
-
-        // Register event handlers
-        esp!(esp_event_handler_register(
-            MESH_EVENT,
-            ESP_EVENT_ANY_ID,
-            Some(mesh_event_handler),
-            ptr::null_mut()
-        ))?;
-
-        esp!(esp_event_handler_register(
-            IP_EVENT,
-            ESP_EVENT_ANY_ID,
-            Some(mesh_event_handler),
-            ptr::null_mut()
-        ))?;
 
         // Configure mesh using mesh_cfg_t structure
         let mesh_id = mesh_addr_t { addr: MESH_ID };
@@ -516,7 +685,7 @@ pub fn init_mesh() -> Result<()> {
 
         // Create mesh AP configuration
         info!(
-            "Mesh password: '{}' (length: {})",
+            "Mesh router password: '{}' (length: {})",
             MESH_PASSWORD,
             MESH_PASSWORD.len()
         );
@@ -530,7 +699,6 @@ pub fn init_mesh() -> Result<()> {
                 mesh_ap_pwd[i] = byte;
             }
         }
-        mesh_ap_pwd[mesh_ap_password.len()] = 0; // Null terminate
 
         info!(
             "Setting mesh AP with password length: {}, max connections: {}, password: {:?}",
@@ -556,10 +724,13 @@ pub fn init_mesh() -> Result<()> {
         };
 
         // Apply configuration
+        info!("Setting mesh configuration");
         esp!(esp_mesh_set_config(&cfg))?;
 
         // Additional mesh settings
+        info!("Setting mesh max layer");
         esp!(esp_mesh_set_max_layer(MESH_MAX_LAYER))?;
+        info!("Setting mesh vote percentage");
         esp!(esp_mesh_set_vote_percentage(1.0))?;
 
         // Set auth mode - if mesh password is empty, use OPEN, otherwise WPA2
@@ -570,6 +741,7 @@ pub fn init_mesh() -> Result<()> {
         //     info!("Setting mesh AP auth mode to WPA2_PSK (password required)");
         //     sys::wifi_auth_mode_t_WIFI_AUTH_WPA2_PSK
         // };
+        info!("Setting mesh AP auth mode to OPEN (no password)");
         let auth_mode = sys::wifi_auth_mode_t_WIFI_AUTH_OPEN;
         esp!(esp_mesh_set_ap_authmode(auth_mode))?;
         // Set authentication for mesh AP - critical for inter-node communication
@@ -584,6 +756,7 @@ pub fn init_mesh() -> Result<()> {
         // ))?;
 
         // Start mesh
+        info!("Starting mesh");
         esp!(esp_mesh_start())?;
     }
 

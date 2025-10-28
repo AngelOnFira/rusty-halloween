@@ -29,12 +29,14 @@ esp-bootloader-esp-idf = { version = "0.3.0", features = ["esp32s2"] }
 embassy-net = { version = "0.7.0", features = [
   "defmt",
   "dhcpv4",
+  "dns",
   "medium-ethernet",
   "tcp",
   "udp",
 ] }
 embedded-io = { version = "0.7.1", features = ["defmt"] }
 embedded-io-async = { version = "0.7.0", features = ["defmt"] }
+embedded-io-async-06 = { package = "embedded-io-async", version = "0.6.1", features = ["defmt-03"] }
 esp-alloc = { version = "0.9.0", features = ["defmt"] }
 esp-backtrace = { version = "0.18.0", features = [
   "defmt",
@@ -45,6 +47,7 @@ esp-println = { version = "0.16.0", features = ["defmt-espflash", "esp32s2"] }
 # for more networking protocol support see https://crates.io/crates/edge-net
 embassy-executor = { version = "0.9.0", features = ["defmt"] }
 embassy-time = { version = "0.5.0", features = ["defmt"] }
+embassy-futures = { version = "0.1.0", default-features = false }
 esp-radio = { version = "0.16.0", features = [
   "defmt",
   "esp-alloc",
@@ -79,6 +82,9 @@ crc = "3.0"
 
 # Embassy sync primitives
 embassy-sync = { version = "0.6.0", features = ["defmt"] }
+
+# HTTP client for OTA downloads
+reqwless = { version = "0.13", default-features = false, features = ["defmt"] }
 
 # LED control
 smart-leds = "0.4"

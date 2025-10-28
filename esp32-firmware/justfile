@@ -1,6 +1,6 @@
 # Flash debug build with OTA partitions (FAST - no verification)
 flash-debug:
-    cargo build
+    cargo build && \
     espflash flash \
         --chip esp32s2 \
         --partition-table partitions.csv \
@@ -12,7 +12,7 @@ flash-debug:
 
 # Flash release build with OTA partitions (verified)
 flash-release:
-    cargo build --release
+    cargo build --release && \
     espflash flash \
         --chip esp32s2 \
         --partition-table partitions.csv \
