@@ -3,6 +3,7 @@ mod instructions;
 mod mesh;
 mod node;
 mod ota;
+mod scan;
 mod tasks;
 mod utils;
 mod version;

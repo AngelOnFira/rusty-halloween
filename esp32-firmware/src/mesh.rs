@@ -1,4 +1,5 @@
 use crate::utils::{get_disconnect_reason_string, get_embedded_env_value};
+use crate::scan::{self, NetworkDiscovery};
 use anyhow::Result;
 use esp_idf_sys::{
     self as sys, esp, esp_event_base_t, esp_event_handler_register, esp_event_loop_create_default,
@@ -9,8 +10,7 @@ use esp_idf_sys::{
     g_wifi_default_wpa_crypto_funcs, g_wifi_osi_funcs, mesh_addr_t, mesh_cfg_t, mesh_router_t,
     nvs_flash_init, wifi_active_scan_time_t, wifi_ap_record_t, wifi_init_config_t,
     wifi_scan_channel_bitmap_t, wifi_scan_config_t, wifi_scan_time_t,
-    wifi_storage_t_WIFI_STORAGE_RAM, ESP_EVENT_ANY_ID, IP_EVENT, MESH_EVENT, WIFI_EVENT,
-    WIFI_INIT_CONFIG_MAGIC,
+    ESP_EVENT_ANY_ID, IP_EVENT, MESH_EVENT, WIFI_EVENT, WIFI_INIT_CONFIG_MAGIC,
 };
 use log::*;
 use once_cell::sync::Lazy;
@@ -24,7 +24,8 @@ use std::{
 // Mesh network configuration constants
 pub const MESH_ID: [u8; 6] = [0x77, 0x77, 0x77, 0x77, 0x77, 0x77];
 pub const MESH_PASSWORD: &str = "mesh_password_123";
-pub const MESH_CHANNEL: u8 = 6;
+// MESH_CHANNEL is now discovered at runtime via WiFi scan (see scan.rs)
+// and persisted to NVS for faster boot times
 pub const MESH_MAX_LAYER: i32 = 6;
 pub const MESH_AP_CONNECTIONS: i32 = 6;
 
@@ -649,43 +650,85 @@ fn scan_for_2ghz_router() -> Result<()> {
 
 /// Initialize mesh network
 pub fn init_mesh() -> Result<()> {
+    // Get router credentials from .env
+    let router_ssid = get_embedded_env_value("ROUTER_SSID");
+    let router_pass = get_embedded_env_value("ROUTER_PASSWORD");
+    info!("Router SSID: {}, Password length: {}", router_ssid, router_pass.len());
+
+    // Step 1: Try to load channel from NVS (persisted from previous boot)
+    let mut mesh_channel: Option<u8> = scan::load_channel_from_nvs();
+
+    // Step 2: If no saved channel, scan for networks to discover channel
+    if mesh_channel.is_none() {
+        info!("No saved channel found, scanning for networks...");
+
+        // Scan with retry (infinite retry until found)
+        let discovery = scan::scan_with_retry(&router_ssid, &MESH_ID, 30_000);
+
+        match discovery {
+            NetworkDiscovery::ExistingMesh { channel, ssid, bssid, rssi } => {
+                info!(
+                    "🔗 Discovered existing mesh network: '{}' on channel {}, RSSI: {}, BSSID: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                    ssid, channel, rssi,
+                    bssid[0], bssid[1], bssid[2], bssid[3], bssid[4], bssid[5]
+                );
+                info!("Will join existing mesh on channel {}", channel);
+                mesh_channel = Some(channel);
+            }
+            NetworkDiscovery::Router { channel, bssid, rssi } => {
+                info!(
+                    "📡 Discovered router '{}' on channel {}, RSSI: {}, BSSID: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                    router_ssid, channel, rssi,
+                    bssid[0], bssid[1], bssid[2], bssid[3], bssid[4], bssid[5]
+                );
+                info!("Will create new mesh on channel {}", channel);
+                mesh_channel = Some(channel);
+
+                // Store router BSSID for connection
+                *ROUTER_BSSID.lock().unwrap() = bssid;
+            }
+            NetworkDiscovery::NotFound => {
+                // This should never happen with scan_with_retry, but handle it anyway
+                return Err(anyhow::anyhow!("Network scan failed - no mesh or router found"));
+            }
+        }
+    } else {
+        info!("Using saved channel from NVS: {}", mesh_channel.unwrap());
+    }
+
+    let channel = mesh_channel.expect("Channel must be determined by this point");
+
     unsafe {
-        // WiFi scan for 2.4GHz router selection. We need this as we need to know
-        // the router's channel to set the mesh channel
-        scan_for_2ghz_router()?;
-
-        
-
-
+        // Initialize mesh
         esp!(esp_mesh_init())?;
 
         // Configure mesh using mesh_cfg_t structure
         let mesh_id = mesh_addr_t { addr: MESH_ID };
 
-        let ssid = get_embedded_env_value("ROUTER_SSID");
-        let pass = get_embedded_env_value("ROUTER_PASSWORD");
+        // Prepare router SSID
+        let ssid_bytes = router_ssid.as_bytes();
+        let mut router_ssid_array = [0u8; 32];
+        router_ssid_array[..ssid_bytes.len()].copy_from_slice(ssid_bytes);
 
-        info!("Router SSID: {}, Password length: {}", ssid, pass.len());
-
-        let ssid_bytes = ssid.as_bytes();
-        let mut router_ssid = [0u8; 32];
-        router_ssid[..ssid_bytes.len()].copy_from_slice(ssid_bytes);
-
-        let pass_bytes = pass.as_bytes();
+        // Prepare router password
+        let pass_bytes = router_pass.as_bytes();
         let mut router_password = [0u8; 64];
         router_password[..pass_bytes.len()].copy_from_slice(pass_bytes);
 
+        // Get saved BSSID if available (may be all zeros for auto-select)
+        let router_bssid = *ROUTER_BSSID.lock().unwrap();
+
         let router = mesh_router_t {
-            ssid: router_ssid,
+            ssid: router_ssid_array,
             ssid_len: ssid_bytes.len() as u8,
-            bssid: [0; 6], // Allow mesh to auto-select any router with matching SSID
+            bssid: router_bssid,
             password: router_password,
             allow_router_switch: true,
         };
 
         // Create mesh AP configuration
         info!(
-            "Mesh router password: '{}' (length: {})",
+            "Mesh AP password: '{}' (length: {})",
             MESH_PASSWORD,
             MESH_PASSWORD.len()
         );
@@ -700,22 +743,15 @@ pub fn init_mesh() -> Result<()> {
             }
         }
 
-        info!(
-            "Setting mesh AP with password length: {}, max connections: {}, password: {:?}",
-            mesh_ap_password.len(),
-            MESH_AP_CONNECTIONS,
-            mesh_ap_pwd
-        );
-
         let mesh_ap = sys::mesh_ap_cfg_t {
             password: mesh_ap_pwd,
             max_connection: MESH_AP_CONNECTIONS as u8,
             nonmesh_max_connection: 0,
         };
 
-        // Create main mesh configuration
+        // Create main mesh configuration with discovered channel
         let cfg = mesh_cfg_t {
-            channel: MESH_CHANNEL,
+            channel, // Use discovered/saved channel
             allow_channel_switch: false,
             mesh_id,
             router,
@@ -724,7 +760,7 @@ pub fn init_mesh() -> Result<()> {
         };
 
         // Apply configuration
-        info!("Setting mesh configuration");
+        info!("Setting mesh configuration with channel {}", channel);
         esp!(esp_mesh_set_config(&cfg))?;
 
         // Additional mesh settings
@@ -733,31 +769,18 @@ pub fn init_mesh() -> Result<()> {
         info!("Setting mesh vote percentage");
         esp!(esp_mesh_set_vote_percentage(1.0))?;
 
-        // Set auth mode - if mesh password is empty, use OPEN, otherwise WPA2
-        // let auth_mode = if MESH_PASSWORD.is_empty() {
-        //     info!("Setting mesh AP auth mode to OPEN (no password)");
-        //     sys::wifi_auth_mode_t_WIFI_AUTH_OPEN
-        // } else {
-        //     info!("Setting mesh AP auth mode to WPA2_PSK (password required)");
-        //     sys::wifi_auth_mode_t_WIFI_AUTH_WPA2_PSK
-        // };
+        // Set auth mode to OPEN for inter-node communication
         info!("Setting mesh AP auth mode to OPEN (no password)");
         let auth_mode = sys::wifi_auth_mode_t_WIFI_AUTH_OPEN;
         esp!(esp_mesh_set_ap_authmode(auth_mode))?;
-        // Set authentication for mesh AP - critical for inter-node communication
-        // esp!(esp_mesh_set_ap_authmode(
-        //     sys::wifi_auth_mode_t_WIFI_AUTH_WPA2_PSK
-        // ))?;
-
-        // // Also explicitly set the AP password (sometimes needed in addition to config)
-        // esp!(esp_mesh_set_ap_password(
-        //     mesh_ap_pwd.as_ptr(),
-        //     mesh_ap_password.len() as i32
-        // ))?;
 
         // Start mesh
-        info!("Starting mesh");
+        info!("Starting mesh on channel {}", channel);
         esp!(esp_mesh_start())?;
+
+        // Save channel to NVS for faster boot next time
+        info!("Saving channel {} to NVS for persistence", channel);
+        scan::save_channel_to_nvs(channel);
     }
 
     Ok(())
