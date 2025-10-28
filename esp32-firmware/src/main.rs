@@ -26,7 +26,7 @@ use scan::{load_channel_from_nvs, save_channel_to_nvs, scan_with_retry, NetworkD
 use state::{InitialState, MeshConfig};
 use tasks::{
     instruction_execution_task, mesh_rx_task, mesh_tx_task, monitor_task,
-    ota_distribution_task, State,
+    ota_distribution_task, ApplicationState,
 };
 use utils::get_embedded_env_value;
 use version::FIRMWARE_VERSION;
@@ -77,7 +77,7 @@ fn main() -> Result<()> {
         match discovery {
             NetworkDiscovery::ExistingMesh { channel, ssid, bssid, rssi } => {
                 info!(
-                    "🔗 Discovered existing mesh network: '{}' on channel {}, RSSI: {}, BSSID: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                    "NetworkDiscovery::ExistingMesh: 🔗 Discovered existing mesh network: '{}' on channel {}, RSSI: {}, BSSID: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
                     ssid, channel, rssi,
                     bssid[0], bssid[1], bssid[2], bssid[3], bssid[4], bssid[5]
                 );
@@ -85,14 +85,14 @@ fn main() -> Result<()> {
             }
             NetworkDiscovery::Router { channel, bssid, rssi } => {
                 info!(
-                    "📡 Discovered router '{}' on channel {}, RSSI: {}, BSSID: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                    "NetworkDiscovery::Router: 📡 Discovered router '{}' on channel {}, RSSI: {}, BSSID: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
                     router_ssid, channel, rssi,
                     bssid[0], bssid[1], bssid[2], bssid[3], bssid[4], bssid[5]
                 );
                 mesh_channel = Some(channel);
             }
             NetworkDiscovery::NotFound => {
-                return Err(anyhow::anyhow!("Network scan failed - no mesh or router found"));
+                return Err(anyhow::anyhow!("NetworkDiscovery::NotFound: Network scan failed - no mesh or router found"));
             }
         }
     } else {
@@ -111,26 +111,26 @@ fn main() -> Result<()> {
         max_connections: 10, // Using default from mesh.rs MESH_AP_CONNECTIONS
     };
 
+        // Additional mesh settings (still using direct calls for now)
+        unsafe {
+            use esp_idf_sys::{esp, esp_mesh_set_max_layer, esp_mesh_set_vote_percentage, esp_mesh_set_ap_authmode};
+            esp!(esp_mesh_set_max_layer(25))?; // MESH_MAX_LAYER
+            esp!(esp_mesh_set_vote_percentage(1.0))?;
+    
+            let auth_mode = esp_idf_sys::wifi_auth_mode_t_WIFI_AUTH_OPEN;
+            esp!(esp_mesh_set_ap_authmode(auth_mode))?;
+            info!("Mesh configuration completed");
+        }
+
     let _mesh_state = wifi_state.start_mesh(mesh_config)?;
     info!("Mesh started successfully via state machine");
 
     // Save channel to NVS for faster boot next time
     save_channel_to_nvs(channel);
 
-    // Additional mesh settings (still using direct calls for now)
-    unsafe {
-        use esp_idf_sys::{esp, esp_mesh_set_max_layer, esp_mesh_set_vote_percentage, esp_mesh_set_ap_authmode};
-        esp!(esp_mesh_set_max_layer(25))?; // MESH_MAX_LAYER
-        esp!(esp_mesh_set_vote_percentage(1.0))?;
-
-        let auth_mode = esp_idf_sys::wifi_auth_mode_t_WIFI_AUTH_OPEN;
-        esp!(esp_mesh_set_ap_authmode(auth_mode))?;
-        info!("Mesh configuration completed");
-    }
-
     info!("Starting mesh tasks...");
 
-    let state: Arc<Mutex<State>> = Arc::new(Mutex::new(State {
+    let state: Arc<Mutex<ApplicationState>> = Arc::new(Mutex::new(ApplicationState {
         instructions: Instructions::new(),
         ota_manager: Arc::new(Mutex::new(ota_manager)),
     }));

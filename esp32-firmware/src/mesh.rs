@@ -455,20 +455,20 @@ pub fn init_wifi() -> Result<()> {
         esp!(esp_event_loop_create_default())?;
     }
 
-    // let mut sta_netif: *mut sys::esp_netif_obj = std::ptr::null_mut();
-    // let mut ap_netif: *mut sys::esp_netif_obj = std::ptr::null_mut();
+    let mut sta_netif: *mut sys::esp_netif_obj = std::ptr::null_mut();
+    let mut ap_netif: *mut sys::esp_netif_obj = std::ptr::null_mut();
 
-    // unsafe {
-    //     sys::esp_netif_create_default_wifi_mesh_netifs(&mut sta_netif, &mut ap_netif);
-    // }
+    unsafe {
+        esp!(sys::esp_netif_create_default_wifi_mesh_netifs(&mut sta_netif, &mut ap_netif))?;
+    }
 
     // Save netif pointers globally for DHCP management (as usize for thread safety)
-    // *STA_NETIF.lock().unwrap() = sta_netif as usize;
-    // *AP_NETIF.lock().unwrap() = ap_netif as usize;
-    // info!(
-    //     "Network interfaces created - STA: {:p}, AP: {:p}",
-    //     sta_netif, ap_netif
-    // );
+    *STA_NETIF.lock().unwrap() = sta_netif as usize;
+    *AP_NETIF.lock().unwrap() = ap_netif as usize;
+    info!(
+        "Network interfaces created - STA: {:p}, AP: {:p}",
+        sta_netif, ap_netif
+    );
 
     // Create proper WiFi configuration
     let cfg = wifi_init_config_t {

@@ -15,13 +15,13 @@ use std::{
 };
 
 /// Application state containing the instruction queue and OTA manager
-pub struct State {
+pub struct ApplicationState {
     pub instructions: Instructions,
     pub ota_manager: Arc<Mutex<OtaManager>>,
 }
 
 /// Task for receiving mesh messages
-pub fn mesh_rx_task(node: Arc<MeshNode>, state: Arc<Mutex<State>>) {
+pub fn mesh_rx_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
     let mut rx_buf = vec![0u8; 1500];
     let mut from_addr = mesh_addr_t { addr: [0; 6] };
     let mut flag = 0i32;
@@ -165,7 +165,7 @@ pub fn mesh_rx_task(node: Arc<MeshNode>, state: Arc<Mutex<State>>) {
 }
 
 /// Task for transmitting mesh messages
-pub fn mesh_tx_task(node: Arc<MeshNode>, state: Arc<Mutex<State>>) {
+pub fn mesh_tx_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
     let mut counter = 0u32;
     let mut _challenge_counter = 0u32;
     let mut ota_check_done = false; // Only check for OTA updates once
@@ -393,7 +393,7 @@ pub fn monitor_task(node: Arc<MeshNode>) {
 }
 
 /// Task for executing timed instructions
-pub fn instruction_execution_task(node: Arc<MeshNode>, state: Arc<Mutex<State>>) {
+pub fn instruction_execution_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
     loop {
         let mut state_lock = state.lock().unwrap();
 
@@ -414,7 +414,7 @@ pub fn instruction_execution_task(node: Arc<MeshNode>, state: Arc<Mutex<State>>)
 }
 
 /// Task for OTA distribution (root node only)
-pub fn ota_distribution_task(_node: Arc<MeshNode>, state: Arc<Mutex<State>>) {
+pub fn ota_distribution_task(_node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
     use crate::ota::OtaMessage;
 
     loop {
