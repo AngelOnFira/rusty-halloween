@@ -303,7 +303,6 @@ impl StateContainer {
 
     /// Update runtime state from ESP-MESH APIs (call from event handlers)
     pub fn refresh_from_mesh(&mut self) -> Result<(), sys::EspError> {
-        use log::debug;
         unsafe {
             // Update root status
             self.is_root = sys::esp_mesh_is_root();
@@ -311,23 +310,21 @@ impl StateContainer {
             // Update layer
             self.layer = sys::esp_mesh_get_layer();
 
-            debug!("State refreshed: is_root={}, layer={}", self.is_root, self.layer);
+            debug!("state::types: State refreshed: is_root={}, layer={}", self.is_root, self.layer);
         }
         Ok(())
     }
 
     /// Set IP status (called from IP event handlers)
     pub fn set_has_ip(&mut self, has_ip: bool) {
-        use log::info;
         self.has_ip = has_ip;
-        info!("IP status updated: has_ip={}", has_ip);
+        info!("state::types: IP status updated: has_ip={}", has_ip);
     }
 
     /// Set root status (called from mesh event handlers)
     pub fn set_is_root(&mut self, is_root: bool) {
-        use log::info;
         self.is_root = is_root;
-        info!("Root status updated: is_root={}", is_root);
+        info!("state::types: Root status updated: is_root={}", is_root);
     }
 
     /// Get current OTA state

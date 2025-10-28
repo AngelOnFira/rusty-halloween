@@ -2,7 +2,6 @@
 
 use super::{types::*, wifi::ScanResults, GLOBAL_STATE};
 use esp_idf_svc::sys as sys;
-use log::info;
 use std::marker::PhantomData;
 
 // Mesh network configuration constants
@@ -24,7 +23,7 @@ impl<O> WifiMeshState<Sta, MeshInactive, NotScanning, O> {
     /// Start mesh network from STA mode.
     /// Automatically transitions to STAAP mode and initializes mesh.
     pub fn start_mesh(self, config: MeshConfig) -> Result<MeshRunningState, sys::EspError> {
-        info!("Starting mesh network (auto-transition STA -> STAAP -> mesh active)");
+        info!("state::mesh: Starting mesh network (auto-transition STA -> STAAP -> mesh active)");
 
         // Step 1: Transition to STAAP mode (required for mesh)
         let staap_state = self.set_staap_mode()?;
@@ -38,12 +37,12 @@ impl<O> WifiMeshState<StaAp, MeshInactive, NotScanning, O> {
     /// Start mesh network.
     /// WiFi must already be in STAAP mode.
     pub fn start_mesh(mut self, config: MeshConfig) -> Result<MeshRunningState, sys::EspError> {
-        info!("Starting mesh network (already in STAAP mode)");
+        info!("state::mesh: Starting mesh network (already in STAAP mode)");
 
         unsafe {
             // Initialize mesh if not already done
             sys::esp!(sys::esp_mesh_init())?;
-            info!("Mesh initialized");
+            info!("state::mesh: Mesh initialized");
 
             // Prepare router configuration
             let mut router_ssid = [0u8; 32];
@@ -80,15 +79,18 @@ impl<O> WifiMeshState<StaAp, MeshInactive, NotScanning, O> {
             };
 
             sys::esp!(sys::esp_mesh_set_config(&mesh_cfg))?;
-            info!("Mesh configured");
+            info!("state::mesh: Mesh configured with channel {}", config.channel);
 
             // Start mesh
             sys::esp!(sys::esp_mesh_start())?;
-            info!("Mesh started");
+            info!("state::mesh: Mesh started");
 
             // Enable self-organized mode
-            sys::esp!(sys::esp_mesh_set_self_organized(true, true))?;
-            info!("Mesh self-organized mode enabled");
+            sys::esp!(sys::esp_mesh_set_self_organized(true, false))?;
+            info!("state::mesh: Mesh self-organized mode enabled");
+
+            sys::esp!(sys::esp_mesh_connect())?;
+            info!("state::mesh: Mesh connected");
         }
 
         // Update state
@@ -126,7 +128,7 @@ impl<O> WifiMeshState<StaAp, MeshSelfOrganized, NotScanning, O> {
     ///
     /// Call this before any WiFi operations, then re-enable after.
     pub fn disable_self_organized(self) -> Result<MeshManualState, sys::EspError> {
-        info!("Disabling mesh self-organized mode for WiFi operations");
+        info!("state::mesh: Disabling mesh self-organized mode for WiFi operations");
 
         unsafe {
             sys::esp!(sys::esp_mesh_set_self_organized(false, false))?;
@@ -154,7 +156,7 @@ impl<O> WifiMeshState<StaAp, MeshSelfOrganized, NotScanning, O> {
 
     /// Stop mesh network and return to inactive state.
     pub fn stop_mesh(self) -> Result<MeshReadyState, sys::EspError> {
-        info!("Stopping mesh network");
+        info!("state::mesh: Stopping mesh network");
 
         unsafe {
             // Disable self-organized mode first
@@ -166,7 +168,7 @@ impl<O> WifiMeshState<StaAp, MeshSelfOrganized, NotScanning, O> {
             // Deinitialize mesh
             sys::esp!(sys::esp_mesh_deinit())?;
 
-            info!("Mesh stopped and deinitialized");
+            info!("state::mesh: Mesh stopped and deinitialized");
         }
 
         // Update global state
@@ -195,7 +197,7 @@ impl<O> WifiMeshState<StaAp, MeshSelfOrganized, NotScanning, O> {
 impl<O> WifiMeshState<StaAp, MeshActive, NotScanning, O> {
     /// Re-enable self-organized mode after manual WiFi operations.
     pub fn enable_self_organized(self) -> Result<MeshRunningState, sys::EspError> {
-        info!("Re-enabling mesh self-organized mode");
+        info!("state::mesh: Re-enabling mesh self-organized mode");
 
         unsafe {
             sys::esp!(sys::esp_mesh_set_self_organized(true, false))?;
@@ -224,7 +226,7 @@ impl<O> WifiMeshState<StaAp, MeshActive, NotScanning, O> {
     /// Scan while mesh is in manual mode (self-organized disabled).
     /// Temporarily switches to STA mode, scans, then returns to STAAP + manual mesh.
     pub fn scan(self) -> Result<(ScanResults, Self), sys::EspError> {
-        info!("Scanning in mesh manual mode (will temporarily switch to STA)");
+        info!("state::mesh: Scanning in mesh manual mode (will temporarily switch to STA)");
 
         // Transition to STA for scanning
         let sta_state: WifiMeshState<Sta, MeshActive, NotScanning, O> = WifiMeshState {
@@ -273,7 +275,7 @@ impl<O> WifiMeshState<StaAp, MeshActive, NotScanning, O> {
 
     /// Stop mesh network.
     pub fn stop_mesh(self) -> Result<MeshReadyState, sys::EspError> {
-        info!("Stopping mesh from manual mode");
+        info!("state::mesh: Stopping mesh from manual mode");
 
         unsafe {
             sys::esp!(sys::esp_mesh_stop())?;
@@ -304,7 +306,7 @@ impl<O> WifiMeshState<StaAp, MeshActive, NotScanning, O> {
 // Helper for scanning while mesh is active but in manual mode
 impl<O> WifiMeshState<Sta, MeshActive, NotScanning, O> {
     fn scan_in_mesh_manual(self) -> Result<(ScanResults, Self), sys::EspError> {
-        info!("Performing scan in mesh manual mode");
+        info!("state::mesh: Performing scan in mesh manual mode");
 
         unsafe {
             sys::esp_wifi_scan_stop();

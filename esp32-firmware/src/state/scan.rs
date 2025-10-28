@@ -11,7 +11,6 @@ use esp_idf_svc::sys::{
     esp_wifi_scan_start, esp_wifi_scan_get_ap_num, esp_wifi_scan_get_ap_records,
     esp_mesh_scan_get_ap_ie_len,
 };
-use log::{error, info, warn};
 use std::{ffi::CString, marker::PhantomData, ptr};
 
 // =============================================================================
@@ -27,7 +26,7 @@ impl<O> WifiMeshState<Sta, MeshInactive, NotScanning, O> {
     ///
     /// This is the simple case - use when you're already in a scan-ready state.
     pub fn scan(self) -> Result<(ScanResults, Self), sys::EspError> {
-        info!("Starting WiFi scan (already in STA mode, mesh inactive)");
+        info!("state::scan: Starting WiFi scan (already in STA mode, mesh inactive)");
 
         unsafe {
             // Stop any previous scan
@@ -56,7 +55,7 @@ impl<O> WifiMeshState<Sta, MeshInactive, NotScanning, O> {
 
             // Start scan (blocking until complete)
             sys::esp!(sys::esp_wifi_scan_start(&scan_config, true))?;
-            info!("Scan completed successfully");
+            info!("state::scan: Scan completed successfully");
 
             // Get results
             let mut ap_count: u16 = 0;
@@ -71,7 +70,7 @@ impl<O> WifiMeshState<Sta, MeshInactive, NotScanning, O> {
             sys::esp!(sys::esp_wifi_scan_get_ap_records(&mut actual_count, aps.as_mut_ptr()))?;
             aps.truncate(actual_count as usize);
 
-            info!("Found {} access points", actual_count);
+            info!("state::scan: Found {} access points", actual_count);
 
             let results = ScanResults {
                 aps,
@@ -93,7 +92,7 @@ impl<O> WifiMeshState<StaAp, MeshInactive, NotScanning, O> {
     ///
     /// Use this when mesh is inactive but you're in STAAP mode.
     pub fn scan(self) -> Result<(ScanResults, Self), sys::EspError> {
-        info!("Starting WiFi scan with automatic mode transition (STAAP -> STA -> scan -> STAAP)");
+        info!("state::scan: Starting WiFi scan with automatic mode transition (STAAP -> STA -> scan -> STAAP)");
 
         // Step 1: Switch to STA mode
         let sta_state = self.set_sta_mode()?;
@@ -175,7 +174,7 @@ pub fn load_channel_from_nvs() -> Option<u8> {
         );
 
         if ret != ESP_OK {
-            info!("NVS: No saved channel found (namespace not found)");
+            info!("state::scan: NVS: No saved channel found (namespace not found)");
             return None;
         }
 
@@ -186,10 +185,10 @@ pub fn load_channel_from_nvs() -> Option<u8> {
         nvs_close(nvs_handle);
 
         if ret == ESP_OK {
-            info!("NVS: Loaded saved channel: {}", channel);
+            info!("state::scan: NVS: Loaded saved channel: {}", channel);
             Some(channel)
         } else {
-            info!("NVS: No saved channel found (key not found)");
+            info!("state::scan: NVS: No saved channel found (key not found)");
             None
         }
     }
@@ -202,8 +201,8 @@ pub fn save_channel_to_nvs(channel: u8) -> bool {
     unsafe {
         let namespace = match CString::new(NVS_NAMESPACE) {
             Ok(s) => s,
-            Err(e) => {
-                error!("NVS: Failed to create namespace string: {:?}", e);
+            Err(_e) => {
+                error!("state::scan: NVS: Failed to create namespace string");
                 return false;
             }
         };
@@ -211,7 +210,7 @@ pub fn save_channel_to_nvs(channel: u8) -> bool {
         let key = match CString::new(NVS_CHANNEL_KEY) {
             Ok(s) => s,
             Err(e) => {
-                error!("NVS: Failed to create key string: {:?}", e);
+                error!("state::scan: NVS: Failed to create key string");
                 return false;
             }
         };
@@ -226,7 +225,7 @@ pub fn save_channel_to_nvs(channel: u8) -> bool {
         );
 
         if ret != ESP_OK {
-            error!("NVS: Failed to open handle: {}", ret);
+            error!("state::scan: NVS: Failed to open handle: {}", ret);
             return false;
         }
 
@@ -234,7 +233,7 @@ pub fn save_channel_to_nvs(channel: u8) -> bool {
         let ret = nvs_set_u8(nvs_handle, key.as_ptr(), channel);
 
         if ret != ESP_OK {
-            error!("NVS: Failed to set channel: {}", ret);
+            error!("state::scan: NVS: Failed to set channel: {}", ret);
             nvs_close(nvs_handle);
             return false;
         }
@@ -245,10 +244,10 @@ pub fn save_channel_to_nvs(channel: u8) -> bool {
         nvs_close(nvs_handle);
 
         if ret == ESP_OK {
-            info!("NVS: Saved channel {} to flash", channel);
+            info!("state::scan: NVS: Saved channel {} to flash", channel);
             true
         } else {
-            error!("NVS: Failed to commit channel: {}", ret);
+            error!("state::scan: NVS: Failed to commit channel: {}", ret);
             false
         }
     }
@@ -275,7 +274,7 @@ fn is_mesh_network(ap: &wifi_ap_record_t, _mesh_id: &[u8; 6]) -> bool {
             if ssid_len > 0 {
                 let ssid_bytes = &ap.ssid[..ssid_len];
                 if let Ok(ssid_str) = std::str::from_utf8(ssid_bytes) {
-                    info!("Mesh network SSID: {}", ssid_str);
+                    info!("state::scan: Mesh network SSID: {}", ssid_str);
                 }
             }
 
@@ -352,19 +351,19 @@ pub fn scan_for_networks(router_ssid: &str, mesh_id: &[u8; 6]) -> NetworkDiscove
     {
         match e.code() {
             ESP_ERR_WIFI_NOT_INIT => {
-                error!("WiFi not initialized");
+                error!("state::scan: WiFi not initialized");
             }
             ESP_ERR_WIFI_NOT_STARTED => {
-                error!("Failed to get AP count: {}", e);
+                error!("state::scan: Failed to get AP count");
             }
             ESP_ERR_WIFI_TIMEOUT => {
-                error!("WiFi scan timeout");
+                error!("state::scan: WiFi scan timeout");
             }
             ESP_ERR_WIFI_STATE => {
-                error!("WiFi scan not found");
+                error!("state::scan: WiFi scan not found");
             }
             _ => {
-                error!("Unexpected error esp_wifi_scan_start: {}", e);
+                error!("state::scan: Unexpected error esp_wifi_scan_start");
             }
         }
         return NetworkDiscovery::NotFound;
@@ -375,22 +374,22 @@ pub fn scan_for_networks(router_ssid: &str, mesh_id: &[u8; 6]) -> NetworkDiscove
     if let Err(e) = esp!(unsafe { esp_wifi_scan_get_ap_num(&mut ap_count) }) {
         match e.code() {
             ESP_ERR_WIFI_NOT_INIT => {
-                error!("WiFi not initialized");
+                error!("state::scan: WiFi not initialized");
             }
             ESP_ERR_WIFI_NOT_STARTED => {
-                error!("Failed to get AP count: {}", e);
+                error!("state::scan: Failed to get AP count");
             }
             ESP_ERR_INVALID_ARG => {
-                error!("Invalid argument: {}", e);
+                error!("state::scan: Invalid argument");
             }
             _ => {
-                error!("Unexpected error esp_wifi_scan_get_ap_num: {}", e);
+                error!("state::scan: Unexpected error esp_wifi_scan_get_ap_num");
             }
         }
         return NetworkDiscovery::NotFound;
     }
 
-    info!("WiFi scan found {} access points", ap_count);
+    info!("state::scan: WiFi scan found {} access points", ap_count);
 
     if ap_count == 0 {
         return NetworkDiscovery::NotFound;
@@ -406,25 +405,25 @@ pub fn scan_for_networks(router_ssid: &str, mesh_id: &[u8; 6]) -> NetworkDiscove
     {
         match e.code() {
             ESP_ERR_WIFI_NOT_INIT => {
-                error!("WiFi not initialized");
+                error!("state::scan: WiFi not initialized");
             }
             ESP_ERR_WIFI_NOT_STARTED => {
-                error!("Failed to get AP records: {}", e);
+                error!("state::scan: Failed to get AP records");
             }
             ESP_ERR_INVALID_ARG => {
-                error!("Invalid argument: {}", e);
+                error!("state::scan: Invalid argument");
             }
             ESP_ERR_NO_MEM => {
-                error!("Out of memory: {}", e);
+                error!("state::scan: Out of memory");
             }
             _ => {
-                error!("Unexpected error esp_wifi_scan_get_ap_records: {}", e);
+                error!("state::scan: Unexpected error esp_wifi_scan_get_ap_records");
             }
         }
         return NetworkDiscovery::NotFound;
     }
 
-    info!("Retrieved {} AP records", actual_count);
+    info!("state::scan: Retrieved {} AP records", actual_count);
 
     // First pass: Look for existing mesh networks (highest priority)
     for ap in ap_records.iter().take(actual_count as usize) {
@@ -451,7 +450,7 @@ pub fn scan_for_networks(router_ssid: &str, mesh_id: &[u8; 6]) -> NetworkDiscove
         }
     }
 
-    info!("No existing mesh found, looking for router...");
+    info!("state::scan: No existing mesh found, looking for router...");
 
     // Second pass: Look for target router
     let mut best_router: Option<&wifi_ap_record_t> = None;
@@ -489,7 +488,7 @@ pub fn scan_for_networks(router_ssid: &str, mesh_id: &[u8; 6]) -> NetworkDiscove
         };
     }
 
-    warn!("No mesh network or target router found in scan");
+    warn!("state::scan: No mesh network or target router found in scan");
     NetworkDiscovery::NotFound
 }
 
@@ -511,7 +510,7 @@ pub fn scan_with_retry(
 
     loop {
         attempt += 1;
-        info!("Network scan attempt #{}", attempt);
+        info!("state::scan: Network scan attempt #{}", attempt);
 
         let result = scan_for_networks(router_ssid, mesh_id);
 
@@ -529,7 +528,7 @@ pub fn scan_with_retry(
                 delay_ms = (delay_ms * 2).min(max_delay_ms);
             }
             _ => {
-                info!("Network discovered on attempt #{}", attempt);
+                info!("state::scan: Network discovered on attempt #{}", attempt);
                 return result;
             }
         }

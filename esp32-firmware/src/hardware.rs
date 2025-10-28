@@ -1,6 +1,5 @@
 use anyhow::Result;
 use esp_idf_hal::{gpio::Gpio18, peripheral::Peripheral, rmt::RmtChannel};
-use log::*;
 use smart_leds::{SmartLedsWrite, RGB8};
 use std::sync::{Arc, Mutex};
 use ws2812_esp32_rmt_driver::Ws2812Esp32Rmt;
@@ -34,7 +33,7 @@ impl WS2812Controller {
 
             // Write to the WS2812 LED using RMT peripheral
             driver.write(pixels.iter().cloned())?;
-            info!("WS2812 color sent successfully");
+            info!("hardware: WS2812 color sent successfully");
         }
 
         Ok(())

@@ -1,7 +1,6 @@
 use crate::hardware::WS2812Controller;
 use crate::state::{mesh_send, BROADCAST_ADDR};
 use esp_idf_hal::peripherals::Peripherals;
-use log::*;
 use smart_leds::RGB8;
 use std::{
     collections::HashMap,
@@ -62,7 +61,7 @@ impl MeshNode {
 
         let _ = self.led.set_color(color);
 
-        info!("Set WS2812 color to RGB({}, {}, {})", r, g, b);
+        info!("node: Set WS2812 color to RGB({}, {}, {})", r, g, b);
     }
 
     pub fn send_challenge(&self, challenge_id: u32) -> bool {
@@ -113,7 +112,7 @@ impl MeshNode {
         if challenges_sent > 0 {
             let success_rate = (responses_received as f32 / challenges_sent as f32) * 100.0;
             info!(
-                "📊 PACKET LOSS STATS: Sent: {}, Received: {}, Pending: {}, Success: {:.1}%",
+                "📊 PACKET LOSS STATS: Sent: {}, Received: {}, Pending: {}, Success: {}%",
                 challenges_sent, responses_received, pending_count, success_rate
             );
         }
@@ -129,9 +128,9 @@ impl MeshNode {
         let flag = 0x01; // MESH_DATA_GROUP flag
 
         if mesh_send(&BROADCAST_ADDR, message.as_bytes(), flag).is_ok() {
-            info!("📤 Sent challenge response for ID: {}", challenge_id);
+            info!("node: 📤 Sent challenge response for ID: {}", challenge_id);
         } else {
-            warn!("Failed to send challenge response");
+            warn!("node: Failed to send challenge response");
         }
     }
 }

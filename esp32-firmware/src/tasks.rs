@@ -7,7 +7,6 @@ use crate::state::{
     OtaManager, OtaMessage, OtaState,
 };
 use esp_idf_sys::{esp_random, mesh_addr_t, ESP_OK};
-use log::*;
 use std::{
     sync::{Arc, Mutex},
     thread,
@@ -49,14 +48,14 @@ pub fn mesh_rx_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
                             match msg_type {
                                 "challenge" => {
                                     if let Some(challenge_id) = command["id"].as_u64() {
-                                        info!("📨 Received challenge ID: {}", challenge_id);
+                                        info!("tasks: Received challenge ID: {}", challenge_id);
                                         node.send_challenge_response(challenge_id as u32);
                                     }
                                 }
                                 "challenge_response" => {
                                     if let Some(challenge_id) = command["id"].as_u64() {
                                         info!(
-                                            "📥 Received response for challenge ID: {}",
+                                            "Received response for challenge ID: {}",
                                             challenge_id
                                         );
                                         node.handle_challenge_response(challenge_id as u32);
@@ -67,24 +66,24 @@ pub fn mesh_rx_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
                                         for item in data {
                                             // Type is (i32, (u8, u8, u8))
                                             if let Some(value) = item.as_u64() {
-                                                info!("Received data item: {}", value);
+                                                info!("tasks: Received data item: {}", value);
                                             }
                                         }
                                     }
                                 }
                                 // OTA message types
                                 "check_update" => {
-                                    info!("🔄 Received check_update command");
+                                    info!("tasks: Received check_update command");
                                     // This will be handled by the root node in mesh_tx_task
                                 }
                                 "ota_start" => {
                                     if let Ok(ota_msg) = serde_json::from_value::<OtaMessage>(command) {
                                         if let OtaMessage::OtaStart { version, total_chunks, firmware_size } = ota_msg {
-                                            info!("🚀 OTA Update starting: v{} ({} chunks, {} bytes)", version, total_chunks, firmware_size);
+                                            info!("tasks: OTA Update starting: v{} ({} chunks, {} bytes)", version, total_chunks, firmware_size);
                                             let state_lock = state.lock().unwrap();
                                             let mut ota_guard = state_lock.ota_manager.lock().unwrap();
                                             if let Err(e) = ota_guard.start_ota_reception(total_chunks, firmware_size) {
-                                                warn!("Failed to start OTA reception: {:?}", e);
+                                                warn!("tasks: Failed to start OTA reception: {:?}", e);
                                             }
                                         }
                                     }
@@ -99,18 +98,18 @@ pub fn mesh_rx_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
                                                     // Send ACK
                                                     // TODO: Implement ACK sending
                                                     if complete {
-                                                        info!("✅ OTA update complete! Ready to reboot.");
+                                                        info!("tasks: OTA update complete! Ready to reboot.");
                                                     }
                                                 }
                                                 Err(e) => {
-                                                    warn!("Failed to handle OTA chunk {}: {:?}", chunk.sequence, e);
+                                                    warn!("tasks: Failed to handle OTA chunk {}: {:?}", chunk.sequence, e);
                                                 }
                                             }
                                         }
                                     }
                                 }
                                 "ota_reboot" => {
-                                    info!("🔄 Received OTA reboot command - rebooting in 2 seconds...");
+                                    info!("tasks: Received OTA reboot command - rebooting in 2 seconds...");
                                     thread::sleep(Duration::from_secs(2));
                                     unsafe {
                                         esp_idf_sys::esp_restart();
@@ -118,11 +117,11 @@ pub fn mesh_rx_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
                                 }
                                 "ota_cancel" => {
                                     if let Some(reason) = command["reason"].as_str() {
-                                        warn!("❌ OTA update cancelled: {}", reason);
+                                        warn!("tasks: ❌ OTA update cancelled: {}", reason);
                                     }
                                 }
                                 _ => {
-                                    warn!("Unknown message type: {}", msg_type);
+                                    warn!("tasks: Unknown message type: {}", msg_type);
                                 }
                             }
                         } else if let (Some(r), Some(g), Some(b)) = (
@@ -130,14 +129,14 @@ pub fn mesh_rx_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
                             command["g"].as_u64().map(|v| v as u8),
                             command["b"].as_u64().map(|v| v as u8),
                         ) {
-                            info!("Received valid color command: RGB({}, {}, {})", r, g, b);
+                            info!("tasks: Received valid color command: RGB({}, {}, {})", r, g, b);
                             node.set_color(r, g, b);
                         } else {
-                            warn!("Invalid command format: missing type or r/g/b values");
+                            warn!("tasks: Invalid command format: missing type or r/g/b values");
                         }
                     }
                     Err(e) => {
-                        warn!("Failed to parse JSON command: {} - Data: {}", e, data_str);
+                        warn!("tasks: Failed to parse JSON command: {} - Data: {}", e, data_str);
                     }
                 }
             }
@@ -171,8 +170,8 @@ pub fn mesh_tx_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
                 // Uses event-driven state tracking instead of arbitrary timer
                 let has_ip_status = state::has_ip();
                 if !ota_check_done && has_ip_status {
-                    info!("🔍 Checking for firmware updates from GitHub...");
-                    info!("Root node connected with IP - checking for OTA updates");
+                    info!("tasks: Checking for firmware updates from GitHub...");
+                    info!("tasks: Root node connected with IP - checking for OTA updates");
                     ota_check_done = true; // Only check once
 
                     let state_lock = state.lock().unwrap();
@@ -180,25 +179,25 @@ pub fn mesh_tx_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
 
                     match ota_manager.check_for_updates() {
                         Ok(Some(release)) => {
-                            info!("📦 Update available! Release: {}", release.name);
+                            info!("tasks: Update available! Release: {}", release.name);
 
                             // Get the firmware asset
                             if let Some(asset) = release.get_firmware_asset() {
-                                info!("📥 Firmware asset: {} ({} bytes)", asset.name, asset.size);
+                                info!("tasks: Firmware asset: {} ({} bytes)", asset.name, asset.size);
 
                                 // Parse version from tag
                                 match release.version() {
                                     Ok(version) => {
                                         // Trigger OTA update
-                                        info!("🚀 Starting OTA update to v{}...", version);
+                                        info!("tasks: Starting OTA update to v{}...", version);
                                         if let Err(e) = ota_manager.trigger_ota_update(
                                             &asset.browser_download_url,
                                             version.to_string(),
                                             asset.size as u32,
                                         ) {
-                                            warn!("Failed to trigger OTA update: {:?}", e);
+                                            warn!("tasks: Failed to trigger OTA update: {:?}", e);
                                         } else {
-                                            info!("✅ OTA update triggered successfully!");
+                                            info!("tasks: OTA update triggered successfully!");
 
                                             // Broadcast OTA start message to all nodes
                                             drop(ota_manager);
@@ -214,25 +213,25 @@ pub fn mesh_tx_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
                                             let flag = 0x01;
 
                                             if mesh_send(&BROADCAST_ADDR, message.as_bytes(), flag).is_ok() {
-                                                info!("📡 Broadcasted OTA start message to mesh");
+                                                info!("tasks: Broadcasted OTA start message to mesh");
                                             } else {
-                                                warn!("Failed to broadcast OTA start");
+                                                warn!("tasks: Failed to broadcast OTA start");
                                             }
                                         }
                                     }
                                     Err(e) => {
-                                        warn!("Failed to parse version from release: {:?}", e);
+                                        warn!("tasks: Failed to parse version from release: {:?}", e);
                                     }
                                 }
                             } else {
-                                warn!("No firmware binary found in release assets");
+                                warn!("tasks: No firmware binary found in release assets");
                             }
                         }
                         Ok(None) => {
-                            info!("✅ Already running latest firmware version");
+                            info!("tasks: Already running latest firmware version");
                         }
                         Err(e) => {
-                            warn!("Failed to check for updates: {:?}", e);
+                            warn!("tasks: Failed to check for updates: {:?}", e);
                         }
                     }
                 }
@@ -260,7 +259,7 @@ pub fn mesh_tx_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
                         success = true;
                         break;
                     } else {
-                        warn!("Failed to send color command on attempt {}", attempt);
+                        warn!("tasks: Failed to send color command on attempt {}", attempt);
                         if attempt < 3 {
                             thread::sleep(Duration::from_millis(100)); // Brief delay before retry
                         }
@@ -268,7 +267,7 @@ pub fn mesh_tx_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
                 }
 
                 if !success {
-                    warn!("All attempts to send color command failed");
+                    warn!("tasks: All attempts to send color command failed");
                 }
 
                 // Send packet loss test challenges every 5 seconds
@@ -276,9 +275,9 @@ pub fn mesh_tx_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
                     _challenge_counter += 1;
                     let challenge_id = esp_random();
                     if node.send_challenge(challenge_id) {
-                        info!("📡 Sent challenge ID: {}", challenge_id);
+                        info!("tasks: Sent challenge ID: {}", challenge_id);
                     } else {
-                        warn!("Failed to send challenge ID: {}", challenge_id);
+                        warn!("tasks: Failed to send challenge ID: {}", challenge_id);
                     }
                 }
 
@@ -300,9 +299,9 @@ pub fn mesh_tx_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
                     let flag = 0x01; // MESH_DATA_GROUP flag
 
                     if mesh_send(&BROADCAST_ADDR, message.as_bytes(), flag).is_ok() {
-                        info!("Status message sent: {message}");
+                        info!("tasks: Status message sent: {}", message);
                     } else {
-                        warn!("Failed to send status");
+                        warn!("tasks: Failed to send status");
                     }
                 }
 
@@ -333,7 +332,8 @@ pub fn monitor_task(node: Arc<MeshNode>) {
             *node.has_ip.lock().unwrap() = has_ip_status;
 
             info!(
-                "Status - Root: {is_root_node}, Layer: {current_layer}, Active: {is_active}, Has IP: {has_ip_status}, Total Nodes: {total_nodes}"
+                "tasks: Status - Root: {}, Layer: {}, Active: {}, Has IP: {}, Total Nodes: {}",
+                is_root_node, current_layer, is_active, has_ip_status, total_nodes
             );
 
             // Don't override synchronized colors - only show status when disconnected
@@ -396,9 +396,9 @@ pub fn ota_distribution_task(_node: Arc<MeshNode>, state: Arc<Mutex<ApplicationS
                     let flag = 0x01; // MESH_DATA_GROUP flag
 
                     if mesh_send(&BROADCAST_ADDR, message.as_bytes(), flag).is_ok() {
-                        info!("📤 Sent OTA chunk {}/{}", chunk.sequence + 1, total_chunks);
+                        info!("tasks: Sent OTA chunk {}/{}", chunk.sequence + 1, total_chunks);
                     } else {
-                        warn!("Failed to send OTA chunk {}", chunk.sequence);
+                        warn!("tasks: Failed to send OTA chunk {}", chunk.sequence);
                     }
 
                     // Small delay between chunks to avoid overwhelming the mesh
@@ -409,14 +409,14 @@ pub fn ota_distribution_task(_node: Arc<MeshNode>, state: Arc<Mutex<ApplicationS
                 drop(state_lock);
 
                 // After sending all chunks, wait for nodes to complete
-                info!("All chunks sent. Waiting for nodes to complete...");
+                info!("tasks: All chunks sent. Waiting for nodes to complete...");
                 thread::sleep(Duration::from_secs(5));
 
                 // Check if all nodes are ready
                 let state_lock = state.lock().unwrap();
                 let ota_manager = state_lock.ota_manager.lock().unwrap();
                 if ota_manager.all_nodes_ready() {
-                    info!("✅ All nodes ready! Sending reboot command...");
+                    info!("tasks: All nodes ready! Sending reboot command...");
 
                     // Send reboot command
                     let reboot_msg = OtaMessage::OtaReboot;

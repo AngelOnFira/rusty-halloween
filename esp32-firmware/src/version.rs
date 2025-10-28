@@ -1,5 +1,4 @@
 use anyhow::{Context, Result};
-use log::*;
 use serde::Deserialize;
 
 /// Current firmware version - update this when releasing new versions
@@ -85,12 +84,12 @@ impl GitHubRelease {
 
 /// Check GitHub for the latest release
 pub fn check_github_for_updates() -> Result<Option<GitHubRelease>> {
-    info!("Checking GitHub for firmware updates...");
+    info!("version: Checking GitHub for firmware updates...");
 
     // Note: This requires HTTP client implementation
     // For now, this is a placeholder that will be implemented with the OTA HTTP client
 
-    warn!("GitHub update checking not yet implemented - requires HTTP client");
+    warn!("version: GitHub update checking not yet implemented - requires HTTP client");
     Ok(None)
 }
 

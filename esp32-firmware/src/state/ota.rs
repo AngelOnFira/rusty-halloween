@@ -5,7 +5,6 @@ use anyhow::{Context, Result};
 use crc::{Crc, CRC_32_ISO_HDLC};
 use esp_idf_svc::sys as sys;
 use esp_ota::OtaUpdate;
-use log::*;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
@@ -26,7 +25,7 @@ impl<W, M, S> WifiMeshState<W, M, S, OtaIdle> {
     pub fn begin_ota_download(self, firmware_url: String, firmware_size: u32, version: String)
         -> anyhow::Result<WifiMeshState<W, M, S, OtaDownloading>>
     {
-        info!("Beginning OTA download: v{} ({} bytes) from {}", version, firmware_size, firmware_url);
+        info!("state::ota: Beginning OTA download: v{} ({} bytes) from {}", version, firmware_size, firmware_url);
 
         // Update global state
         if let Some(state) = GLOBAL_STATE.lock().unwrap().as_mut() {
@@ -57,7 +56,7 @@ impl<W, M, S> WifiMeshState<W, M, S, OtaIdle> {
     pub fn begin_ota_reception(self, total_chunks: u32, firmware_size: u32)
         -> anyhow::Result<WifiMeshState<W, M, S, OtaReceiving>>
     {
-        info!("Beginning OTA reception: {} chunks ({} bytes)", total_chunks, firmware_size);
+        info!("state::ota: Beginning OTA reception: {} chunks ({} bytes)", total_chunks, firmware_size);
 
         // Update global state
         if let Some(state) = GLOBAL_STATE.lock().unwrap().as_mut() {
@@ -92,7 +91,7 @@ impl<W, M, S> WifiMeshState<W, M, S, OtaDownloading> {
     pub fn complete_download(self, firmware_data: Vec<u8>)
         -> anyhow::Result<WifiMeshState<W, M, S, OtaDistributing>>
     {
-        info!("Completing OTA download, fragmenting firmware...");
+        info!("state::ota: Completing OTA download, fragmenting firmware...");
 
         // Fragment firmware into chunks
         let total_chunks = (firmware_data.len() + CHUNK_SIZE - 1) / CHUNK_SIZE;
@@ -119,7 +118,7 @@ impl<W, M, S> WifiMeshState<W, M, S, OtaDownloading> {
             state.ota_data.total_chunks = total_chunks as u32;
         }
 
-        info!("Firmware fragmented into {} chunks, ready to distribute", total_chunks);
+        info!("state::ota: Firmware fragmented into {} chunks, ready to distribute", total_chunks);
 
         Ok(WifiMeshState {
             _wifi_mode: PhantomData,
@@ -138,7 +137,7 @@ impl<W, M, S> WifiMeshState<W, M, S, OtaDownloading> {
 
     /// Cancel OTA and return to idle
     pub fn cancel_ota(self) -> WifiMeshState<W, M, S, OtaIdle> {
-        info!("Cancelling OTA download");
+        info!("state::ota: Cancelling OTA download");
 
         if let Some(state) = GLOBAL_STATE.lock().unwrap().as_mut() {
             state.ota_state = OtaStateRuntime::Idle;
@@ -168,7 +167,7 @@ impl<W, M, S> WifiMeshState<W, M, S, OtaDistributing> {
     pub fn complete_distribution(self)
         -> anyhow::Result<WifiMeshState<W, M, S, OtaReadyToReboot>>
     {
-        info!("All nodes ready, transitioning to ready to reboot");
+        info!("state::ota: All nodes ready, transitioning to ready to reboot");
 
         if let Some(state) = GLOBAL_STATE.lock().unwrap().as_mut() {
             state.ota_state = OtaStateRuntime::ReadyToReboot;
@@ -191,7 +190,7 @@ impl<W, M, S> WifiMeshState<W, M, S, OtaDistributing> {
 
     /// Cancel OTA and return to idle
     pub fn cancel_ota(self) -> WifiMeshState<W, M, S, OtaIdle> {
-        info!("Cancelling OTA distribution");
+        info!("state::ota: Cancelling OTA distribution");
 
         if let Some(state) = GLOBAL_STATE.lock().unwrap().as_mut() {
             state.ota_state = OtaStateRuntime::Idle;
@@ -221,7 +220,7 @@ impl<W, M, S> WifiMeshState<W, M, S, OtaReceiving> {
     pub fn complete_reception(self)
         -> anyhow::Result<WifiMeshState<W, M, S, OtaReadyToReboot>>
     {
-        info!("All chunks received and validated, transitioning to ready to reboot");
+        info!("state::ota: All chunks received and validated, transitioning to ready to reboot");
 
         if let Some(state) = GLOBAL_STATE.lock().unwrap().as_mut() {
             state.ota_state = OtaStateRuntime::ReadyToReboot;
@@ -244,7 +243,7 @@ impl<W, M, S> WifiMeshState<W, M, S, OtaReceiving> {
 
     /// Cancel OTA and return to idle
     pub fn cancel_ota(self) -> WifiMeshState<W, M, S, OtaIdle> {
-        info!("Cancelling OTA reception");
+        info!("state::ota: Cancelling OTA reception");
 
         if let Some(state) = GLOBAL_STATE.lock().unwrap().as_mut() {
             state.ota_state = OtaStateRuntime::Idle;
@@ -271,7 +270,7 @@ impl<W, M, S> WifiMeshState<W, M, S, OtaReceiving> {
 impl<W, M, S> WifiMeshState<W, M, S, OtaReadyToReboot> {
     /// Reboot the device (never returns)
     pub fn reboot(self) -> ! {
-        info!("Rebooting device to apply OTA update...");
+        info!("state::ota: Rebooting device to apply OTA update...");
         unsafe {
             sys::esp_restart();
         }
@@ -279,7 +278,7 @@ impl<W, M, S> WifiMeshState<W, M, S, OtaReadyToReboot> {
 
     /// Cancel OTA and return to idle (in case of abort before reboot)
     pub fn cancel_ota(self) -> WifiMeshState<W, M, S, OtaIdle> {
-        info!("Cancelling OTA before reboot");
+        info!("state::ota: Cancelling OTA before reboot");
 
         if let Some(state) = GLOBAL_STATE.lock().unwrap().as_mut() {
             state.ota_state = OtaStateRuntime::Idle;
@@ -307,7 +306,7 @@ impl<W, M, S> WifiMeshState<W, M, S, OtaActive> {
     /// Complete OTA operation and return to idle state.
     /// Call this whether OTA succeeded or failed.
     pub fn finish_ota(self) -> WifiMeshState<W, M, S, OtaIdle> {
-        info!("Finishing OTA operation");
+        info!("state::ota: Finishing OTA operation");
 
         // Update global state
         if let Some(state) = GLOBAL_STATE.lock().unwrap().as_mut() {
@@ -404,7 +403,7 @@ impl FirmwareChunk {
         let calculated = CRC32.checksum(&self.data);
         if calculated != self.crc32 {
             warn!(
-                "Chunk {} CRC mismatch: expected {}, got {}",
+                "state::ota: Chunk {} CRC mismatch: expected {}, got {}",
                 self.sequence, self.crc32, calculated
             );
             false
@@ -534,14 +533,14 @@ impl OtaManager {
         use embedded_svc::http::client::Client;
         use esp_idf_svc::http::client::{Configuration, EspHttpConnection};
 
-        info!("Checking GitHub for firmware updates...");
+        info!("state::ota: Checking GitHub for firmware updates...");
 
         let url = format!(
             "https://api.github.com/repos/{}/{}/releases/latest",
             GITHUB_REPO_OWNER, GITHUB_REPO_NAME
         );
 
-        info!("Querying GitHub API: {}", url);
+        info!("state::ota: Querying GitHub API: {}", url);
 
         let connection = EspHttpConnection::new(&Configuration {
             buffer_size: Some(4096),
@@ -560,7 +559,7 @@ impl OtaManager {
         let mut response = request.submit().context("Failed to submit request")?;
 
         let status = response.status();
-        info!("GitHub API response status: {}", status);
+        info!("state::ota: GitHub API response status: {}", status);
 
         if status != 200 {
             anyhow::bail!("GitHub API request failed with status: {}", status);
@@ -584,14 +583,14 @@ impl OtaManager {
             }
         }
 
-        debug!("GitHub API response: {} bytes", json_data.len());
+        debug!("state::ota: GitHub API response: {} bytes", json_data.len());
 
         // Parse JSON response
         let release: GitHubRelease = serde_json::from_str(&json_data)
             .context("Failed to parse GitHub release JSON")?;
 
         info!(
-            "Latest release: {} (tag: {})",
+            "state::ota: Latest release: {} (tag: {})",
             release.name, release.tag_name
         );
 
@@ -600,14 +599,14 @@ impl OtaManager {
 
         if is_update_available(&latest_version)? {
             info!(
-                "✨ Update available! Current: v{}, Latest: v{}",
+                "state::ota: Update available! Current: v{}, Latest: v{}",
                 crate::version::FIRMWARE_VERSION,
                 latest_version
             );
             Ok(Some(release))
         } else {
             info!(
-                "Already running latest version: v{}",
+                "state::ota: Already running latest version: v{}",
                 crate::version::FIRMWARE_VERSION
             );
             Ok(None)
@@ -616,7 +615,7 @@ impl OtaManager {
 
     /// Download firmware from GitHub (root node only)
     pub fn download_firmware(&mut self, url: &str, expected_size: u32) -> Result<Vec<u8>> {
-        info!("Starting firmware download from: {}", url);
+        info!("state::ota: Starting firmware download from: {}", url);
 
         *self.state.lock().unwrap() = OtaState::Downloading {
             progress: 0,
@@ -642,7 +641,7 @@ impl OtaManager {
         let mut response = request.submit().context("Failed to submit request")?;
 
         let status = response.status();
-        info!("HTTP Response status: {}", status);
+        info!("state::ota: HTTP Response status: {}", status);
 
         if status != 200 {
             anyhow::bail!("HTTP request failed with status: {}", status);
@@ -668,7 +667,7 @@ impl OtaManager {
 
                     if total_read % (100 * 1024) == 0 {
                         info!(
-                            "Downloaded: {} KB / {} KB ({:.1}%)",
+                            "state::ota: Downloaded: {} KB / {} KB ({}%)",
                             total_read / 1024,
                             expected_size / 1024,
                             (total_read as f32 / expected_size as f32) * 100.0
@@ -682,13 +681,13 @@ impl OtaManager {
         }
 
         info!(
-            "Firmware download complete: {} bytes",
+            "state::ota: Firmware download complete: {} bytes",
             firmware_data.len()
         );
 
         if firmware_data.len() != expected_size as usize {
             warn!(
-                "Downloaded size ({}) doesn't match expected size ({})",
+                "state::ota: Downloaded size ({}) doesn't match expected size ({})",
                 firmware_data.len(),
                 expected_size
             );
@@ -700,7 +699,7 @@ impl OtaManager {
     /// Fragment downloaded firmware into chunks (root node only)
     pub fn fragment_firmware(&mut self, firmware: &[u8], version: String) -> Result<()> {
         info!(
-            "Fragmenting firmware: {} bytes into {}-byte chunks",
+            "state::ota: Fragmenting firmware: {} bytes into {}-byte chunks",
             firmware.len(),
             CHUNK_SIZE
         );
@@ -715,7 +714,7 @@ impl OtaManager {
         }
 
         info!(
-            "Firmware fragmented into {} chunks",
+            "state::ota: Firmware fragmented into {} chunks",
             self.chunks.len()
         );
         Ok(())
@@ -734,7 +733,7 @@ impl OtaManager {
     /// Start OTA update (child node only)
     pub fn start_ota_reception(&mut self, total_chunks: u32, firmware_size: u32) -> Result<()> {
         info!(
-            "Starting OTA reception: {} chunks, {} bytes",
+            "state::ota: Starting OTA reception: {} chunks, {} bytes",
             total_chunks, firmware_size
         );
 
@@ -760,14 +759,14 @@ impl OtaManager {
     pub fn handle_chunk(&mut self, chunk: FirmwareChunk) -> Result<bool> {
         // Validate chunk
         if !chunk.validate() {
-            warn!("Chunk {} failed CRC validation", chunk.sequence);
+            warn!("state::ota: Chunk {} failed CRC validation", chunk.sequence);
             return Ok(false);
         }
 
         // Store chunk in buffer if out of order
         if chunk.sequence != self.next_expected_sequence {
             debug!(
-                "Buffering out-of-order chunk {} (expecting {})",
+                "state::ota: Buffering out-of-order chunk {} (expecting {})",
                 chunk.sequence, self.next_expected_sequence
             );
             self.received_chunks_buffer
@@ -799,7 +798,7 @@ impl OtaManager {
         // Update state
         let received = self.next_expected_sequence;
         info!(
-            "Received chunk {}/{} ({:.1}%)",
+            "state::ota: Received chunk {}/{} ({}%)",
             received,
             chunk.total_chunks,
             (received as f32 / chunk.total_chunks as f32) * 100.0
@@ -812,7 +811,7 @@ impl OtaManager {
 
         // Check if complete
         if received == chunk.total_chunks {
-            info!("All chunks received! Finalizing OTA update...");
+            info!("state::ota: All chunks received! Finalizing OTA update...");
             self.finalize_ota()?;
             *self.state.lock().unwrap() = OtaState::ReadyToReboot;
             return Ok(true);
@@ -837,7 +836,7 @@ impl OtaManager {
 
     /// Finalize OTA update
     fn finalize_ota(&mut self) -> Result<()> {
-        info!("Finalizing OTA update...");
+        info!("state::ota: Finalizing OTA update...");
 
         // Take ownership of the Updating variant and transition to None
         let ota_handle = std::mem::replace(&mut self.ota_handle, OtaHandle::None);
@@ -857,8 +856,8 @@ impl OtaManager {
             // Only called here after OTA completes, NOT on every boot
             esp_ota::mark_app_valid();
 
-            info!("OTA update finalized successfully - will boot into new firmware on restart");
-            info!("New firmware marked as valid - rollback cancelled");
+            info!("state::ota: OTA update finalized successfully - will boot into new firmware on restart");
+            info!("state::ota: New firmware marked as valid - rollback cancelled");
             Ok(())
         } else {
             anyhow::bail!("No active OTA update")
@@ -889,9 +888,9 @@ impl OtaManager {
 
         if success {
             node.received_chunks.insert(sequence);
-            debug!("Node {} acknowledged chunk {}", mac, sequence);
+            debug!("state::ota: Node {} acknowledged chunk {}", mac, sequence);
         } else {
-            warn!("Node {} failed to receive chunk {}", mac, sequence);
+            warn!("state::ota: Node {} failed to receive chunk {}", mac, sequence);
         }
     }
 
@@ -900,7 +899,7 @@ impl OtaManager {
         let mut progress = self.node_progress.lock().unwrap();
         if let Some(node) = progress.get_mut(&mac) {
             node.ready = true;
-            info!("Node {} is ready to reboot", mac);
+            info!("state::ota: Node {} is ready to reboot", mac);
         }
     }
 
@@ -916,9 +915,9 @@ impl OtaManager {
     /// Mark firmware as valid after successful boot
     /// This should be called on first boot after an OTA update to prevent rollback
     pub fn mark_valid(&self) -> Result<()> {
-        info!("Marking current firmware as valid...");
+        info!("state::ota: Marking current firmware as valid...");
         esp_ota::mark_app_valid();
-        info!("Firmware marked as valid - rollback cancelled");
+        info!("state::ota: Firmware marked as valid - rollback cancelled");
         Ok(())
     }
 
@@ -931,7 +930,7 @@ impl OtaManager {
     /// Trigger complete OTA update workflow (root node only)
     /// Downloads firmware from URL, fragments it, and prepares for distribution
     pub fn trigger_ota_update(&mut self, firmware_url: &str, version: String, firmware_size: u32) -> Result<()> {
-        info!("🚀 Triggering OTA update to version: {}", version);
+        info!("state::ota: Triggering OTA update to version: {}", version);
 
         // Download firmware
         let firmware_data = self.download_firmware(firmware_url, firmware_size)?;
@@ -947,7 +946,7 @@ impl OtaManager {
         };
 
         info!(
-            "OTA update prepared: {} chunks ready for distribution",
+            "state::ota: OTA update prepared: {} chunks ready for distribution",
             self.chunks.len()
         );
 
@@ -956,7 +955,7 @@ impl OtaManager {
 
     /// Trigger reboot
     pub fn reboot(&self) -> ! {
-        info!("Rebooting device...");
+        info!("state::ota: Rebooting device...");
         unsafe {
             esp_idf_sys::esp_restart();
         }

@@ -1,3 +1,6 @@
+#[macro_use]
+mod logging;
+
 mod hardware;
 mod instructions;
 mod node;
@@ -8,13 +11,11 @@ mod version;
 
 use anyhow::Result;
 use esp_idf_hal::peripherals::Peripherals;
-use log::*;
 use std::{
     sync::{Arc, Mutex},
     thread,
     time::Duration,
 };
-
 use instructions::Instructions;
 use node::MeshNode;
 use state::{
@@ -31,12 +32,13 @@ use version::FIRMWARE_VERSION;
 
 fn main() -> Result<()> {
     esp_idf_sys::link_patches();
+
     esp_idf_svc::log::EspLogger::initialize_default();
 
     info!("╔══════════════════════════════════════════════════════╗");
     info!("║  ESP32 Mesh Firmware                                 ║");
-    info!("║  Version: {:<43} ║", FIRMWARE_VERSION);
-    info!("║  Built:   {:<43} ║", version::BUILD_TIMESTAMP);
+    info!("║  Version: {}                              ║", FIRMWARE_VERSION);
+    info!("║  Built:   {}                              ║", version::BUILD_TIMESTAMP);
     info!("╚══════════════════════════════════════════════════════╝");
 
     // Initialize OTA manager
@@ -48,22 +50,22 @@ fn main() -> Result<()> {
     let node = Arc::new(MeshNode::new(peripherals)?);
 
     // Initialize state machine (this also initializes WiFi)
-    info!("Initializing state machine and WiFi...");
+    info!("main: Initializing state machine and WiFi...");
     let wifi_state = InitialState::new();
     let wifi_state = wifi_state.initialize_wifi()?;
 
-    info!("Initializing Mesh...");
+    info!("main: Initializing Mesh...");
     // Get router credentials
     let router_ssid = get_embedded_env_value("ROUTER_SSID");
     let router_pass = get_embedded_env_value("ROUTER_PASSWORD");
-    info!("Router SSID: {}, Password length: {}", router_ssid, router_pass.len());
+    info!("main: Router SSID: {}, Password length: {}", router_ssid, router_pass.len());
 
     // Try to load channel from NVS (persisted from previous boot)
     let mut mesh_channel: Option<u8> = load_channel_from_nvs();
 
     // If no saved channel, scan for networks using state machine
     if mesh_channel.is_none() {
-        info!("No saved channel found, scanning for networks using state machine...");
+        info!("main: No saved channel found, scanning for networks using state machine...");
 
         // Use the old scan_with_retry for now since it handles the discovery logic
         // TODO: Eventually migrate this to use state machine's scan directly
@@ -72,7 +74,7 @@ fn main() -> Result<()> {
         match discovery {
             NetworkDiscovery::ExistingMesh { channel, ssid, bssid, rssi } => {
                 info!(
-                    "NetworkDiscovery::ExistingMesh: 🔗 Discovered existing mesh network: '{}' on channel {}, RSSI: {}, BSSID: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                    "main: NetworkDiscovery::ExistingMesh - Discovered existing mesh network: '{}' on channel {}, RSSI: {}, BSSID: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
                     ssid, channel, rssi,
                     bssid[0], bssid[1], bssid[2], bssid[3], bssid[4], bssid[5]
                 );
@@ -80,24 +82,24 @@ fn main() -> Result<()> {
             }
             NetworkDiscovery::Router { channel, bssid, rssi } => {
                 info!(
-                    "NetworkDiscovery::Router: 📡 Discovered router '{}' on channel {}, RSSI: {}, BSSID: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                    "main: NetworkDiscovery::Router - Discovered router '{}' on channel {}, RSSI: {}, BSSID: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
                     router_ssid, channel, rssi,
                     bssid[0], bssid[1], bssid[2], bssid[3], bssid[4], bssid[5]
                 );
                 mesh_channel = Some(channel);
             }
             NetworkDiscovery::NotFound => {
-                return Err(anyhow::anyhow!("NetworkDiscovery::NotFound: Network scan failed - no mesh or router found"));
+                return Err(anyhow::anyhow!("main: NetworkDiscovery::NotFound - Network scan failed - no mesh or router found"));
             }
         }
     } else {
-        info!("Using saved channel from NVS: {}", mesh_channel.unwrap());
+        info!("main: Using saved channel from NVS: {}", mesh_channel.unwrap());
     }
 
     let channel = mesh_channel.expect("Channel must be determined by this point");
 
     // Start mesh using state machine
-    info!("Starting mesh on channel {} using state machine...", channel);
+    info!("main: Starting mesh on channel {} using state machine...", channel);
     let mesh_config = MeshConfig {
         mesh_id: MESH_ID,
         channel,
@@ -111,19 +113,19 @@ fn main() -> Result<()> {
             use esp_idf_sys::{esp, esp_mesh_set_max_layer, esp_mesh_set_vote_percentage, esp_mesh_set_ap_authmode};
             esp!(esp_mesh_set_max_layer(25))?; // MESH_MAX_LAYER
             esp!(esp_mesh_set_vote_percentage(1.0))?;
-    
+
             let auth_mode = esp_idf_sys::wifi_auth_mode_t_WIFI_AUTH_OPEN;
             esp!(esp_mesh_set_ap_authmode(auth_mode))?;
-            info!("Mesh configuration completed");
+            info!("main: Mesh configuration completed");
         }
 
     let _mesh_state = wifi_state.start_mesh(mesh_config)?;
-    info!("Mesh started successfully via state machine");
+    info!("main: Mesh started successfully via state machine");
 
     // Save channel to NVS for faster boot next time
     save_channel_to_nvs(channel);
 
-    info!("Starting mesh tasks...");
+    info!("main: Starting mesh tasks...");
 
     let state: Arc<Mutex<ApplicationState>> = Arc::new(Mutex::new(ApplicationState {
         instructions: Instructions::new(),
@@ -163,12 +165,12 @@ fn main() -> Result<()> {
         ota_distribution_task(node_ota, state_ota);
     });
 
-    info!("Mesh node started. Waiting for connections...");
-    info!("WS2812 (GPIO18): Real addressable RGB LED with precise RMT timing!");
-    info!("Status colors: Off=disconnected, Blue=child node, Green=root node");
-    info!("Root node will send synchronized color updates every second");
-    info!("Firmware version: v{}", FIRMWARE_VERSION);
-    info!("OTA updates: Ready");
+    info!("main: Mesh node started. Waiting for connections...");
+    info!("main: WS2812 (GPIO18): Real addressable RGB LED with precise RMT timing!");
+    info!("main: Status colors: Off=disconnected, Blue=child node, Green=root node");
+    info!("main: Root node will send synchronized color updates every second");
+    info!("main: Firmware version: v{}", FIRMWARE_VERSION);
+    info!("main: OTA updates: Ready");
 
     loop {
         thread::sleep(Duration::from_secs(1));

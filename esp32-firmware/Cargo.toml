@@ -31,8 +31,10 @@ experimental = ["esp-idf-svc/experimental"]
 
 [dependencies]
 log = "0.4"
+# esp-println = { version = "0.16", features = ["log-04", "esp32s2"] }
 esp-idf-sys = { version = "0.36.1", features = ["binstart"] }
 esp-idf-hal = { version = "0.45.2", features = ["rmt-legacy"] }
+# esp-backtrace = { version = "0.18.0", features = ["esp32s2", "println"] }
 heapless = "0.8.0"
 anyhow = "1"
 embedded-svc = { version = "0.28.1", features = ["experimental"] }
