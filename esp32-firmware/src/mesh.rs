@@ -1,5 +1,6 @@
 use crate::utils::{get_disconnect_reason_string, get_embedded_env_value};
 use crate::scan::{self, NetworkDiscovery};
+use crate::state::global_state;
 use anyhow::Result;
 use esp_idf_sys::{
     self as sys, esp, esp_event_base_t, esp_event_handler_register, esp_event_loop_create_default,
@@ -78,13 +79,19 @@ unsafe extern "C" fn mesh_event_handler(
                     );
                 }
 
+                // Update global state with mesh layer info
+                if let Some(state) = global_state().lock().unwrap().as_mut() {
+                    let _ = state.refresh_from_mesh();
+                }
+
                 // If this node is root, start DHCP client immediately
                 if esp_mesh_is_root() {
                     info!("Mesh event: Node is now root - starting DHCP client for external IP");
-                    let sta_netif_addr = *STA_NETIF.lock().unwrap();
-                    if sta_netif_addr != 0 {
-                        let sta_netif = sta_netif_addr as *mut sys::esp_netif_obj;
 
+                    // Get STA netif from global state
+                    let sta_netif_opt = global_state().lock().unwrap().as_ref().and_then(|s| s.sta_netif());
+
+                    if let Some(sta_netif) = sta_netif_opt {
                         // Stop any existing DHCP session first
                         let stop_result = sys::esp_netif_dhcpc_stop(sta_netif);
                         if stop_result == sys::ESP_OK
@@ -229,8 +236,11 @@ unsafe extern "C" fn mesh_event_handler(
         match event_id as u32 {
             sys::ip_event_t_IP_EVENT_STA_GOT_IP => {
                 info!("IP event: Station got IP");
-                // Set global flag that we have IP address
-                *HAS_IP.lock().unwrap() = true;
+
+                // Update global state
+                if let Some(state) = global_state().lock().unwrap().as_mut() {
+                    state.set_has_ip(true);
+                }
 
                 if !event_data.is_null() {
                     let event = event_data as *const sys::ip_event_got_ip_t;
@@ -257,7 +267,11 @@ unsafe extern "C" fn mesh_event_handler(
             }
             sys::ip_event_t_IP_EVENT_STA_LOST_IP => {
                 warn!("IP event: Station lost IP - DHCP failed or connection lost");
-                *HAS_IP.lock().unwrap() = false;
+
+                // Update global state
+                if let Some(state) = global_state().lock().unwrap().as_mut() {
+                    state.set_has_ip(false);
+                }
             }
             sys::ip_event_t_IP_EVENT_AP_STAIPASSIGNED => {
                 info!("IP event: AP station assigned IP (event {})", event_id);

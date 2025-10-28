@@ -4,6 +4,7 @@ mod mesh;
 mod node;
 mod ota;
 mod scan;
+mod state;
 mod tasks;
 mod utils;
 mod version;
@@ -18,13 +19,16 @@ use std::{
 };
 
 use instructions::Instructions;
-use mesh::{init_mesh, init_wifi};
+use mesh::{init_wifi, MESH_ID};
 use node::MeshNode;
 use ota::OtaManager;
+use scan::{load_channel_from_nvs, save_channel_to_nvs, scan_with_retry, NetworkDiscovery};
+use state::{InitialState, MeshConfig};
 use tasks::{
     instruction_execution_task, mesh_rx_task, mesh_tx_task, monitor_task,
     ota_distribution_task, State,
 };
+use utils::get_embedded_env_value;
 use version::FIRMWARE_VERSION;
 
 fn main() -> Result<()> {
@@ -48,8 +52,81 @@ fn main() -> Result<()> {
     info!("Initializing WiFi...");
     init_wifi()?;
 
+    // Initialize state machine
+    info!("Initializing state machine...");
+    let wifi_state = InitialState::new();
+    let wifi_state = wifi_state.initialize_wifi()?;
+
     info!("Initializing Mesh...");
-    init_mesh()?;
+    // Get router credentials
+    let router_ssid = get_embedded_env_value("ROUTER_SSID");
+    let router_pass = get_embedded_env_value("ROUTER_PASSWORD");
+    info!("Router SSID: {}, Password length: {}", router_ssid, router_pass.len());
+
+    // Try to load channel from NVS (persisted from previous boot)
+    let mut mesh_channel: Option<u8> = load_channel_from_nvs();
+
+    // If no saved channel, scan for networks using state machine
+    if mesh_channel.is_none() {
+        info!("No saved channel found, scanning for networks using state machine...");
+
+        // Use the old scan_with_retry for now since it handles the discovery logic
+        // TODO: Eventually migrate this to use state machine's scan directly
+        let discovery = scan_with_retry(&router_ssid, &MESH_ID, 30_000);
+
+        match discovery {
+            NetworkDiscovery::ExistingMesh { channel, ssid, bssid, rssi } => {
+                info!(
+                    "🔗 Discovered existing mesh network: '{}' on channel {}, RSSI: {}, BSSID: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                    ssid, channel, rssi,
+                    bssid[0], bssid[1], bssid[2], bssid[3], bssid[4], bssid[5]
+                );
+                mesh_channel = Some(channel);
+            }
+            NetworkDiscovery::Router { channel, bssid, rssi } => {
+                info!(
+                    "📡 Discovered router '{}' on channel {}, RSSI: {}, BSSID: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                    router_ssid, channel, rssi,
+                    bssid[0], bssid[1], bssid[2], bssid[3], bssid[4], bssid[5]
+                );
+                mesh_channel = Some(channel);
+            }
+            NetworkDiscovery::NotFound => {
+                return Err(anyhow::anyhow!("Network scan failed - no mesh or router found"));
+            }
+        }
+    } else {
+        info!("Using saved channel from NVS: {}", mesh_channel.unwrap());
+    }
+
+    let channel = mesh_channel.expect("Channel must be determined by this point");
+
+    // Start mesh using state machine
+    info!("Starting mesh on channel {} using state machine...", channel);
+    let mesh_config = MeshConfig {
+        mesh_id: MESH_ID,
+        channel,
+        router_ssid: router_ssid.clone(),
+        router_password: router_pass.clone(),
+        max_connections: 10, // Using default from mesh.rs MESH_AP_CONNECTIONS
+    };
+
+    let _mesh_state = wifi_state.start_mesh(mesh_config)?;
+    info!("Mesh started successfully via state machine");
+
+    // Save channel to NVS for faster boot next time
+    save_channel_to_nvs(channel);
+
+    // Additional mesh settings (still using direct calls for now)
+    unsafe {
+        use esp_idf_sys::{esp, esp_mesh_set_max_layer, esp_mesh_set_vote_percentage, esp_mesh_set_ap_authmode};
+        esp!(esp_mesh_set_max_layer(25))?; // MESH_MAX_LAYER
+        esp!(esp_mesh_set_vote_percentage(1.0))?;
+
+        let auth_mode = esp_idf_sys::wifi_auth_mode_t_WIFI_AUTH_OPEN;
+        esp!(esp_mesh_set_ap_authmode(auth_mode))?;
+        info!("Mesh configuration completed");
+    }
 
     info!("Starting mesh tasks...");
 

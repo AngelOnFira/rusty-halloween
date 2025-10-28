@@ -1,9 +1,10 @@
 use crate::instructions::{Instructions, InstructionStatus};
 use crate::node::MeshNode;
 use crate::ota::OtaManager;
+use crate::state;
 use esp_idf_sys::{
-    esp_mesh_get_layer, esp_mesh_get_total_node_num, esp_mesh_is_device_active,
-    esp_mesh_is_root, esp_mesh_recv, esp_mesh_send, esp_random, mesh_addr_t, mesh_data_t, ESP_OK,
+    esp_mesh_get_total_node_num, esp_mesh_is_device_active,
+    esp_mesh_recv, esp_mesh_send, esp_random, mesh_addr_t, mesh_data_t, ESP_OK,
 };
 use log::*;
 use std::{
@@ -177,13 +178,13 @@ pub fn mesh_tx_task(node: Arc<MeshNode>, state: Arc<Mutex<State>>) {
                 continue;
             }
 
-            let is_root = esp_mesh_is_root();
+            let is_root_node = state::is_root();
 
-            if is_root {
+            if is_root_node {
                 // Check for OTA updates as soon as root node gets IP address
                 // Uses event-driven state tracking instead of arbitrary timer
-                let has_ip = *crate::mesh::HAS_IP.lock().unwrap();
-                if !ota_check_done && has_ip {
+                let has_ip_status = state::has_ip();
+                if !ota_check_done && has_ip_status {
                     info!("🔍 Checking for firmware updates from GitHub...");
                     info!("Root node connected with IP - checking for OTA updates");
                     ota_check_done = true; // Only check once
@@ -328,10 +329,10 @@ pub fn mesh_tx_task(node: Arc<MeshNode>, state: Arc<Mutex<State>>) {
             } else {
                 // Non-root nodes can send periodic status updates
                 if counter % 10 == 0 {
-                    let layer = esp_mesh_get_layer();
+                    let current_layer = state::layer();
                     let total_nodes = esp_mesh_get_total_node_num();
                     let message = format!(
-                        "Status from layer {layer} (nodes: {total_nodes}, count: {counter})"
+                        "Status from layer {current_layer} (nodes: {total_nodes}, count: {counter})"
                     );
 
                     let broadcast_addr = mesh_addr_t { addr: [0xFF; 6] };
@@ -366,25 +367,25 @@ pub fn monitor_task(node: Arc<MeshNode>) {
         thread::sleep(Duration::from_secs(5));
 
         unsafe {
-            let is_root = esp_mesh_is_root();
-            let layer = esp_mesh_get_layer();
+            let is_root_node = state::is_root();
+            let current_layer = state::layer();
             let is_active = esp_mesh_is_device_active();
             let total_nodes = esp_mesh_get_total_node_num();
 
-            *node.is_root.lock().unwrap() = is_root;
+            *node.is_root.lock().unwrap() = is_root_node;
             *node.is_connected.lock().unwrap() = is_active;
-            *node.layer.lock().unwrap() = layer;
+            *node.layer.lock().unwrap() = current_layer;
 
             // Sync IP connectivity state
-            let has_ip = *crate::mesh::HAS_IP.lock().unwrap();
-            *node.has_ip.lock().unwrap() = has_ip;
+            let has_ip_status = state::has_ip();
+            *node.has_ip.lock().unwrap() = has_ip_status;
 
             info!(
-                "Status - Root: {is_root}, Layer: {layer}, Active: {is_active}, Has IP: {has_ip}, Total Nodes: {total_nodes}"
+                "Status - Root: {is_root_node}, Layer: {current_layer}, Active: {is_active}, Has IP: {has_ip_status}, Total Nodes: {total_nodes}"
             );
 
             // Don't override synchronized colors - only show status when disconnected
-            if !is_root && !is_active {
+            if !is_root_node && !is_active {
                 node.update_status_color();
             }
         }
@@ -419,10 +420,9 @@ pub fn ota_distribution_task(_node: Arc<MeshNode>, state: Arc<Mutex<State>>) {
     loop {
         thread::sleep(Duration::from_secs(1));
 
-        unsafe {
-            if !esp_mesh_is_root() {
-                continue;
-            }
+        // Only root node distributes OTA updates
+        if !state::is_root() {
+            continue;
         }
 
         // Check if OTA manager has work to do
