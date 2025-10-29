@@ -9,6 +9,10 @@ members = [
     "pico-projector",
     "common",
 ]
+exclude = [
+    "esp32-firmware",
+    "esp32s2-firmware",
+]
 
 [lib]
 path = "src/lib.rs"

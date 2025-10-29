@@ -382,12 +382,26 @@ pub fn ota_distribution_task(_node: Arc<MeshNode>, state: Arc<Mutex<ApplicationS
 
         match ota_state {
             OtaState::Distributing { total_chunks, .. } => {
-                // Send chunks to mesh
-                let state_lock = state.lock().unwrap();
-                let ota_manager = state_lock.ota_manager.lock().unwrap();
-                let chunks = ota_manager.get_all_chunks();
+                // Send chunks to mesh one at a time (on-demand generation)
+                info!("tasks: Starting OTA distribution of {} chunks", total_chunks);
 
-                for chunk in chunks {
+                for i in 0..total_chunks {
+                    // Generate chunk on-demand from OTA partition
+                    let chunk = {
+                        let state_lock = state.lock().unwrap();
+                        let ota_manager = state_lock.ota_manager.lock().unwrap();
+
+                        match ota_manager.get_chunk(i) {
+                            Ok(chunk) => chunk,
+                            Err(e) => {
+                                error!("tasks: Failed to read chunk {}: {:?}", i, e);
+                                continue;
+                            }
+                        }
+                        // Lock is released here
+                    };
+
+                    // Send chunk to mesh
                     let ota_msg = OtaMessage::OtaChunk {
                         chunk: chunk.clone(),
                     };
@@ -396,17 +410,14 @@ pub fn ota_distribution_task(_node: Arc<MeshNode>, state: Arc<Mutex<ApplicationS
                     let flag = 0x01; // MESH_DATA_GROUP flag
 
                     if mesh_send(&BROADCAST_ADDR, message.as_bytes(), flag).is_ok() {
-                        info!("tasks: Sent OTA chunk {}/{}", chunk.sequence + 1, total_chunks);
+                        info!("tasks: Sent OTA chunk {}/{}", i + 1, total_chunks);
                     } else {
-                        warn!("tasks: Failed to send OTA chunk {}", chunk.sequence);
+                        warn!("tasks: Failed to send OTA chunk {}", i);
                     }
 
                     // Small delay between chunks to avoid overwhelming the mesh
                     thread::sleep(Duration::from_millis(100));
                 }
-
-                drop(ota_manager);
-                drop(state_lock);
 
                 // After sending all chunks, wait for nodes to complete
                 info!("tasks: All chunks sent. Waiting for nodes to complete...");

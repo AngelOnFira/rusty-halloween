@@ -435,6 +435,12 @@ pub struct OtaManager {
     total_chunks: u32,
     /// Target firmware version
     target_version: Option<Version>,
+    /// Firmware size for root node (used for chunk generation from partition)
+    firmware_size: u32,
+    /// Total chunks for root node distribution
+    firmware_total_chunks: u32,
+    /// Firmware version for root node distribution
+    firmware_version: String,
 }
 
 impl OtaManager {
@@ -449,6 +455,9 @@ impl OtaManager {
             next_expected_sequence: 0,
             total_chunks: 0,
             target_version: None,
+            firmware_size: 0,
+            firmware_total_chunks: 0,
+            firmware_version: String::new(),
         })
     }
 
@@ -543,9 +552,15 @@ impl OtaManager {
         }
     }
 
-    /// Download firmware from GitHub (root node only)
-    pub fn download_firmware(&mut self, url: &str, expected_size: u32) -> Result<Vec<u8>> {
+    /// Download firmware from GitHub and write directly to OTA partition (root node only)
+    /// This streams the download directly to flash to avoid exhausting RAM
+    pub fn download_firmware(&mut self, url: &str, expected_size: u32) -> Result<()> {
         info!("state::ota: Starting firmware download from: {}", url);
+        info!("state::ota: Initializing OTA partition for streaming write...");
+
+        // Begin OTA update - this erases the next OTA partition
+        let mut update = OtaUpdate::begin()
+            .map_err(|e| anyhow::anyhow!("Failed to begin OTA update: {:?}", e))?;
 
         *self.state.lock().unwrap() = OtaState::Downloading {
             progress: 0,
@@ -577,8 +592,7 @@ impl OtaManager {
             anyhow::bail!("HTTP request failed with status: {}", status);
         }
 
-        // Read response body
-        let mut firmware_data = Vec::new();
+        // Read response body and write directly to OTA partition
         let mut buffer = [0u8; 4096];
         let mut total_read = 0u32;
 
@@ -586,7 +600,11 @@ impl OtaManager {
             match response.read(&mut buffer) {
                 Ok(0) => break, // EOF
                 Ok(n) => {
-                    firmware_data.extend_from_slice(&buffer[..n]);
+                    // Write chunk directly to OTA partition
+                    update
+                        .write(&buffer[..n])
+                        .map_err(|e| anyhow::anyhow!("Failed to write to OTA partition: {:?}", e))?;
+
                     total_read += n as u32;
 
                     // Update progress
@@ -595,9 +613,10 @@ impl OtaManager {
                         total: expected_size,
                     };
 
-                    if total_read % (100 * 1024) == 0 {
+                    // Log progress every 100KB
+                    if total_read % (100 * 1024) < 4096 {
                         info!(
-                            "state::ota: Downloaded: {} KB / {} KB ({}%)",
+                            "state::ota: Downloaded: {} KB / {} KB ({:.1}%)",
                             total_read / 1024,
                             expected_size / 1024,
                             (total_read as f32 / expected_size as f32) * 100.0
@@ -611,51 +630,123 @@ impl OtaManager {
         }
 
         info!(
-            "state::ota: Firmware download complete: {} bytes",
-            firmware_data.len()
+            "state::ota: Firmware download complete: {} bytes written to OTA partition",
+            total_read
         );
 
-        if firmware_data.len() != expected_size as usize {
+        if total_read != expected_size {
             warn!(
                 "state::ota: Downloaded size ({}) doesn't match expected size ({})",
-                firmware_data.len(),
+                total_read,
                 expected_size
             );
         }
 
-        Ok(firmware_data)
+        // Store the OTA handle and firmware metadata for later use
+        self.ota_handle = OtaHandle::Updating(update);
+        self.firmware_size = total_read;
+
+        Ok(())
     }
 
-    /// Fragment downloaded firmware into chunks (root node only)
-    pub fn fragment_firmware(&mut self, firmware: &[u8], version: String) -> Result<()> {
+    /// Set up firmware metadata for chunk distribution (root node only)
+    /// Instead of loading all chunks into RAM, we store metadata and generate chunks on-demand
+    pub fn prepare_distribution(&mut self, version: String) -> Result<()> {
+        let total_chunks = (self.firmware_size as usize + CHUNK_SIZE - 1) / CHUNK_SIZE;
+
         info!(
-            "state::ota: Fragmenting firmware: {} bytes into {}-byte chunks",
-            firmware.len(),
+            "state::ota: Preparing distribution: {} bytes = {} chunks of {} bytes",
+            self.firmware_size,
+            total_chunks,
             CHUNK_SIZE
         );
 
-        self.chunks.clear();
-        let total_chunks = (firmware.len() + CHUNK_SIZE - 1) / CHUNK_SIZE;
+        // Store metadata for on-demand chunk generation
+        self.firmware_total_chunks = total_chunks as u32;
+        self.firmware_version = version;
 
-        for (i, chunk_data) in firmware.chunks(CHUNK_SIZE).enumerate() {
-            let chunk =
-                FirmwareChunk::new(i as u32, total_chunks as u32, version.clone(), chunk_data.to_vec());
-            self.chunks.push(chunk);
-        }
+        // Clear any old chunks (we won't use the chunks vec anymore)
+        self.chunks.clear();
 
         info!(
-            "state::ota: Firmware fragmented into {} chunks",
-            self.chunks.len()
+            "state::ota: Ready to distribute {} chunks (on-demand generation)",
+            self.firmware_total_chunks
         );
         Ok(())
     }
 
-    /// Get chunk by sequence number (root node only)
-    pub fn get_chunk(&self, sequence: u32) -> Option<&FirmwareChunk> {
-        self.chunks.get(sequence as usize)
+    /// Read a chunk from the OTA partition (root node only)
+    /// This allows on-demand chunk generation without storing all chunks in RAM
+    fn read_chunk_from_partition(&self, sequence: u32) -> Result<FirmwareChunk> {
+        use esp_idf_sys as sys;
+
+        if sequence >= self.firmware_total_chunks {
+            anyhow::bail!("Chunk sequence {} out of range (total: {})", sequence, self.firmware_total_chunks);
+        }
+
+        // Calculate offset and size for this chunk
+        let offset = sequence as usize * CHUNK_SIZE;
+        let remaining = self.firmware_size as usize - offset;
+        let chunk_size = remaining.min(CHUNK_SIZE);
+
+        // Allocate buffer for chunk data
+        let mut chunk_data = vec![0u8; chunk_size];
+
+        // Get the running partition (where we wrote the firmware)
+        let update_partition = unsafe {
+            let running_partition = sys::esp_ota_get_running_partition();
+            if running_partition.is_null() {
+                anyhow::bail!("Failed to get running partition");
+            }
+
+            // Get the next update partition (where our downloaded firmware is)
+            let next_partition = sys::esp_ota_get_next_update_partition(std::ptr::null());
+            if next_partition.is_null() {
+                anyhow::bail!("Failed to get next update partition");
+            }
+            next_partition
+        };
+
+        // Read data from partition
+        let ret = unsafe {
+            sys::esp_partition_read(
+                update_partition,
+                offset,
+                chunk_data.as_mut_ptr() as *mut std::ffi::c_void,
+                chunk_size,
+            )
+        };
+
+        if ret != sys::ESP_OK {
+            anyhow::bail!("Failed to read from partition: error code {}", ret);
+        }
+
+        // Create chunk with CRC
+        let chunk = FirmwareChunk::new(
+            sequence,
+            self.firmware_total_chunks,
+            self.firmware_version.clone(),
+            chunk_data,
+        );
+
+        Ok(chunk)
     }
 
-    /// Get all chunks (root node only)
+    /// Get chunk by sequence number (root node only)
+    /// This now generates chunks on-demand from the OTA partition
+    pub fn get_chunk(&self, sequence: u32) -> Result<FirmwareChunk> {
+        self.read_chunk_from_partition(sequence)
+    }
+
+    /// Get total number of chunks (root node only)
+    pub fn get_total_chunks(&self) -> u32 {
+        self.firmware_total_chunks
+    }
+
+    /// Get all chunks (root node only) - DEPRECATED
+    /// WARNING: This loads all chunks into memory and may cause OOM!
+    /// Use get_chunk() in a loop instead for large firmware.
+    #[deprecated(note = "Use get_chunk() in a loop instead to avoid OOM")]
     pub fn get_all_chunks(&self) -> &[FirmwareChunk] {
         &self.chunks
     }
@@ -858,26 +949,27 @@ impl OtaManager {
     }
 
     /// Trigger complete OTA update workflow (root node only)
-    /// Downloads firmware from URL, fragments it, and prepares for distribution
+    /// Downloads firmware from URL and prepares for distribution
+    /// Firmware is streamed directly to OTA partition to avoid RAM exhaustion
     pub fn trigger_ota_update(&mut self, firmware_url: &str, version: String, firmware_size: u32) -> Result<()> {
         info!("state::ota: Triggering OTA update to version: {}", version);
 
-        // Download firmware
-        let firmware_data = self.download_firmware(firmware_url, firmware_size)?;
+        // Download firmware directly to OTA partition (streaming)
+        self.download_firmware(firmware_url, firmware_size)?;
 
-        // Fragment firmware
-        self.fragment_firmware(&firmware_data, version.clone())?;
+        // Prepare distribution metadata (no chunk loading)
+        self.prepare_distribution(version)?;
 
         // Update state to distributing
         *self.state.lock().unwrap() = OtaState::Distributing {
-            total_chunks: self.chunks.len() as u32,
+            total_chunks: self.firmware_total_chunks,
             nodes_complete: 0,
             total_nodes: 0, // Will be updated as nodes respond
         };
 
         info!(
-            "state::ota: OTA update prepared: {} chunks ready for distribution",
-            self.chunks.len()
+            "state::ota: OTA update prepared: {} chunks ready for on-demand distribution",
+            self.firmware_total_chunks
         );
 
         Ok(())

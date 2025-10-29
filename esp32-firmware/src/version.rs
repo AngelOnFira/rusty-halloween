@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use serde::Deserialize;
 
 /// Current firmware version - update this when releasing new versions
-pub const FIRMWARE_VERSION: &str = "0.1.0";
+pub const FIRMWARE_VERSION: &str = "0.2.0";
 
 /// Build timestamp - automatically set at compile time
 pub const BUILD_TIMESTAMP: &str = env!("BUILD_TIMESTAMP");
