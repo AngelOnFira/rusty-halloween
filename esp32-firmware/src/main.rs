@@ -142,7 +142,7 @@ fn main() -> Result<()> {
     let state_clone = state.clone();
     // mesh_tx_task needs larger stack for HTTPS/TLS operations (GitHub API calls)
     thread::Builder::new()
-        .stack_size(32 * 1024) // 32KB stack for HTTPS operations
+        .stack_size(12 * 1024) // 32KB stack for HTTPS operations
         .spawn(move || {
             mesh_tx_task(node_tx, state_clone);
         })

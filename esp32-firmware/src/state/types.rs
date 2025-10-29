@@ -65,6 +65,105 @@ pub struct OtaReadyToReboot;
 pub struct OtaActive;
 
 // =============================================================================
+// Runtime State (Shared Fields)
+// =============================================================================
+
+/// Runtime state fields that are independent of compile-time type state.
+///
+/// This struct contains all the dynamic runtime information (root status, layer, etc.)
+/// that supplements the compile-time type state guarantees. By extracting these fields
+/// into a separate struct, we:
+/// - Reduce boilerplate in state transitions (copy 1 struct instead of 7 fields)
+/// - Eliminate duplication between WifiMeshState and StateContainer
+/// - Make it easier to add new runtime fields in the future
+///
+/// This is a Copy type since all fields are small and cheap to copy.
+#[derive(Copy, Clone)]
+pub struct RuntimeState {
+    /// Whether this node is currently the mesh root
+    pub is_root: bool,
+    /// Current layer in the mesh topology (-1 if not in mesh)
+    pub layer: i32,
+    /// Whether this node has an IP address (typically only root nodes)
+    pub has_ip: bool,
+    /// Current WiFi channel (1-14)
+    pub current_channel: u8,
+    /// Mesh ID (MAC-like identifier for this mesh network)
+    pub mesh_id: [u8; 6],
+    /// Station mode network interface handle (for ESP-IDF APIs)
+    pub sta_netif: Option<*mut sys::esp_netif_t>,
+    /// Access Point mode network interface handle (for ESP-IDF APIs)
+    pub ap_netif: Option<*mut sys::esp_netif_t>,
+}
+
+impl RuntimeState {
+    /// Create a new RuntimeState with default values
+    pub fn new() -> Self {
+        Self {
+            is_root: false,
+            layer: -1,
+            has_ip: false,
+            current_channel: 0,
+            mesh_id: [0; 6],
+            sta_netif: None,
+            ap_netif: None,
+        }
+    }
+
+    /// Read from the global runtime state with a closure.
+    /// The closure receives an immutable reference to RuntimeState.
+    ///
+    /// # Panics
+    /// Panics if GLOBAL_STATE hasn't been initialized yet.
+    pub fn with<F, R>(f: F) -> R
+    where
+        F: FnOnce(&RuntimeState) -> R,
+    {
+        super::GLOBAL_STATE
+            .lock()
+            .unwrap()
+            .as_ref()
+            .map(|container| f(&container.runtime))
+            .expect("GLOBAL_STATE not initialized - call initialize_wifi() first")
+    }
+
+    /// Modify the global runtime state with a closure.
+    /// The closure receives a mutable reference to RuntimeState.
+    ///
+    /// # Panics
+    /// Panics if GLOBAL_STATE hasn't been initialized yet.
+    pub fn with_mut<F, R>(f: F) -> R
+    where
+        F: FnOnce(&mut RuntimeState) -> R,
+    {
+        super::GLOBAL_STATE
+            .lock()
+            .unwrap()
+            .as_mut()
+            .map(|container| f(&mut container.runtime))
+            .expect("GLOBAL_STATE not initialized - call initialize_wifi() first")
+    }
+
+    /// Get a copy of the entire runtime state.
+    /// Useful for state transitions that need to preserve state.
+    pub fn get() -> Self {
+        Self::with(|runtime| *runtime)
+    }
+
+    /// Set the entire runtime state atomically.
+    pub fn set(new_state: RuntimeState) {
+        Self::with_mut(|runtime| *runtime = new_state);
+    }
+}
+
+// Safety: The raw pointers (sta_netif, ap_netif) are only set during initialization
+// and are never dereferenced by RuntimeState itself. They're opaque handles passed to
+// ESP-IDF APIs which handle them correctly. The pointers remain valid for the lifetime
+// of the program.
+unsafe impl Send for RuntimeState {}
+unsafe impl Sync for RuntimeState {}
+
+// =============================================================================
 // Core State Machine Struct
 // =============================================================================
 
@@ -80,21 +179,12 @@ pub struct OtaActive;
 /// that can only be determined at runtime (root status, layer, etc.).
 pub struct WifiMeshState<W, M, S, O> {
     // Compile-time state markers (zero runtime cost)
+    // All runtime state is accessed through RuntimeState::with() and RuntimeState::with_mut()
+    // to ensure a single source of truth in GLOBAL_STATE
     pub(crate) _wifi_mode: PhantomData<W>,
     pub(crate) _mesh_state: PhantomData<M>,
     pub(crate) _scan_state: PhantomData<S>,
     pub(crate) _ota_state: PhantomData<O>,
-
-    // Runtime state that supplements compile-time state
-    pub(crate) is_root: bool,
-    pub(crate) layer: i32,
-    pub(crate) has_ip: bool,
-    pub(crate) current_channel: u8,
-    pub(crate) mesh_id: [u8; 6],
-
-    // Network interface handles (Some when initialized)
-    pub(crate) sta_netif: Option<*mut sys::esp_netif_t>,
-    pub(crate) ap_netif: Option<*mut sys::esp_netif_t>,
 }
 
 // Implement Send + Sync since we're managing raw pointers safely
@@ -210,14 +300,8 @@ pub enum OtaStateRuntime {
 
 /// Type-erased container for the state machine (since we can't store generic types in static)
 pub struct StateContainer {
-    // Runtime state fields (duplicated from WifiMeshState for type-erased access)
-    pub(crate) is_root: bool,
-    pub(crate) layer: i32,
-    pub(crate) has_ip: bool,
-    pub(crate) current_channel: u8,
-    pub(crate) mesh_id: [u8; 6],
-    pub(crate) sta_netif: Option<*mut sys::esp_netif_t>,
-    pub(crate) ap_netif: Option<*mut sys::esp_netif_t>,
+    // Runtime state (shared with WifiMeshState, no more duplication!)
+    pub(crate) runtime: RuntimeState,
 
     // Current state type information (for runtime validation)
     pub(crate) wifi_mode: WifiModeRuntime,
@@ -238,26 +322,14 @@ unsafe impl Sync for StateContainer {}
 
 impl StateContainer {
     pub(crate) fn new(
-        is_root: bool,
-        layer: i32,
-        has_ip: bool,
-        current_channel: u8,
-        mesh_id: [u8; 6],
-        sta_netif: Option<*mut sys::esp_netif_t>,
-        ap_netif: Option<*mut sys::esp_netif_t>,
+        runtime: RuntimeState,
         wifi_mode: WifiModeRuntime,
         mesh_state: MeshStateRuntime,
         scan_state: ScanStateRuntime,
         ota_state: OtaStateRuntime,
     ) -> Self {
         Self {
-            is_root,
-            layer,
-            has_ip,
-            current_channel,
-            mesh_id,
-            sta_netif,
-            ap_netif,
+            runtime,
             wifi_mode,
             mesh_state,
             scan_state,
@@ -268,62 +340,62 @@ impl StateContainer {
 
     /// Query if this node is currently the root
     pub fn is_root(&self) -> bool {
-        self.is_root
+        self.runtime.is_root
     }
 
     /// Query the current mesh layer
     pub fn layer(&self) -> i32 {
-        self.layer
+        self.runtime.layer
     }
 
     /// Query if this node has an IP address (only root nodes)
     pub fn has_ip(&self) -> bool {
-        self.has_ip
+        self.runtime.has_ip
     }
 
     /// Get the current WiFi channel
     pub fn channel(&self) -> u8 {
-        self.current_channel
+        self.runtime.current_channel
     }
 
     /// Get the mesh ID
     pub fn mesh_id(&self) -> [u8; 6] {
-        self.mesh_id
+        self.runtime.mesh_id
     }
 
     /// Get STA netif pointer (for use with ESP-IDF APIs)
     pub fn sta_netif(&self) -> Option<*mut sys::esp_netif_t> {
-        self.sta_netif
+        self.runtime.sta_netif
     }
 
     /// Get AP netif pointer (for use with ESP-IDF APIs)
     pub fn ap_netif(&self) -> Option<*mut sys::esp_netif_t> {
-        self.ap_netif
+        self.runtime.ap_netif
     }
 
     /// Update runtime state from ESP-MESH APIs (call from event handlers)
     pub fn refresh_from_mesh(&mut self) -> Result<(), sys::EspError> {
         unsafe {
             // Update root status
-            self.is_root = sys::esp_mesh_is_root();
+            self.runtime.is_root = sys::esp_mesh_is_root();
 
             // Update layer
-            self.layer = sys::esp_mesh_get_layer();
+            self.runtime.layer = sys::esp_mesh_get_layer();
 
-            debug!("state::types: State refreshed: is_root={}, layer={}", self.is_root, self.layer);
+            debug!("state::types: State refreshed: is_root={}, layer={}", self.runtime.is_root, self.runtime.layer);
         }
         Ok(())
     }
 
     /// Set IP status (called from IP event handlers)
     pub fn set_has_ip(&mut self, has_ip: bool) {
-        self.has_ip = has_ip;
+        self.runtime.has_ip = has_ip;
         info!("state::types: IP status updated: has_ip={}", has_ip);
     }
 
     /// Set root status (called from mesh event handlers)
     pub fn set_is_root(&mut self, is_root: bool) {
-        self.is_root = is_root;
+        self.runtime.is_root = is_root;
         info!("state::types: Root status updated: is_root={}", is_root);
     }
 

@@ -15,8 +15,8 @@ use std::{marker::PhantomData, sync::{Arc, Mutex}};
 /// STA interface used by root node to connect to external router
 /// AP interface used for mesh network communication
 /// Stored as usize (pointer as integer) for thread safety
-pub static STA_NETIF: Lazy<Arc<Mutex<usize>>> = Lazy::new(|| Arc::new(Mutex::new(0)));
-pub static AP_NETIF: Lazy<Arc<Mutex<usize>>> = Lazy::new(|| Arc::new(Mutex::new(0)));
+// pub static STA_NETIF: Lazy<Arc<Mutex<usize>>> = Lazy::new(|| Arc::new(Mutex::new(0)));
+// pub static AP_NETIF: Lazy<Arc<Mutex<usize>>> = Lazy::new(|| Arc::new(Mutex::new(0)));
 
 // =============================================================================
 // Initialization
@@ -32,13 +32,6 @@ impl InitialState {
             _mesh_state: PhantomData,
             _scan_state: PhantomData,
             _ota_state: PhantomData,
-            is_root: false,
-            layer: -1,
-            has_ip: false,
-            current_channel: 0,
-            mesh_id: [0u8; 6],
-            sta_netif: None,
-            ap_netif: None,
         }
     }
 
@@ -72,9 +65,6 @@ impl InitialState {
             ))?;
         }
 
-        // Save netif pointers globally for DHCP management (as usize for thread safety)
-        *STA_NETIF.lock().unwrap() = sta_netif as usize;
-        *AP_NETIF.lock().unwrap() = ap_netif as usize;
         info!(
             "Network interfaces created - STA: {:p}, AP: {:p}",
             sta_netif, ap_netif
@@ -166,15 +156,13 @@ impl InitialState {
             info!("state::wifi: WiFi mode set to STA");
         }
 
-        // Initialize global state container
+        // Initialize global state container with runtime state including netif pointers
+        let mut runtime = RuntimeState::new();
+        runtime.sta_netif = Some(sta_netif);
+        runtime.ap_netif = Some(ap_netif);
+
         let container = StateContainer::new(
-            self.is_root,
-            self.layer,
-            self.has_ip,
-            self.current_channel,
-            self.mesh_id,
-            self.sta_netif,
-            self.ap_netif,
+            runtime,
             WifiModeRuntime::Sta,
             MeshStateRuntime::Inactive,
             ScanStateRuntime::NotScanning,
@@ -188,13 +176,6 @@ impl InitialState {
             _mesh_state: PhantomData,
             _scan_state: PhantomData,
             _ota_state: PhantomData,
-            is_root: self.is_root,
-            layer: self.layer,
-            has_ip: self.has_ip,
-            current_channel: self.current_channel,
-            mesh_id: self.mesh_id,
-            sta_netif: self.sta_netif,
-            ap_netif: self.ap_netif,
         })
     }
 }
@@ -223,13 +204,6 @@ impl<M, S, O> WifiMeshState<Sta, M, S, O> {
             _mesh_state: PhantomData,
             _scan_state: PhantomData,
             _ota_state: PhantomData,
-            is_root: self.is_root,
-            layer: self.layer,
-            has_ip: self.has_ip,
-            current_channel: self.current_channel,
-            mesh_id: self.mesh_id,
-            sta_netif: self.sta_netif,
-            ap_netif: self.ap_netif,
         })
     }
 }
@@ -254,13 +228,6 @@ impl<M, S, O> WifiMeshState<StaAp, M, S, O> {
             _mesh_state: PhantomData,
             _scan_state: PhantomData,
             _ota_state: PhantomData,
-            is_root: self.is_root,
-            layer: self.layer,
-            has_ip: self.has_ip,
-            current_channel: self.current_channel,
-            mesh_id: self.mesh_id,
-            sta_netif: self.sta_netif,
-            ap_netif: self.ap_netif,
         })
     }
 }

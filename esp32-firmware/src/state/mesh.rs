@@ -93,15 +93,14 @@ impl<O> WifiMeshState<StaAp, MeshInactive, NotScanning, O> {
             info!("state::mesh: Mesh connected");
         }
 
-        // Update state
-        self.mesh_id = config.mesh_id;
-        self.current_channel = config.channel;
+        // Update runtime state and global state
+        RuntimeState::with_mut(|runtime| {
+            runtime.mesh_id = config.mesh_id;
+            runtime.current_channel = config.channel;
+        });
 
-        // Update global state
         if let Some(state) = GLOBAL_STATE.lock().unwrap().as_mut() {
             state.mesh_state = MeshStateRuntime::SelfOrganized;
-            state.current_channel = config.channel;
-            state.mesh_id = config.mesh_id;
         }
 
         Ok(WifiMeshState {
@@ -109,13 +108,6 @@ impl<O> WifiMeshState<StaAp, MeshInactive, NotScanning, O> {
             _mesh_state: PhantomData,
             _scan_state: PhantomData,
             _ota_state: PhantomData,
-            is_root: self.is_root,
-            layer: self.layer,
-            has_ip: self.has_ip,
-            current_channel: self.current_channel,
-            mesh_id: self.mesh_id,
-            sta_netif: self.sta_netif,
-            ap_netif: self.ap_netif,
         })
     }
 }
@@ -144,13 +136,6 @@ impl<O> WifiMeshState<StaAp, MeshSelfOrganized, NotScanning, O> {
             _mesh_state: PhantomData,
             _scan_state: PhantomData,
             _ota_state: PhantomData,
-            is_root: self.is_root,
-            layer: self.layer,
-            has_ip: self.has_ip,
-            current_channel: self.current_channel,
-            mesh_id: self.mesh_id,
-            sta_netif: self.sta_netif,
-            ap_netif: self.ap_netif,
         })
     }
 
@@ -171,11 +156,15 @@ impl<O> WifiMeshState<StaAp, MeshSelfOrganized, NotScanning, O> {
             info!("state::mesh: Mesh stopped and deinitialized");
         }
 
+        // Reset runtime state fields
+        RuntimeState::with_mut(|runtime| {
+            runtime.is_root = false;
+            runtime.layer = -1;
+        });
+
         // Update global state
         if let Some(state) = GLOBAL_STATE.lock().unwrap().as_mut() {
             state.mesh_state = MeshStateRuntime::Inactive;
-            state.is_root = false;
-            state.layer = -1;
         }
 
         Ok(WifiMeshState {
@@ -183,13 +172,6 @@ impl<O> WifiMeshState<StaAp, MeshSelfOrganized, NotScanning, O> {
             _mesh_state: PhantomData,
             _scan_state: PhantomData,
             _ota_state: PhantomData,
-            is_root: false,
-            layer: -1,
-            has_ip: self.has_ip,
-            current_channel: self.current_channel,
-            mesh_id: self.mesh_id,
-            sta_netif: self.sta_netif,
-            ap_netif: self.ap_netif,
         })
     }
 }
@@ -213,13 +195,6 @@ impl<O> WifiMeshState<StaAp, MeshActive, NotScanning, O> {
             _mesh_state: PhantomData,
             _scan_state: PhantomData,
             _ota_state: PhantomData,
-            is_root: self.is_root,
-            layer: self.layer,
-            has_ip: self.has_ip,
-            current_channel: self.current_channel,
-            mesh_id: self.mesh_id,
-            sta_netif: self.sta_netif,
-            ap_netif: self.ap_netif,
         })
     }
 
@@ -234,13 +209,6 @@ impl<O> WifiMeshState<StaAp, MeshActive, NotScanning, O> {
             _mesh_state: PhantomData,
             _scan_state: PhantomData,
             _ota_state: PhantomData,
-            is_root: self.is_root,
-            layer: self.layer,
-            has_ip: self.has_ip,
-            current_channel: self.current_channel,
-            mesh_id: self.mesh_id,
-            sta_netif: self.sta_netif,
-            ap_netif: self.ap_netif,
         };
 
         // Set mode
@@ -261,13 +229,6 @@ impl<O> WifiMeshState<StaAp, MeshActive, NotScanning, O> {
             _mesh_state: PhantomData,
             _scan_state: PhantomData,
             _ota_state: PhantomData,
-            is_root: sta_state.is_root,
-            layer: sta_state.layer,
-            has_ip: sta_state.has_ip,
-            current_channel: sta_state.current_channel,
-            mesh_id: sta_state.mesh_id,
-            sta_netif: sta_state.sta_netif,
-            ap_netif: sta_state.ap_netif,
         };
 
         Ok((results, staap_state))
@@ -282,6 +243,12 @@ impl<O> WifiMeshState<StaAp, MeshActive, NotScanning, O> {
             sys::esp!(sys::esp_mesh_deinit())?;
         }
 
+        // Reset runtime state fields
+        RuntimeState::with_mut(|runtime| {
+            runtime.is_root = false;
+            runtime.layer = -1;
+        });
+
         // Update global state
         if let Some(state) = GLOBAL_STATE.lock().unwrap().as_mut() {
             state.mesh_state = MeshStateRuntime::Inactive;
@@ -292,13 +259,6 @@ impl<O> WifiMeshState<StaAp, MeshActive, NotScanning, O> {
             _mesh_state: PhantomData,
             _scan_state: PhantomData,
             _ota_state: PhantomData,
-            is_root: false,
-            layer: -1,
-            has_ip: self.has_ip,
-            current_channel: self.current_channel,
-            mesh_id: self.mesh_id,
-            sta_netif: self.sta_netif,
-            ap_netif: self.ap_netif,
         })
     }
 }

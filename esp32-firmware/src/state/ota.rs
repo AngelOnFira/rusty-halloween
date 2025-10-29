@@ -41,13 +41,6 @@ impl<W, M, S> WifiMeshState<W, M, S, OtaIdle> {
             _mesh_state: PhantomData,
             _scan_state: PhantomData,
             _ota_state: PhantomData,
-            is_root: self.is_root,
-            layer: self.layer,
-            has_ip: self.has_ip,
-            current_channel: self.current_channel,
-            mesh_id: self.mesh_id,
-            sta_netif: self.sta_netif,
-            ap_netif: self.ap_netif,
         })
     }
 
@@ -73,13 +66,6 @@ impl<W, M, S> WifiMeshState<W, M, S, OtaIdle> {
             _mesh_state: PhantomData,
             _scan_state: PhantomData,
             _ota_state: PhantomData,
-            is_root: self.is_root,
-            layer: self.layer,
-            has_ip: self.has_ip,
-            current_channel: self.current_channel,
-            mesh_id: self.mesh_id,
-            sta_netif: self.sta_netif,
-            ap_netif: self.ap_netif,
         })
     }
 }
@@ -125,13 +111,6 @@ impl<W, M, S> WifiMeshState<W, M, S, OtaDownloading> {
             _mesh_state: PhantomData,
             _scan_state: PhantomData,
             _ota_state: PhantomData,
-            is_root: self.is_root,
-            layer: self.layer,
-            has_ip: self.has_ip,
-            current_channel: self.current_channel,
-            mesh_id: self.mesh_id,
-            sta_netif: self.sta_netif,
-            ap_netif: self.ap_netif,
         })
     }
 
@@ -149,13 +128,6 @@ impl<W, M, S> WifiMeshState<W, M, S, OtaDownloading> {
             _mesh_state: PhantomData,
             _scan_state: PhantomData,
             _ota_state: PhantomData,
-            is_root: self.is_root,
-            layer: self.layer,
-            has_ip: self.has_ip,
-            current_channel: self.current_channel,
-            mesh_id: self.mesh_id,
-            sta_netif: self.sta_netif,
-            ap_netif: self.ap_netif,
         }
     }
 }
@@ -178,13 +150,6 @@ impl<W, M, S> WifiMeshState<W, M, S, OtaDistributing> {
             _mesh_state: PhantomData,
             _scan_state: PhantomData,
             _ota_state: PhantomData,
-            is_root: self.is_root,
-            layer: self.layer,
-            has_ip: self.has_ip,
-            current_channel: self.current_channel,
-            mesh_id: self.mesh_id,
-            sta_netif: self.sta_netif,
-            ap_netif: self.ap_netif,
         })
     }
 
@@ -202,13 +167,6 @@ impl<W, M, S> WifiMeshState<W, M, S, OtaDistributing> {
             _mesh_state: PhantomData,
             _scan_state: PhantomData,
             _ota_state: PhantomData,
-            is_root: self.is_root,
-            layer: self.layer,
-            has_ip: self.has_ip,
-            current_channel: self.current_channel,
-            mesh_id: self.mesh_id,
-            sta_netif: self.sta_netif,
-            ap_netif: self.ap_netif,
         }
     }
 }
@@ -231,13 +189,6 @@ impl<W, M, S> WifiMeshState<W, M, S, OtaReceiving> {
             _mesh_state: PhantomData,
             _scan_state: PhantomData,
             _ota_state: PhantomData,
-            is_root: self.is_root,
-            layer: self.layer,
-            has_ip: self.has_ip,
-            current_channel: self.current_channel,
-            mesh_id: self.mesh_id,
-            sta_netif: self.sta_netif,
-            ap_netif: self.ap_netif,
         })
     }
 
@@ -255,13 +206,6 @@ impl<W, M, S> WifiMeshState<W, M, S, OtaReceiving> {
             _mesh_state: PhantomData,
             _scan_state: PhantomData,
             _ota_state: PhantomData,
-            is_root: self.is_root,
-            layer: self.layer,
-            has_ip: self.has_ip,
-            current_channel: self.current_channel,
-            mesh_id: self.mesh_id,
-            sta_netif: self.sta_netif,
-            ap_netif: self.ap_netif,
         }
     }
 }
@@ -290,13 +234,6 @@ impl<W, M, S> WifiMeshState<W, M, S, OtaReadyToReboot> {
             _mesh_state: PhantomData,
             _scan_state: PhantomData,
             _ota_state: PhantomData,
-            is_root: self.is_root,
-            layer: self.layer,
-            has_ip: self.has_ip,
-            current_channel: self.current_channel,
-            mesh_id: self.mesh_id,
-            sta_netif: self.sta_netif,
-            ap_netif: self.ap_netif,
         }
     }
 }
@@ -318,13 +255,6 @@ impl<W, M, S> WifiMeshState<W, M, S, OtaActive> {
             _mesh_state: PhantomData,
             _scan_state: PhantomData,
             _ota_state: PhantomData,
-            is_root: self.is_root,
-            layer: self.layer,
-            has_ip: self.has_ip,
-            current_channel: self.current_channel,
-            mesh_id: self.mesh_id,
-            sta_netif: self.sta_netif,
-            ap_netif: self.ap_netif,
         }
     }
 
