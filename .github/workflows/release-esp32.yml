@@ -69,7 +69,6 @@ jobs:
         espflash save-image \
           --chip esp32s2 \
           --merge \
-          --partition-table partitions.csv \
           --skip-padding \
           target/xtensa-esp32s2-espidf/release/esp32-mesh-firmware \
           esp32-mesh-firmware-${{ steps.version.outputs.VERSION }}-full.bin
@@ -79,7 +78,8 @@ jobs:
       run: |
         espflash save-image \
           --chip esp32s2 \
-          --partition-table partitions.csv \
+          --merge \
+          --target-app-partition ota_0 \
           --skip-padding \
           target/xtensa-esp32s2-espidf/release/esp32-mesh-firmware \
           esp32-mesh-firmware-${{ steps.version.outputs.VERSION }}.bin
