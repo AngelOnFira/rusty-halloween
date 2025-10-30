@@ -1,5 +1,6 @@
 #[macro_use]
 mod logging;
+mod diagnostics;
 
 mod hardware;
 mod instructions;
@@ -31,9 +32,21 @@ use utils::get_embedded_env_value;
 use version::FIRMWARE_VERSION;
 
 fn main() -> Result<()> {
+
+        // Memory tracking: Initial state
+        diagnostics::print_memory_stats("STARTUP");
+        let mem_after_startup = diagnostics::get_free_heap();
+
     esp_idf_sys::link_patches();
 
+    diagnostics::print_memory_delta("After ESP IDF Sys Link Patches", mem_after_startup);
+
+
+    let mem_after_esp_idf_sys_link_patches = diagnostics::get_free_heap();
+
     esp_idf_svc::log::EspLogger::initialize_default();
+
+    diagnostics::print_memory_delta("After ESP IDF Svc Log Esp Logger Initialize Default", mem_after_esp_idf_sys_link_patches);
 
     info!("╔══════════════════════════════════════════════════════╗");
     info!("║  ESP32 Mesh Firmware                                 ║");
@@ -41,27 +54,36 @@ fn main() -> Result<()> {
     info!("║  Built:   {}                              ║", version::BUILD_TIMESTAMP);
     info!("╚══════════════════════════════════════════════════════╝");
 
+    let mem_after_startup = diagnostics::get_free_heap();
+
+
     // Initialize OTA manager
     // Note: mark_app_valid() is NOT called on startup - it's only called
     // after completing an OTA update in finalize_ota()
     let ota_manager = OtaManager::new()?;
+    diagnostics::print_memory_delta("After OTA Manager Init", mem_after_startup);
 
     let peripherals = Peripherals::take().unwrap();
     let node = Arc::new(MeshNode::new(peripherals)?);
+    let mem_before_wifi = diagnostics::get_free_heap();
 
     // Initialize state machine (this also initializes WiFi)
     info!("main: Initializing state machine and WiFi...");
     let wifi_state = InitialState::new();
     let wifi_state = wifi_state.initialize_wifi()?;
+    diagnostics::print_memory_delta("After WiFi Init", mem_before_wifi);
 
+    let mem_before_mesh = diagnostics::get_free_heap();
     info!("main: Initializing Mesh...");
     // Get router credentials
     let router_ssid = get_embedded_env_value("ROUTER_SSID");
     let router_pass = get_embedded_env_value("ROUTER_PASSWORD");
     info!("main: Router SSID: {}, Password length: {}", router_ssid, router_pass.len());
 
-    // Try to load channel from NVS (persisted from previous boot)
-    let mut mesh_channel: Option<u8> = load_channel_from_nvs();
+    // Try to load channel from NVS (persisted from previous boot). For now,
+    // load it as none so that we can make sure we just join the best network.
+    // let mut mesh_channel: Option<u8> = load_channel_from_nvs();
+    let mut mesh_channel: Option<u8> = None;
 
     // If no saved channel, scan for networks using state machine
     if mesh_channel.is_none() {
@@ -121,10 +143,12 @@ fn main() -> Result<()> {
 
     let _mesh_state = wifi_state.start_mesh(mesh_config)?;
     info!("main: Mesh started successfully via state machine");
+    diagnostics::print_memory_delta("After Mesh Init", mem_before_mesh);
 
     // Save channel to NVS for faster boot next time
     save_channel_to_nvs(channel);
 
+    let mem_before_tasks = diagnostics::get_free_heap();
     info!("main: Starting mesh tasks...");
 
     let state: Arc<Mutex<ApplicationState>> = Arc::new(Mutex::new(ApplicationState {
@@ -164,6 +188,14 @@ fn main() -> Result<()> {
     thread::spawn(move || {
         ota_distribution_task(node_ota, state_ota);
     });
+
+    diagnostics::print_memory_delta("After Task Spawning", mem_before_tasks);
+
+    // Final memory summary
+    info!("════════════════════════════════════════════════════");
+    diagnostics::print_memory_stats("READY - All Systems Initialized");
+    diagnostics::print_heap_watermark();
+    info!("════════════════════════════════════════════════════");
 
     info!("main: Mesh node started. Waiting for connections...");
     info!("main: WS2812 (GPIO18): Real addressable RGB LED with precise RMT timing!");

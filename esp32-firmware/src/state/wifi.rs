@@ -105,8 +105,8 @@ impl InitialState {
             esp!(esp_wifi_init(&cfg))?;
             // esp!(esp_wifi_set_mode(sys::wifi_ps_type_t_WIFI_PS_NONE))?;
             info!("state::wifi: WiFi initialized");
-            esp!(esp_wifi_set_storage(sys::wifi_storage_t_WIFI_STORAGE_FLASH))?;
-            info!("state::wifi: WiFi storage set to FLASH");
+            esp!(esp_wifi_set_storage(sys::wifi_storage_t_WIFI_STORAGE_RAM))?;
+            info!("state::wifi: WiFi storage set to RAM");
             // info!("WiFi mode set to STA/AP");
             esp!(esp_wifi_start())?;
             info!("state::wifi: WiFi started");

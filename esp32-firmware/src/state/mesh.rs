@@ -5,7 +5,7 @@ use esp_idf_svc::sys as sys;
 use std::marker::PhantomData;
 
 // Mesh network configuration constants
-pub const MESH_ID: [u8; 6] = [0x77, 0x77, 0x77, 0x77, 0x77, 0x77];
+pub const MESH_ID: [u8; 6] = [0x12, 0x34, 0x56, 0x78, 0x90, 0xAB];
 pub const MESH_PASSWORD: &str = "mesh_password_123";
 pub const MESH_MAX_LAYER: i32 = 6;
 pub const MESH_AP_CONNECTIONS: i32 = 6;

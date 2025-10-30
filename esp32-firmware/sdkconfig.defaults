@@ -5,9 +5,19 @@ CONFIG_ESP_MAIN_TASK_STACK_SIZE=8000
 # This allows to use 1 ms granularity for thread sleeps (10 ms by default).
 #CONFIG_FREERTOS_HZ=1000
 
-# Workaround for https://github.com/espressif/esp-idf/issues/7631
-#CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=n
-#CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=n
+# Enable minimal Mozilla CA certificate bundle for HTTPS connections
+# Uses common certificates only (~15-20KB vs 50-70KB for full bundle)
+# Includes GitHub's DigiCert root CA
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_CMN=y
+
+# TLS buffer sizes
+# Default: 16KB in + 16KB out = 32KB total
+# Current: 8KB in + 4KB out = 12KB total
+# Note: With PSRAM enabled, we have plenty of heap. These reduced sizes
+# are sufficient for GitHub API calls and OTA downloads.
+CONFIG_MBEDTLS_SSL_IN_CONTENT_LEN=8192
+CONFIG_MBEDTLS_SSL_OUT_CONTENT_LEN=4096
 
 # OTA Configuration
 CONFIG_PARTITION_TABLE_CUSTOM=y
@@ -33,3 +43,31 @@ CONFIG_LOG_DEFAULT_LEVEL_DEBUG=y
 CONFIG_LWIP_DHCP_DEBUG=y
 CONFIG_ESP_NETIF_DEBUG=y
 CONFIG_LOG_MAXIMUM_LEVEL_DEBUG=y
+
+# PSRAM Configuration (ESP32-S2 has 2MB external PSRAM)
+# This dramatically increases available heap memory
+CONFIG_ESP32S2_SPIRAM_SUPPORT=y
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_TYPE_AUTO=y
+CONFIG_SPIRAM_SIZE=2097152
+
+# Add PSRAM to heap allocator
+CONFIG_SPIRAM_USE_CAPS_ALLOC=y
+CONFIG_SPIRAM_USE_MALLOC=y
+
+# Allow malloc() to use PSRAM when internal memory is full
+CONFIG_SPIRAM_MEMTEST=y
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=0
+CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=32768
+
+# WiFi: Use PSRAM for large buffers (saves ~60KB internal RAM)
+# RX/TX buffers type: 0=static, 1=dynamic, 2=IRAM dynamic
+CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=0
+CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=32
+CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER_NUM=32
+CONFIG_ESP_WIFI_RX_BA_WIN=16
+CONFIG_ESP_WIFI_TX_BA_WIN=16
+
+# Use PSRAM for WiFi/Mesh buffers
+CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y

@@ -9,7 +9,7 @@ use esp_idf_svc::sys::{
     wifi_ap_record_t, wifi_scan_config_t, wifi_scan_type_t_WIFI_SCAN_TYPE_ACTIVE,
     wifi_scan_time_t, wifi_active_scan_time_t, wifi_scan_channel_bitmap_t,
     esp_wifi_scan_start, esp_wifi_scan_get_ap_num, esp_wifi_scan_get_ap_records,
-    esp_mesh_scan_get_ap_ie_len,
+    esp_mesh_scan_get_ap_ie_len, esp_mesh_scan_get_ap_record,
 };
 use std::{ffi::CString, marker::PhantomData, ptr};
 
@@ -253,56 +253,106 @@ pub fn save_channel_to_nvs(channel: u8) -> bool {
     }
 }
 
+/// Mesh Association Information Element structure
+///
+/// Corresponds to the mesh_assoc_t structure from esp_mesh_internal.h
+/// Contains mesh network metadata including the mesh ID for verification
+#[repr(C, packed)]
+#[allow(dead_code)]
+struct MeshAssocIE {
+    ie_type: u8,
+    _bitfield: u8,     // encrypted:1, version:7
+    mesh_type: u8,
+    mesh_id: [u8; 6],  // The mesh network identifier
+    layer_cap: u8,
+    layer: u8,
+    assoc_cap: u8,
+    assoc: u8,
+    leaf_cap: u8,
+    leaf_assoc: u8,
+    root_cap: u16,
+    self_cap: u16,
+    layer2_cap: u16,
+    scan_ap_num: u16,
+    rssi: i8,
+    router_rssi: i8,
+    flag: u8,
+    // Note: Vote-related fields omitted for brevity
+}
+
 /// Check if an AP record represents an ESP-MESH network
 ///
-/// Uses ESP-MESH vendor-specific IEs and SSID pattern matching
-fn is_mesh_network(ap: &wifi_ap_record_t, _mesh_id: &[u8; 6]) -> bool {
+/// Uses ESP-MESH vendor-specific IEs and verifies the mesh ID matches
+fn is_mesh_network(ap: &wifi_ap_record_t, mesh_id: &[u8; 6]) -> bool {
     unsafe {
         // First check: Use ESP-MESH API to check for mesh vendor IEs
         let mut ie_len: i32 = 0;
         let ie_len_result = esp_mesh_scan_get_ap_ie_len(&mut ie_len as *mut i32);
 
-        if ie_len_result == ESP_OK && ie_len > 0 {
-            // This AP has mesh-specific vendor IEs, indicating it's part of a mesh
-            info!(
-                "Found mesh network via ESP-MESH vendor IEs (length: {})",
-                ie_len
+        if ie_len_result != ESP_OK || ie_len == 0 {
+            // No mesh vendor IEs present
+            return false;
+        }
+
+        // This AP has mesh-specific vendor IEs, indicating it's part of a mesh
+        info!(
+            "Found mesh network via ESP-MESH vendor IEs (length: {})",
+            ie_len
+        );
+
+        // Allocate buffer for mesh IE data
+        let mut ie_buffer = vec![0u8; ie_len as usize];
+        let mut temp_ap: wifi_ap_record_t = *ap;
+
+        // Get the mesh IE data
+        let result = esp_mesh_scan_get_ap_record(
+            &mut temp_ap as *mut wifi_ap_record_t,
+            ie_buffer.as_mut_ptr() as *mut std::ffi::c_void,
+        );
+
+        if result != ESP_OK {
+            warn!("state::scan: Failed to get mesh AP record: {}", result);
+            return false;
+        }
+
+        // Verify we have enough data for the MeshAssocIE structure
+        if ie_len < std::mem::size_of::<MeshAssocIE>() as i32 {
+            warn!(
+                "state::scan: Mesh IE too small: {} bytes (expected at least {})",
+                ie_len,
+                std::mem::size_of::<MeshAssocIE>()
             );
-
-            // Get SSID for logging
-            let ssid_len = ap.ssid.iter().position(|&c| c == 0).unwrap_or(33);
-            if ssid_len > 0 {
-                let ssid_bytes = &ap.ssid[..ssid_len];
-                if let Ok(ssid_str) = std::str::from_utf8(ssid_bytes) {
-                    info!("state::scan: Mesh network SSID: {}", ssid_str);
-                }
-            }
-
-            // Note: We could use esp_mesh_scan_get_ap_record() here to verify the mesh ID,
-            // but mesh_ap_record_t is not exposed in esp-idf-sys bindings.
-            // For now, presence of vendor IEs + SSID pattern is sufficient.
-            return true;
+            return false;
         }
 
-        // Second check: Verify SSID pattern
-        // ESP-MESH networks typically have SSIDs that include the mesh ID or "MESH"
+        // Parse the mesh IE buffer as MeshAssocIE structure
+        let mesh_ie = &*(ie_buffer.as_ptr() as *const MeshAssocIE);
+
+        // Get SSID for logging
         let ssid_len = ap.ssid.iter().position(|&c| c == 0).unwrap_or(33);
-        if ssid_len > 0 {
+        let ssid = if ssid_len > 0 {
             let ssid_bytes = &ap.ssid[..ssid_len];
-            if let Ok(ssid_str) = std::str::from_utf8(ssid_bytes) {
-                // ESP-MESH nodes broadcast with SSIDs containing "MESH" or the mesh ID
-                // This is a heuristic - adjust based on your mesh SSID pattern
-                if ssid_str.contains("MESH") || ssid_str.contains("mesh") {
-                    info!(
-                        "Found potential mesh network via SSID pattern: {}",
-                        ssid_str
-                    );
-                    return true;
-                }
-            }
-        }
+            std::str::from_utf8(ssid_bytes)
+                .unwrap_or("<invalid utf8>")
+                .to_string()
+        } else {
+            "<hidden>".to_string()
+        };
 
-        false
+        // Compare mesh IDs
+        if mesh_ie.mesh_id == *mesh_id {
+            info!(
+                "state::scan: Mesh ID MATCH! SSID='{}', mesh_id={:02x?}",
+                ssid, mesh_ie.mesh_id
+            );
+            return true;
+        } else {
+            warn!(
+                "state::scan: Mesh ID MISMATCH - SSID='{}', found={:02x?}, expected={:02x?}",
+                ssid, mesh_ie.mesh_id, mesh_id
+            );
+            return false;
+        }
     }
 }
 

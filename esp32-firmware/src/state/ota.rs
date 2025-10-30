@@ -472,6 +472,11 @@ impl OtaManager {
         use embedded_svc::http::client::Client;
         use esp_idf_svc::http::client::{Configuration, EspHttpConnection};
 
+        // Log available heap before TLS operations
+        let free_heap = unsafe { esp_idf_sys::esp_get_free_heap_size() };
+        info!("state::ota: Free heap before GitHub API call: {} bytes ({} KB)",
+              free_heap, free_heap / 1024);
+
         info!("state::ota: Checking GitHub for firmware updates...");
 
         let url = format!(
@@ -484,6 +489,7 @@ impl OtaManager {
         let connection = EspHttpConnection::new(&Configuration {
             buffer_size: Some(4096),
             timeout: Some(std::time::Duration::from_secs(30)),
+            crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
             ..Default::default()
         })?;
 
@@ -555,6 +561,11 @@ impl OtaManager {
     /// Download firmware from GitHub and write directly to OTA partition (root node only)
     /// This streams the download directly to flash to avoid exhausting RAM
     pub fn download_firmware(&mut self, url: &str, expected_size: u32) -> Result<()> {
+        // Log available heap before TLS operations
+        let free_heap = unsafe { esp_idf_sys::esp_get_free_heap_size() };
+        info!("state::ota: Free heap before firmware download: {} bytes ({} KB)",
+              free_heap, free_heap / 1024);
+
         info!("state::ota: Starting firmware download from: {}", url);
         info!("state::ota: Initializing OTA partition for streaming write...");
 
@@ -572,6 +583,7 @@ impl OtaManager {
 
         let connection = EspHttpConnection::new(&Configuration {
             buffer_size: Some(4096),
+            crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
             ..Default::default()
         })?;
 
