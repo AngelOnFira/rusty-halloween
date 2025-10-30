@@ -10,9 +10,11 @@ use crate::{
 
 use super::{LaserDataFrame, MAX_LASERS, MAX_LIGHTS, MAX_PROJECTORS, MAX_TURRETS};
 
-pub type DmxStateData = u8;
-pub type DmxStateIndex = u8;
-pub type DmxStateVarPosition = (DmxStateIndex, DmxStateData);
+// Re-export types from common
+pub use common::{
+    DmxStateData, DmxStateIndex, DmxStateVarPosition, Frame, Laser, Projector,
+    SerializableShow, Turret,
+};
 
 /// A show contains a song and a list of frames. The song won't be loaded in
 /// until it is the next one up. This is to save memory. A show should be
@@ -41,6 +43,14 @@ impl UnloadedShow {
             song,
             name: self.name,
             frames: self.frames,
+        }
+    }
+
+    /// Convert to a serializable show that can be sent over the network
+    pub fn to_serializable(&self) -> SerializableShow {
+        SerializableShow {
+            name: self.name.clone(),
+            frames: self.frames.clone(),
         }
     }
 }
@@ -73,6 +83,14 @@ impl LoadingShow {
             None => Err(()),
         }
     }
+
+    /// Convert to a serializable show that can be sent over the network
+    pub fn to_serializable(&self) -> SerializableShow {
+        SerializableShow {
+            name: self.name.clone(),
+            frames: self.frames.clone(),
+        }
+    }
 }
 
 // This is clone because the song is behind an Arc
@@ -83,49 +101,23 @@ pub struct LoadedShow {
     pub frames: Vec<Frame>,
 }
 
-/// A frame consists of a timestamp since the beginning of this show, a list of
-/// commands for the lights, and a list of commands for the lasers.
-#[derive(Clone, Debug)]
-pub struct Frame {
-    pub timestamp: u64,
-    pub lights: Vec<Option<bool>>,
-    pub lasers: Vec<Option<Laser>>,
-    pub projectors: Vec<Option<Projector>>,
-    pub turrets: Vec<Option<Turret>>,
+impl LoadedShow {
+    /// Convert to a serializable show that can be sent over the network
+    pub fn to_serializable(&self) -> SerializableShow {
+        SerializableShow {
+            name: self.name.clone(),
+            frames: self.frames.clone(),
+        }
+    }
 }
+
+// Frame, Laser, Projector, and Turret types are now imported from common
 
 #[derive(Clone, Debug)]
 pub struct DmxState {
     pub device_name: String,
     pub channel_id: u64,
     pub values: Vec<u8>,
-}
-
-#[derive(Clone, Debug)]
-pub struct Laser {
-    // Laser conf
-    pub home: bool,
-    pub point_count: u8,
-    pub speed_profile: u8,
-    pub enable: bool,
-    // Laser
-    pub hex: [u8; 3],
-    pub value: u8,
-}
-
-#[derive(Clone, Debug)]
-pub struct Projector {
-    pub state: DmxStateVarPosition,
-    pub gallery: DmxStateVarPosition,
-    pub pattern: DmxStateVarPosition,
-    pub colour: DmxStateVarPosition,
-}
-
-#[derive(Clone, Debug)]
-pub struct Turret {
-    pub state: DmxStateVarPosition,
-    pub pan: DmxStateVarPosition,
-    pub tilt: DmxStateVarPosition,
 }
 
 impl UnloadedShow {
@@ -214,7 +206,7 @@ impl UnloadedShow {
                                             .unwrap_or("000");
 
                                         let hex: [u8; 3] = {
-                                            let mut values = hex_str
+                                            let values = hex_str
                                                 .chars()
                                                 .map(|c| match c {
                                                     'F' | 'f' => 7,

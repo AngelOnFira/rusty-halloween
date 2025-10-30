@@ -1,0 +1,21 @@
+# Source files (we only need the binary)
+src/
+Cargo.toml
+Cargo.lock
+
+# Build artifacts (except the binary we copy)
+target/
+
+# Documentation
+*.md
+!DEPLOYMENT.md
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

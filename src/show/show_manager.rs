@@ -5,7 +5,8 @@ use crate::{
     show::{LaserDataFrame, MAX_LIGHTS},
     InternalMessage, MessageKind,
 };
-use log::{error, info};
+use common::SerializableShow;
+use log::{error, info, warn};
 
 use rand::seq::IteratorRandom;
 use std::{
@@ -293,6 +294,61 @@ impl ShowManager {
     }
 }
 
+/// Post a show to the show server (non-blocking)
+async fn post_show_to_server(show: SerializableShow) {
+    // Get server URL from environment variable or use default
+    let server_url = std::env::var("SHOW_SERVER_URL")
+        .unwrap_or_else(|_| "http://localhost:3000".to_string());
+
+    let url = format!("{}/show/upload", server_url);
+
+    // Spawn a task to POST the show without blocking
+    tokio::spawn(async move {
+        match reqwest::Client::new()
+            .post(&url)
+            .json(&show)
+            .send()
+            .await
+        {
+            Ok(response) => {
+                if response.status().is_success() {
+                    info!("Successfully uploaded show to server");
+                } else {
+                    warn!("Failed to upload show to server: {}", response.status());
+                }
+            }
+            Err(e) => {
+                warn!("Error posting show to server: {}", e);
+            }
+        }
+    });
+}
+
+/// Notify server that show playback is starting now (non-blocking)
+async fn notify_show_start() {
+    // Get server URL from environment variable or use default
+    let server_url = std::env::var("SHOW_SERVER_URL")
+        .unwrap_or_else(|_| "http://localhost:3000".to_string());
+
+    let url = format!("{}/show/start", server_url);
+
+    // Spawn a task to POST without blocking
+    tokio::spawn(async move {
+        match reqwest::Client::new().post(&url).send().await {
+            Ok(response) => {
+                if response.status().is_success() {
+                    info!("Notified server that show started");
+                } else {
+                    warn!("Failed to notify server of show start: {}", response.status());
+                }
+            }
+            Err(e) => {
+                warn!("Error notifying server of show start: {}", e);
+            }
+        }
+    });
+}
+
 async fn show_task_loop(
     mut show_manager: ShowManager,
     show_job_queue_clone: Arc<Mutex<VecDeque<ShowElement>>>,
@@ -430,6 +486,11 @@ async fn show_task_loop(
                             // Turn it into a loading show
                             let loading_show = unloaded_show.load_show().await;
 
+                            // Upload to server early, while audio is still loading
+                            info!("Uploading show to server: {}", loading_show.name);
+                            let serializable_show = loading_show.to_serializable();
+                            post_show_to_server(serializable_show).await;
+
                             // Set the next show
                             show_manager.next_show = Some(loading_show);
                         }
@@ -472,6 +533,11 @@ async fn show_task_loop(
 
                             // Turn it into a loading show
                             let loading_show = unloaded_show.load_show().await;
+
+                            // Upload to server early, while audio is still loading
+                            info!("Uploading show to server: {}", loading_show.name);
+                            let serializable_show = loading_show.to_serializable();
+                            post_show_to_server(serializable_show).await;
 
                             // Set the next show
                             show_manager.next_show = Some(loading_show);
@@ -557,6 +623,9 @@ async fn show_task_loop(
 
                     // Set the timer. This should be in sync with when the audio starts.
                     show_manager.start_time = Some(Instant::now());
+
+                    // Notify server that playback is starting NOW
+                    notify_show_start().await;
 
                     let mut frames_iter = current_show.frames.iter();
 

@@ -7,7 +7,7 @@ default-run = "rusty-halloween"
 [workspace]
 members = [
     "pico-projector",
-    "common",
+    "common", "show-server",
 ]
 exclude = [
     "esp32-firmware",
@@ -28,6 +28,8 @@ embed_audio = []
 audio = []
 
 [dependencies]
+common = { path = "common" }
+
 # Sending data
 interprocess = "1.1.1"
 
@@ -59,3 +61,4 @@ rand = "0.8.5"
 console-subscriber = "0.2.0"
 chrono = "0.4.31"
 serde_json = "1.0"
+reqwest = { version = "0.11", features = ["json"] }
