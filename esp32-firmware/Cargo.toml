@@ -3,7 +3,7 @@
 
 [package]
 name = "esp32-mesh-firmware"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Forest Anderson <forestkzanderson@gmail.com>"]
 edition = "2021"
 resolver = "2"
