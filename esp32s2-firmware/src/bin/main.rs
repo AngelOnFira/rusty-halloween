@@ -127,7 +127,7 @@ async fn discover_mesh(
 #[esp_rtos::main]
 async fn main(spawner: Spawner) -> ! {
     info!("╔══════════════════════════════════════════════════════╗");
-    info!("║  ESP32-S2 Mesh Firmware (no-std + ESP-NOW)          ║");
+    info!("║  ESP32-S2 Mesh Firmware (no-std + ESP-NOW)           ║");
     info!("║  Version: 0.1.0                                      ║");
     info!("╚══════════════════════════════════════════════════════╝");
 

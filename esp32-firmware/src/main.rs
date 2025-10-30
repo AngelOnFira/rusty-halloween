@@ -12,50 +12,55 @@ mod version;
 
 use anyhow::Result;
 use esp_idf_hal::peripherals::Peripherals;
+use instructions::Instructions;
+use node::MeshNode;
+use state::{
+    load_channel_from_nvs, save_channel_to_nvs, scan_with_retry, InitialState, MeshConfig,
+    NetworkDiscovery, OtaManager, MESH_ID,
+};
 use std::{
     sync::{Arc, Mutex},
     thread,
     time::Duration,
 };
-use instructions::Instructions;
-use node::MeshNode;
-use state::{
-    InitialState, MeshConfig, MESH_ID,
-    OtaManager, NetworkDiscovery,
-    load_channel_from_nvs, save_channel_to_nvs, scan_with_retry,
-};
 use tasks::{
-    instruction_execution_task, mesh_rx_task, mesh_tx_task, monitor_task,
-    ota_distribution_task, ApplicationState,
+    instruction_execution_task, mesh_rx_task, mesh_tx_task, monitor_task, ota_distribution_task,
+    ApplicationState,
 };
 use utils::get_embedded_env_value;
 use version::FIRMWARE_VERSION;
 
 fn main() -> Result<()> {
-
-        // Memory tracking: Initial state
-        diagnostics::print_memory_stats("STARTUP");
-        let mem_after_startup = diagnostics::get_free_heap();
+    // Memory tracking: Initial state
+    diagnostics::print_memory_stats("STARTUP");
+    let mem_after_startup = diagnostics::get_free_heap();
 
     esp_idf_sys::link_patches();
 
     diagnostics::print_memory_delta("After ESP IDF Sys Link Patches", mem_after_startup);
 
-
     let mem_after_esp_idf_sys_link_patches = diagnostics::get_free_heap();
 
     esp_idf_svc::log::EspLogger::initialize_default();
 
-    diagnostics::print_memory_delta("After ESP IDF Svc Log Esp Logger Initialize Default", mem_after_esp_idf_sys_link_patches);
+    diagnostics::print_memory_delta(
+        "After ESP IDF Svc Log Esp Logger Initialize Default",
+        mem_after_esp_idf_sys_link_patches,
+    );
 
     info!("╔══════════════════════════════════════════════════════╗");
     info!("║  ESP32 Mesh Firmware                                 ║");
-    info!("║  Version: {}                              ║", FIRMWARE_VERSION);
-    info!("║  Built:   {}                              ║", version::BUILD_TIMESTAMP);
+    info!(
+        "║  Version: {}                              ║",
+        FIRMWARE_VERSION
+    );
+    info!(
+        "║  Built:   {}                              ║",
+        version::BUILD_TIMESTAMP
+    );
     info!("╚══════════════════════════════════════════════════════╝");
 
     let mem_after_startup = diagnostics::get_free_heap();
-
 
     // Initialize OTA manager
     // Note: mark_app_valid() is NOT called on startup - it's only called
@@ -78,12 +83,17 @@ fn main() -> Result<()> {
     // Get router credentials
     let router_ssid = get_embedded_env_value("ROUTER_SSID");
     let router_pass = get_embedded_env_value("ROUTER_PASSWORD");
-    info!("main: Router SSID: {}, Password length: {}", router_ssid, router_pass.len());
+    info!(
+        "main: Router SSID: {}, Password length: {}",
+        router_ssid,
+        router_pass.len()
+    );
 
     // Try to load channel from NVS (persisted from previous boot). For now,
     // load it as none so that we can make sure we just join the best network.
     // let mut mesh_channel: Option<u8> = load_channel_from_nvs();
     let mut mesh_channel: Option<u8> = None;
+    let mut router_bssid: Option<[u8; 6]> = None;
 
     // If no saved channel, scan for networks using state machine
     if mesh_channel.is_none() {
@@ -94,52 +104,73 @@ fn main() -> Result<()> {
         let discovery = scan_with_retry(&router_ssid, &MESH_ID, 30_000);
 
         match discovery {
-            NetworkDiscovery::ExistingMesh { channel, ssid, bssid, rssi } => {
+            NetworkDiscovery::ExistingMesh {
+                channel,
+                ssid,
+                bssid,
+                rssi,
+            } => {
                 info!(
                     "main: NetworkDiscovery::ExistingMesh - Discovered existing mesh network: '{}' on channel {}, RSSI: {}, BSSID: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
                     ssid, channel, rssi,
                     bssid[0], bssid[1], bssid[2], bssid[3], bssid[4], bssid[5]
                 );
                 mesh_channel = Some(channel);
+                router_bssid = Some(bssid);
             }
-            NetworkDiscovery::Router { channel, bssid, rssi } => {
+            NetworkDiscovery::Router {
+                channel,
+                bssid,
+                rssi,
+            } => {
                 info!(
                     "main: NetworkDiscovery::Router - Discovered router '{}' on channel {}, RSSI: {}, BSSID: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
                     router_ssid, channel, rssi,
                     bssid[0], bssid[1], bssid[2], bssid[3], bssid[4], bssid[5]
                 );
                 mesh_channel = Some(channel);
+                router_bssid = Some(bssid);
             }
             NetworkDiscovery::NotFound => {
                 return Err(anyhow::anyhow!("main: NetworkDiscovery::NotFound - Network scan failed - no mesh or router found"));
             }
         }
     } else {
-        info!("main: Using saved channel from NVS: {}", mesh_channel.unwrap());
+        info!(
+            "main: Using saved channel from NVS: {}",
+            mesh_channel.unwrap()
+        );
     }
 
     let channel = mesh_channel.expect("Channel must be determined by this point");
 
     // Start mesh using state machine
-    info!("main: Starting mesh on channel {} using state machine...", channel);
+    info!(
+        "main: Starting mesh on channel {} using state machine...",
+        channel
+    );
     let mesh_config = MeshConfig {
         mesh_id: MESH_ID,
         channel,
         router_ssid: router_ssid.clone(),
         router_password: router_pass.clone(),
-        max_connections: 10, // Using default from mesh.rs MESH_AP_CONNECTIONS
+        router_bssid,
+        allow_router_switch: false, // Prevent fallback to other APs with same SSID if specific BSSID is unavailable
+        max_connections: 10,       // Using default from mesh.rs MESH_AP_CONNECTIONS
     };
 
-        // Additional mesh settings (still using direct calls for now)
-        unsafe {
-            use esp_idf_sys::{esp, esp_mesh_set_max_layer, esp_mesh_set_vote_percentage, esp_mesh_set_ap_authmode};
-            esp!(esp_mesh_set_max_layer(25))?; // MESH_MAX_LAYER
-            esp!(esp_mesh_set_vote_percentage(1.0))?;
+    // Additional mesh settings (still using direct calls for now)
+    unsafe {
+        use esp_idf_sys::{
+            esp, esp_mesh_set_ap_authmode, esp_mesh_set_max_layer, esp_mesh_set_vote_percentage,
+        };
+        esp!(esp_mesh_set_max_layer(25))?; // MESH_MAX_LAYER
+        esp!(esp_mesh_set_vote_percentage(1.0))?;
 
-            let auth_mode = esp_idf_sys::wifi_auth_mode_t_WIFI_AUTH_OPEN;
-            esp!(esp_mesh_set_ap_authmode(auth_mode))?;
-            info!("main: Mesh configuration completed");
-        }
+        let auth_mode = esp_idf_sys::wifi_auth_mode_t_WIFI_AUTH_OPEN;
+        esp!(esp_mesh_set_ap_authmode(auth_mode))?;
+        info!("main: Mesh configuration completed");
+    }
 
     let _mesh_state = wifi_state.start_mesh(mesh_config)?;
     info!("main: Mesh started successfully via state machine");

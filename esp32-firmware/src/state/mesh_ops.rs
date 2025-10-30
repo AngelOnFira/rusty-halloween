@@ -51,14 +51,15 @@ impl<W, M, S, O> WifiMeshState<W, M, S, O> {
                 tos: 0,
             };
 
-            let err = sys::esp_mesh_send(dest, &mesh_data, flag, ptr::null(), 0);
-
-            if err == sys::ESP_OK {
-                debug!("state::mesh_ops: Mesh message sent: {} bytes", data.len());
-                Ok(())
-            } else {
-                warn!("state::mesh_ops: Failed to send mesh message: error {}", err);
-                Err(sys::EspError::from(err).unwrap())
+            match esp!(sys::esp_mesh_send(dest, &mesh_data, flag, ptr::null(), 0)) {
+                Ok(_) => {
+                    debug!("state::mesh_ops: Mesh message sent: {} bytes", data.len());
+                    Ok(())
+                }
+                Err(err) => {
+                    warn!("state::mesh_ops: Failed to send mesh message: error {}", err);
+                    Err(err)
+                }
             }
         }
     }

@@ -1,8 +1,12 @@
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
-/// Current firmware version - update this when releasing new versions
-pub const FIRMWARE_VERSION: &str = "0.2.0";
+/// Current firmware version - automatically pulled from Cargo.toml
+/// Update the version in Cargo.toml [package] section when releasing
+// pub const FIRMWARE_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+// Uncomment to override for OTA testing (will detect any GitHub release as "newer"):
+pub const FIRMWARE_VERSION: &str = "0.0.1";
 
 /// Build timestamp - automatically set at compile time
 pub const BUILD_TIMESTAMP: &str = env!("BUILD_TIMESTAMP");
@@ -20,9 +24,9 @@ pub struct Version {
 }
 
 impl Version {
-    /// Parse a semantic version string (e.g., "v0.1.0" or "0.1.0")
+    /// Parse a semantic version string (e.g., "esp32-v0.1.1")
     pub fn parse(s: &str) -> Result<Self> {
-        let s = s.trim_start_matches('v');
+        let s = s.trim_start_matches("esp32-v");
         let parts: Vec<&str> = s.split('.').collect();
 
         if parts.len() != 3 {

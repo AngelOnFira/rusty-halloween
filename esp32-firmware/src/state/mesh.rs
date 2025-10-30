@@ -16,6 +16,8 @@ pub struct MeshConfig {
     pub channel: u8,
     pub router_ssid: String,
     pub router_password: String,
+    pub router_bssid: Option<[u8; 6]>,
+    pub allow_router_switch: bool,
     pub max_connections: u8,
 }
 
@@ -51,13 +53,36 @@ impl<O> WifiMeshState<StaAp, MeshInactive, NotScanning, O> {
             let mut router_password = [0u8; 64];
             router_password[..config.router_password.len()].copy_from_slice(config.router_password.as_bytes());
 
+            // Use discovered BSSID if available for targeted connection
+            let bssid = config.router_bssid.unwrap_or([0u8; 6]);
+            if let Some(target_bssid) = config.router_bssid {
+                info!(
+                    "state::mesh: Targeting specific BSSID: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X} (fallback: {})",
+                    target_bssid[0], target_bssid[1], target_bssid[2],
+                    target_bssid[3], target_bssid[4], target_bssid[5],
+                    if config.allow_router_switch { "enabled" } else { "disabled" }
+                );
+            } else {
+                info!("state::mesh: No specific BSSID targeting (will connect to any AP with matching SSID)");
+            }
+
+            // Prepare router for the mesh root to connect to
             let router = sys::mesh_router_t {
                 ssid: router_ssid,
                 ssid_len: config.router_ssid.len() as u8,
-                bssid: [0u8; 6],
+                bssid,
                 password: router_password,
-                allow_router_switch: false,
+                allow_router_switch: config.allow_router_switch,
             };
+
+            // Debug print all of the router configuration
+            info!("state::mesh: Router configuration: {:?}", router);
+            info!("state::mesh: Router SSID: {:?}", config.router_ssid);
+            info!("state::mesh: Router BSSID: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                bssid[0], bssid[1], bssid[2], bssid[3], bssid[4], bssid[5]);
+            info!("state::mesh: Router password: {:?}", config.router_password);
+            info!("state::mesh: Router allow router switch: {:?}", config.allow_router_switch);
+            info!("state::mesh: Router max connections: {:?}", config.max_connections);
 
             // Prepare mesh AP configuration
             let mesh_ap = sys::mesh_ap_cfg_t {
@@ -89,8 +114,8 @@ impl<O> WifiMeshState<StaAp, MeshInactive, NotScanning, O> {
             sys::esp!(sys::esp_mesh_set_self_organized(true, false))?;
             info!("state::mesh: Mesh self-organized mode enabled");
 
-            sys::esp!(sys::esp_mesh_connect())?;
-            info!("state::mesh: Mesh connected");
+            // sys::esp!(sys::esp_mesh_connect())?;
+            // info!("state::mesh: Mesh connected");
         }
 
         // Update runtime state and global state
