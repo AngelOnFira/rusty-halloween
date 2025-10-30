@@ -1,7 +1,7 @@
 use axum::{
     body::Body,
     extract::{Path, Query, State},
-    http::{header, StatusCode},
+    http::{header, HeaderMap, StatusCode},
     response::Response,
     routing::{get, post},
     Json, Router,
@@ -392,10 +392,11 @@ struct DownloadQuery {
     asset: String,
 }
 
-/// Download firmware binary by version (proxies from GitHub to avoid redirects)
+/// Download firmware binary by version (proxies from GitHub with Range request support)
 async fn download_firmware(
     Path(version): Path<String>,
     Query(query): Query<DownloadQuery>,
+    headers: HeaderMap,
 ) -> Result<Response, StatusCode> {
     let owner = std::env::var("GITHUB_REPO_OWNER")
         .unwrap_or_else(|_| "your-username".to_string());
@@ -446,10 +447,22 @@ async fn download_firmware(
 
     info!("📦 Proxying download for: {} ({} bytes)", asset.name, asset.size);
 
-    // Stream the binary from GitHub
-    let download_response = client
+    // Build request to GitHub, forwarding Range header if present
+    let mut github_request = client
         .get(&asset.browser_download_url)
-        .header("User-Agent", "show-server")
+        .header("User-Agent", "show-server");
+
+    // Forward Range header to GitHub for chunked downloads
+    if let Some(range) = headers.get(header::RANGE) {
+        info!("📍 Range request: {:?}", range);
+        // Convert axum header value to string for reqwest
+        if let Ok(range_str) = range.to_str() {
+            github_request = github_request.header("Range", range_str);
+        }
+    }
+
+    // Stream the binary from GitHub
+    let download_response = github_request
         .send()
         .await
         .map_err(|e| {
@@ -457,27 +470,56 @@ async fn download_firmware(
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
-    if !download_response.status().is_success() {
-        error!("Download failed with status: {}", download_response.status());
+    let github_status = download_response.status();
+
+    // Accept both 200 (full content) and 206 (partial content)
+    if !github_status.is_success() && github_status.as_u16() != 206 {
+        error!("Download failed with status: {}", github_status);
         return Err(StatusCode::BAD_GATEWAY);
+    }
+
+    // Extract headers before consuming the response
+    let content_length = download_response.headers()
+        .get("content-length")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string());
+
+    let content_range = download_response.headers()
+        .get("content-range")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string());
+
+    if let Some(ref cr) = content_range {
+        info!("📍 Content-Range: {}", cr);
     }
 
     // Stream the response body
     let stream = download_response.bytes_stream();
     let body = Body::from_stream(stream);
 
-    let response = Response::builder()
-        .status(StatusCode::OK)
+    // Build response, forwarding status code and headers from GitHub
+    let mut response_builder = Response::builder()
+        .status(github_status.as_u16())  // Use GitHub's status (200 or 206)
         .header(header::CONTENT_TYPE, "application/octet-stream")
         .header(
             header::CONTENT_DISPOSITION,
             format!("attachment; filename=\"{}\"", asset.name),
         )
-        .header(header::CONTENT_LENGTH, asset.size.to_string())
-        .body(body)
-        .unwrap();
+        .header(header::ACCEPT_RANGES, "bytes");  // Advertise Range support
 
-    info!("✅ Streaming firmware to device");
+    // Forward Content-Length from GitHub (will be chunk size if Range request)
+    if let Some(cl) = content_length {
+        response_builder = response_builder.header(header::CONTENT_LENGTH, cl);
+    }
+
+    // Forward Content-Range from GitHub if present (for 206 responses)
+    if let Some(cr) = content_range {
+        response_builder = response_builder.header(header::CONTENT_RANGE, cr);
+    }
+
+    let response = response_builder.body(body).unwrap();
+
+    info!("✅ Streaming firmware to device (status: {})", github_status);
 
     Ok(response)
 }

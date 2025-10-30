@@ -570,19 +570,23 @@ impl OtaManager {
         }
     }
 
-    /// Download firmware from GitHub and write directly to OTA partition (root node only)
-    /// This streams the download directly to flash to avoid exhausting RAM
+    /// Download firmware from server and write directly to OTA partition (root node only)
+    /// Uses chunked downloads with HTTP Range requests for reliability
     pub fn download_firmware(&mut self, url: &str, expected_size: u32) -> Result<()> {
         // Log available heap before TLS operations
         let free_heap = unsafe { esp_idf_sys::esp_get_free_heap_size() };
         info!("state::ota: Free heap before firmware download: {} bytes ({} KB)",
               free_heap, free_heap / 1024);
 
-        info!("state::ota: Starting firmware download from: {}", url);
-        info!("state::ota: Initializing OTA partition for streaming write...");
+        info!("state::ota: Starting chunked firmware download from: {}", url);
+        info!("state::ota: Total size: {} KB, using 50KB chunks with retry", expected_size / 1024);
+
+        // Reset watchdog before long erase operation
+        unsafe {
+            sys::esp_task_wdt_reset();
+        }
 
         // Initiate OTA update - erases sectors incrementally as we write
-        // Safety: esp_ota points to a leaked Box that lives for 'static
         let mut update = unsafe { (*self.esp_ota).initiate_update() }
             .context("Failed to initiate OTA update")?;
 
@@ -591,90 +595,157 @@ impl OtaManager {
             total: expected_size,
         };
 
-        use embedded_svc::http::client::Client;
-        use esp_idf_svc::http::client::{Configuration, EspHttpConnection};
+        // Download in 50KB chunks with retry
+        const CHUNK_SIZE: u32 = 50 * 1024; // 50KB chunks (conservative for TLS stability)
+        const MAX_RETRIES: u32 = 3;
 
-        let connection = EspHttpConnection::new(&Configuration {
-            buffer_size: Some(4096),
-            buffer_size_tx: Some(512), // Reduced - no more long GitHub redirect URLs!
-            crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
-            ..Default::default()
-        })?;
+        let mut offset = 0u32;
+        let mut total_downloaded = 0u32;
 
-        let mut client = Client::wrap(connection);
+        while offset < expected_size {
+            let chunk_end = core::cmp::min(offset + CHUNK_SIZE, expected_size);
+            let chunk_size = chunk_end - offset;
 
-        // Make HTTP GET request
-        let request = client
-            .get(url)
-            .context("Failed to create GET request")?;
+            // Try downloading this chunk with retries
+            let mut retry_count = 0;
+            loop {
+                match self.download_chunk(url, offset, chunk_end - 1, &mut update) {
+                    Ok(bytes_written) => {
+                        offset += bytes_written;
+                        total_downloaded += bytes_written;
 
-        // Submit request and get response
-        let mut response = request.submit().context("Failed to submit request")?;
+                        // Update progress
+                        *self.state.lock().unwrap() = OtaState::Downloading {
+                            progress: total_downloaded,
+                            total: expected_size,
+                        };
 
-        let status = response.status();
-        info!("state::ota: HTTP Response status: {}", status);
-
-        if status != 200 {
-            anyhow::bail!("HTTP request failed with status: {}", status);
-        }
-
-        // Read response body and write directly to OTA partition
-        // Note: ESP-IDF's esp_ota_write() handles internal buffering for DMA-safe
-        // flash writes, so we can use a regular stack/heap buffer for HTTP reads
-        let mut buffer = [0u8; 4096];
-        let mut total_read = 0u32;
-
-        loop {
-            match response.read(&mut buffer) {
-                Ok(0) => break, // EOF
-                Ok(n) => {
-                    // Write chunk directly to OTA partition
-                    update
-                        .write(&buffer[..n])
-                        .map_err(|e| anyhow::anyhow!("Failed to write to OTA partition: {:?}", e))?;
-
-                    total_read += n as u32;
-
-                    // Update progress
-                    *self.state.lock().unwrap() = OtaState::Downloading {
-                        progress: total_read,
-                        total: expected_size,
-                    };
-
-                    // Log progress every 100KB
-                    if total_read % (100 * 1024) < 4096 {
                         info!(
-                            "state::ota: Downloaded: {} KB / {} KB ({:.1}%)",
-                            total_read / 1024,
+                            "state::ota: Progress: {} KB / {} KB ({:.1}%)",
+                            total_downloaded / 1024,
                             expected_size / 1024,
-                            (total_read as f32 / expected_size as f32) * 100.0
+                            (total_downloaded as f32 / expected_size as f32) * 100.0
                         );
+                        break; // Chunk succeeded, move to next
                     }
-                }
-                Err(e) => {
-                    anyhow::bail!("Failed to read response: {:?}", e);
+                    Err(e) => {
+                        retry_count += 1;
+                        if retry_count >= MAX_RETRIES {
+                            anyhow::bail!("Failed to download chunk after {} retries: {:?}", MAX_RETRIES, e);
+                        }
+                        warn!(
+                            "state::ota: Chunk download failed (retry {}/{}): {:?}",
+                            retry_count, MAX_RETRIES, e
+                        );
+                        // Wait a bit before retry
+                        std::thread::sleep(std::time::Duration::from_millis(500));
+                    }
                 }
             }
         }
 
         info!(
             "state::ota: Firmware download complete: {} bytes written to OTA partition",
-            total_read
+            total_downloaded
         );
 
-        if total_read != expected_size {
+        if total_downloaded != expected_size {
             warn!(
                 "state::ota: Downloaded size ({}) doesn't match expected size ({})",
-                total_read,
+                total_downloaded,
                 expected_size
             );
         }
 
         // Store the OTA handle and firmware metadata for later use
         self.ota_handle = OtaHandle::Updating(update);
-        self.firmware_size = total_read;
+        self.firmware_size = total_downloaded;
 
         Ok(())
+    }
+
+    /// Download a single chunk using HTTP Range header
+    fn download_chunk(
+        &mut self,
+        url: &str,
+        start: u32,
+        end: u32,
+        update: &mut esp_idf_svc::ota::EspOtaUpdate,
+    ) -> Result<u32> {
+        use embedded_svc::http::client::Client;
+        use esp_idf_svc::http::client::{Configuration, EspHttpConnection};
+
+        debug!(
+            "state::ota: Downloading chunk: bytes {}-{} ({} KB)",
+            start,
+            end,
+            (end - start + 1) / 1024
+        );
+
+        let connection = EspHttpConnection::new(&Configuration {
+            buffer_size: Some(4096),
+            buffer_size_tx: Some(512),
+            crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
+            timeout: Some(std::time::Duration::from_secs(30)),
+            ..Default::default()
+        })?;
+
+        let mut client = Client::wrap(connection);
+
+        // Create HTTP GET request with Range header
+        let range_header = format!("bytes={}-{}", start, end);
+        let headers = [("Range", range_header.as_str())];
+
+        let request = client
+            .request(embedded_svc::http::Method::Get, url, &headers)
+            .context("Failed to create GET request with Range header")?;
+
+        // Submit request and get response
+        let mut response = request.submit().context("Failed to submit request")?;
+
+        let status = response.status();
+
+        // Accept 200 (full response) or 206 (partial content)
+        if status != 200 && status != 206 {
+            anyhow::bail!("HTTP request failed with status: {}", status);
+        }
+
+        // Read response body and write to OTA partition
+        let mut buffer = [0u8; 4096];
+        let mut bytes_written = 0u32;
+        let expected_chunk_size = end - start + 1;
+
+        loop {
+            match response.read(&mut buffer) {
+                Ok(0) => break, // EOF
+                Ok(n) => {
+                    // Write to OTA partition
+                    update
+                        .write(&buffer[..n])
+                        .map_err(|e| anyhow::anyhow!("Failed to write to OTA partition: {:?}", e))?;
+
+                    bytes_written += n as u32;
+
+                    // Safety check: don't write more than expected
+                    if bytes_written > expected_chunk_size {
+                        anyhow::bail!("Received more data than expected for chunk");
+                    }
+                }
+                Err(e) => {
+                    anyhow::bail!("Failed to read chunk response: {:?}", e);
+                }
+            }
+        }
+
+        if bytes_written != expected_chunk_size {
+            anyhow::bail!(
+                "Chunk incomplete: got {} bytes, expected {}",
+                bytes_written,
+                expected_chunk_size
+            );
+        }
+
+        Ok(bytes_written)
     }
 
     /// Set up firmware metadata for chunk distribution (root node only)

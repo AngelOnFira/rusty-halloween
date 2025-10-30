@@ -7,17 +7,20 @@ CONFIG_ESP_MAIN_TASK_STACK_SIZE=8000
 
 # Enable minimal Mozilla CA certificate bundle for HTTPS connections
 # Uses common certificates only (~15-20KB vs 50-70KB for full bundle)
-# Includes GitHub's DigiCert root CA
+# Includes DigiCert root CA (used by Cloudflare and GitHub)
+# TODO: Switch to custom bundle (certs/bundle.pem) to save ~15KB flash
 CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y
 CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_CMN=y
 
-# TLS buffer sizes
-# Default: 16KB in + 16KB out = 32KB total
-# Current: 8KB in + 4KB out = 12KB total
-# Note: With PSRAM enabled, we have plenty of heap. These reduced sizes
-# are sufficient for GitHub API calls and OTA downloads.
-CONFIG_MBEDTLS_SSL_IN_CONTENT_LEN=8192
-CONFIG_MBEDTLS_SSL_OUT_CONTENT_LEN=4096
+# TLS buffer sizes - CRITICAL: Must fit in internal RAM (not PSRAM)
+# mbedtls crypto operations fail with PSRAM buffers due to DMA/cache issues
+# Optimized sizes for stability:
+# - 6KB RX: Handles larger TLS records (some can be >4KB)
+# - 2KB TX: Sufficient for HTTP GET requests
+# Total: 8KB (down from 12KB, balanced between stability and RAM usage)
+# These will be forced to internal RAM via SPIRAM_MALLOC_ALWAYSINTERNAL=8192 below
+CONFIG_MBEDTLS_SSL_IN_CONTENT_LEN=6144
+CONFIG_MBEDTLS_SSL_OUT_CONTENT_LEN=2048
 
 # OTA Configuration
 CONFIG_PARTITION_TABLE_CUSTOM=y
@@ -58,14 +61,15 @@ CONFIG_SPIRAM_USE_MALLOC=y
 
 # Allow malloc() to use PSRAM when internal memory is full
 CONFIG_SPIRAM_MEMTEST=y
-# Force allocations <= 16KB to internal RAM
+# Force allocations <= 8KB to internal RAM
 # This ensures WiFi control structures AND TLS buffers stay in internal RAM
 # - WiFi DMA buffers: must be in internal RAM
-# - TLS buffers (8KB RX + 4KB TX = 12KB): mbedtls requires internal RAM for crypto operations
-CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=16384
-# Reserve 120KB of internal RAM for WiFi/Mesh/TLS/DMA operations
-# WiFi needs ~62KB + Mesh needs ~43KB + TLS needs ~12KB = ~117KB total
-CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=122880
+# - TLS buffers (4KB RX + 2KB TX = 6KB): must be in internal RAM due to crypto DMA
+# Setting to 8KB gives headroom for TLS working buffers
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=8192
+# Reserve 140KB of internal RAM for WiFi/Mesh/TLS/DMA operations
+# WiFi needs ~62KB + Mesh needs ~43KB + TLS needs ~6KB + safety margin = ~140KB
+CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=143360
 
 # WiFi Buffer Configuration
 # CRITICAL: WiFi buffers are DMA buffers and MUST be in internal RAM

@@ -76,11 +76,11 @@ pub struct GitHubAsset {
 }
 
 impl GitHubRelease {
-    /// Get the firmware asset from this release
+    /// Get the firmware asset for OTA updates (app-only, not full flash image)
     pub fn get_firmware_asset(&self) -> Option<&GitHubAsset> {
         self.assets
             .iter()
-            .find(|asset| asset.name.ends_with(".bin"))
+            .find(|asset| asset.name.ends_with(".bin") && !asset.name.contains("-full"))
     }
 
     /// Parse the version from the version field

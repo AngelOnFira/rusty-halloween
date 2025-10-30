@@ -1,5 +1,5 @@
 // Include the entire .env file as a string at compile time
-const ENV_FILE: &str = include_str!("../.env"); 
+const ENV_FILE: &str = include_str!("../.env");
 
 /// Simple function to extract a value from the .env content
 pub fn get_embedded_env_value(key: &str) -> String {

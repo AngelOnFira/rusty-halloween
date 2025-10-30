@@ -49,7 +49,7 @@ fn main() -> Result<()> {
     );
 
     info!("╔══════════════════════════════════════════════════════╗");
-    info!("║  ESP32 Mesh Firmware                                 ║");
+    info!("║  ESP32 Mesh Firmware  odllld                               ║");
     info!(
         "║  Version: {}                              ║",
         FIRMWARE_VERSION
