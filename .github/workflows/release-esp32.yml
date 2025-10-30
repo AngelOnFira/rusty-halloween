@@ -113,9 +113,6 @@ jobs:
       run: |
         espflash save-image \
           --chip esp32s2 \
-          --merge \
-          --target-app-partition ota_0 \
-          --skip-padding \
           target/xtensa-esp32s2-espidf/release/esp32-mesh-firmware \
           esp32-mesh-firmware-${{ steps.version.outputs.VERSION }}.bin
 
