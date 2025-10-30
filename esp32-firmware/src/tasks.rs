@@ -191,7 +191,7 @@ pub fn mesh_tx_task(node: Arc<MeshNode>, state: Arc<Mutex<ApplicationState>>) {
                                         // Trigger OTA update
                                         info!("tasks: Starting OTA update to v{}...", version);
                                         if let Err(e) = ota_manager.trigger_ota_update(
-                                            &asset.browser_download_url,
+                                            &asset.download_url,  // Use simplified download URL from show server
                                             version.to_string(),
                                             asset.size as u32,
                                         ) {

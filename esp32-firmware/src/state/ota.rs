@@ -4,7 +4,7 @@ use super::{types::*, GLOBAL_STATE};
 use anyhow::{Context, Result};
 use crc::{Crc, CRC_32_ISO_HDLC};
 use esp_idf_svc::sys as sys;
-use esp_ota::OtaUpdate;
+use esp_idf_svc::ota::{EspOta, EspOtaUpdate};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
@@ -414,13 +414,16 @@ enum OtaHandle {
     /// No OTA in progress
     None,
     /// Currently receiving OTA update
-    Updating(OtaUpdate),
+    Updating(EspOtaUpdate<'static>),
 }
 
 /// OTA Manager - handles entire OTA process
 pub struct OtaManager {
     /// Current OTA state
     state: Arc<Mutex<OtaState>>,
+    /// EspOta instance for managing OTA operations (raw pointer to leaked Box)
+    /// Safety: This points to a leaked Box that lives for 'static, only accessed through &mut
+    esp_ota: *mut EspOta,
     /// OTA subsystem handle (transitions between Ready and Updating states)
     ota_handle: OtaHandle,
     /// Firmware chunks (for root node distribution)
@@ -443,11 +446,22 @@ pub struct OtaManager {
     firmware_version: String,
 }
 
+// Safety: OtaManager can be safely sent between threads because:
+// - esp_ota points to a leaked Box that lives for 'static and is thread-safe
+// - All other fields are Send
+unsafe impl Send for OtaManager {}
+
 impl OtaManager {
     /// Create a new OTA manager
     pub fn new() -> Result<Self> {
+        let esp_ota = Box::new(EspOta::new().context("Failed to create EspOta instance")?);
+        // Leak the EspOta instance and store as raw pointer
+        // This is fine since OtaManager is a singleton that lives for the program lifetime
+        let esp_ota: *mut EspOta = Box::leak(esp_ota) as *mut EspOta;
+
         Ok(Self {
             state: Arc::new(Mutex::new(OtaState::Idle)),
+            esp_ota,
             ota_handle: OtaHandle::None,
             chunks: Vec::new(),
             node_progress: Arc::new(Mutex::new(HashMap::new())),
@@ -468,26 +482,24 @@ impl OtaManager {
 
     /// Check GitHub for updates (root node only)
     pub fn check_for_updates(&mut self) -> Result<Option<GitHubRelease>> {
-        use crate::version::{is_update_available, GITHUB_REPO_NAME, GITHUB_REPO_OWNER};
+        use crate::version::{is_update_available, SHOW_SERVER_URL};
         use embedded_svc::http::client::Client;
         use esp_idf_svc::http::client::{Configuration, EspHttpConnection};
 
         // Log available heap before TLS operations
         let free_heap = unsafe { esp_idf_sys::esp_get_free_heap_size() };
-        info!("state::ota: Free heap before GitHub API call: {} bytes ({} KB)",
+        info!("state::ota: Free heap before API call: {} bytes ({} KB)",
               free_heap, free_heap / 1024);
 
-        info!("state::ota: Checking GitHub for firmware updates...");
+        info!("state::ota: Checking show server for firmware updates...");
 
-        let url = format!(
-            "https://api.github.com/repos/{}/{}/releases/latest",
-            GITHUB_REPO_OWNER, GITHUB_REPO_NAME
-        );
+        let url = format!("{}/firmware/latest", SHOW_SERVER_URL);
 
-        info!("state::ota: Querying GitHub API: {}", url);
+        info!("state::ota: Querying show server: {}", url);
 
         let connection = EspHttpConnection::new(&Configuration {
             buffer_size: Some(4096),
+            buffer_size_tx: Some(512),  // Reduced from 4096 - no more long GitHub redirect URLs!
             timeout: Some(std::time::Duration::from_secs(30)),
             crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
             ..Default::default()
@@ -535,8 +547,8 @@ impl OtaManager {
             .context("Failed to parse GitHub release JSON")?;
 
         info!(
-            "state::ota: Latest release: {} (tag: {})",
-            release.name, release.tag_name
+            "state::ota: Latest release: {} (version: {})",
+            release.name, release.version
         );
 
         // Parse version from tag and check if update is available
@@ -569,9 +581,10 @@ impl OtaManager {
         info!("state::ota: Starting firmware download from: {}", url);
         info!("state::ota: Initializing OTA partition for streaming write...");
 
-        // Begin OTA update - this erases the next OTA partition
-        let mut update = OtaUpdate::begin()
-            .map_err(|e| anyhow::anyhow!("Failed to begin OTA update: {:?}", e))?;
+        // Initiate OTA update - erases sectors incrementally as we write
+        // Safety: esp_ota points to a leaked Box that lives for 'static
+        let mut update = unsafe { (*self.esp_ota).initiate_update() }
+            .context("Failed to initiate OTA update")?;
 
         *self.state.lock().unwrap() = OtaState::Downloading {
             progress: 0,
@@ -583,6 +596,7 @@ impl OtaManager {
 
         let connection = EspHttpConnection::new(&Configuration {
             buffer_size: Some(4096),
+            buffer_size_tx: Some(512), // Reduced - no more long GitHub redirect URLs!
             crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
             ..Default::default()
         })?;
@@ -605,6 +619,8 @@ impl OtaManager {
         }
 
         // Read response body and write directly to OTA partition
+        // Note: ESP-IDF's esp_ota_write() handles internal buffering for DMA-safe
+        // flash writes, so we can use a regular stack/heap buffer for HTTP reads
         let mut buffer = [0u8; 4096];
         let mut total_read = 0u32;
 
@@ -774,9 +790,10 @@ impl OtaManager {
         self.next_expected_sequence = 0;
         self.received_chunks_buffer.lock().unwrap().clear();
 
-        // Begin OTA update - this erases the next OTA partition
-        let update = OtaUpdate::begin()
-            .map_err(|e| anyhow::anyhow!("Failed to begin OTA update: {:?}", e))?;
+        // Initiate OTA update - erases sectors incrementally as we write
+        // Safety: esp_ota points to a leaked Box that lives for 'static
+        let update = unsafe { (*self.esp_ota).initiate_update() }
+            .context("Failed to initiate OTA update")?;
 
         self.ota_handle = OtaHandle::Updating(update);
 
@@ -874,23 +891,12 @@ impl OtaManager {
         // Take ownership of the Updating variant and transition to None
         let ota_handle = std::mem::replace(&mut self.ota_handle, OtaHandle::None);
         if let OtaHandle::Updating(update) = ota_handle {
-            // Finalize the update (validates image)
-            let mut completed = update
-                .finalize()
-                .map_err(|e| anyhow::anyhow!("Failed to finalize OTA update: {:?}", e))?;
-
-            // Set as boot partition
-            completed
-                .set_as_boot_partition()
-                .map_err(|e| anyhow::anyhow!("Failed to set boot partition: {:?}", e))?;
-
-            // Mark app as valid immediately after setting boot partition
-            // This confirms the new firmware is ready and prevents rollback
-            // Only called here after OTA completes, NOT on every boot
-            esp_ota::mark_app_valid();
+            // Complete the update (validates image and sets as boot partition)
+            update
+                .complete()
+                .context("Failed to complete OTA update")?;
 
             info!("state::ota: OTA update finalized successfully - will boot into new firmware on restart");
-            info!("state::ota: New firmware marked as valid - rollback cancelled");
             Ok(())
         } else {
             anyhow::bail!("No active OTA update")
@@ -947,17 +953,28 @@ impl OtaManager {
 
     /// Mark firmware as valid after successful boot
     /// This should be called on first boot after an OTA update to prevent rollback
-    pub fn mark_valid(&self) -> Result<()> {
+    pub fn mark_valid(&mut self) -> Result<()> {
         info!("state::ota: Marking current firmware as valid...");
-        esp_ota::mark_app_valid();
+        // Safety: esp_ota points to a leaked Box that lives for 'static
+        unsafe { (*self.esp_ota).mark_running_slot_valid() }
+            .context("Failed to mark running slot as valid")?;
         info!("state::ota: Firmware marked as valid - rollback cancelled");
         Ok(())
     }
 
     /// Get current running firmware version
     pub fn get_running_version(&self) -> Result<String> {
-        use crate::version::FIRMWARE_VERSION;
-        Ok(FIRMWARE_VERSION.to_string())
+        // Safety: esp_ota points to a leaked Box that lives for 'static
+        let running_slot = unsafe { (*self.esp_ota).get_running_slot() }
+            .context("Failed to get running slot")?;
+
+        // If firmware info is available, use it. Otherwise fall back to compile-time version.
+        if let Some(firmware_info) = running_slot.firmware {
+            Ok(firmware_info.version.to_string())
+        } else {
+            use crate::version::FIRMWARE_VERSION;
+            Ok(FIRMWARE_VERSION.to_string())
+        }
     }
 
     /// Trigger complete OTA update workflow (root node only)
@@ -968,6 +985,11 @@ impl OtaManager {
 
         // Download firmware directly to OTA partition (streaming)
         self.download_firmware(firmware_url, firmware_size)?;
+
+        // Finalize the OTA update for the root node
+        // This validates the image and marks it as the boot partition
+        info!("state::ota: Download complete, finalizing OTA update for root node...");
+        self.finalize_ota()?;
 
         // Prepare distribution metadata (no chunk loading)
         self.prepare_distribution(version)?;

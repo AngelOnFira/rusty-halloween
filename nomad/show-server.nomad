@@ -8,7 +8,7 @@ job "rusty-halloween-show-server" {
     # Network configuration with static port
     network {
       port "server" {
-        static = 5830
+        static = 5838
         to = 3000
       }
     }
@@ -34,8 +34,7 @@ job "rusty-halloween-show-server" {
         GITHUB_REPO_NAME = "rusty-halloween"
 
         # Server URL for firmware download links
-        # Update this to match your Cloudflare tunnel URL
-        SERVER_URL = "https://show-server.rustwood.org"
+        SERVER_URL = "https://rusty-halloween-show-server.rustwood.org"
       }
 
       resources {

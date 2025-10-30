@@ -227,9 +227,6 @@ pub struct OtaRuntimeData {
     pub firmware_url: Option<String>,
     /// Firmware chunks (root node only - for distribution)
     pub chunks: Vec<super::ota::FirmwareChunk>,
-    /// OTA update handle (child node only - for reception)
-    /// Note: Stored as raw pointer because OtaUpdate is not Send/Sync
-    pub ota_handle: Option<*mut esp_ota::OtaUpdate>,
     /// Received chunks buffer (child node only - out-of-order chunks)
     pub received_chunks_buffer: HashMap<u32, super::ota::FirmwareChunk>,
     /// Next expected chunk sequence (child node only)
@@ -247,7 +244,6 @@ impl OtaRuntimeData {
             total_size: 0,
             firmware_url: None,
             chunks: Vec::new(),
-            ota_handle: None,
             received_chunks_buffer: HashMap::new(),
             next_expected_sequence: 0,
             total_chunks: 0,
@@ -256,9 +252,6 @@ impl OtaRuntimeData {
     }
 }
 
-// Safety: OtaUpdate pointer is only used through esp_ota APIs which are thread-safe
-unsafe impl Send for OtaRuntimeData {}
-unsafe impl Sync for OtaRuntimeData {}
 
 // =============================================================================
 // Runtime State Enums

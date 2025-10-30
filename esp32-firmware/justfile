@@ -19,6 +19,7 @@ flash-release:
         --flash-size 4mb \
         --baud 921600 \
         --monitor \
+        --erase-parts ota_0,ota_1 \
         target/xtensa-esp32s2-espidf/release/esp32-mesh-firmware
 
 # Monitor serial output without flashing

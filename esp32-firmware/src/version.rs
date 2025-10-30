@@ -15,6 +15,9 @@ pub const BUILD_TIMESTAMP: &str = env!("BUILD_TIMESTAMP");
 pub const GITHUB_REPO_OWNER: &str = "AngelOnFira";
 pub const GITHUB_REPO_NAME: &str = "rusty-halloween";
 
+/// Show server URL for firmware distribution
+pub const SHOW_SERVER_URL: &str = "https://rusty-halloween-show-server.rustwood.org";
+
 /// Semantic version structure for comparison
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Version {
@@ -57,10 +60,10 @@ impl std::fmt::Display for Version {
     }
 }
 
-/// GitHub release metadata
+/// Firmware release metadata from show server
 #[derive(Debug, Deserialize)]
 pub struct GitHubRelease {
-    pub tag_name: String,
+    pub version: String,  // Changed from tag_name to match server API
     pub name: String,
     pub assets: Vec<GitHubAsset>,
 }
@@ -68,7 +71,7 @@ pub struct GitHubRelease {
 #[derive(Debug, Deserialize)]
 pub struct GitHubAsset {
     pub name: String,
-    pub browser_download_url: String,
+    pub download_url: String,  // Changed from browser_download_url - simplified URL from server
     pub size: u64,
 }
 
@@ -80,9 +83,9 @@ impl GitHubRelease {
             .find(|asset| asset.name.ends_with(".bin"))
     }
 
-    /// Parse the version from the tag name
+    /// Parse the version from the version field
     pub fn version(&self) -> Result<Version> {
-        Version::parse(&self.tag_name)
+        Version::parse(&self.version)
     }
 }
 

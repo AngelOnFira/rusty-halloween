@@ -58,12 +58,14 @@ CONFIG_SPIRAM_USE_MALLOC=y
 
 # Allow malloc() to use PSRAM when internal memory is full
 CONFIG_SPIRAM_MEMTEST=y
-# Force small allocations (<= 2048 bytes) to internal RAM
-# This ensures WiFi control structures stay in internal RAM
-CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=2048
-# Reserve 96KB of internal RAM for WiFi/Mesh/DMA operations
-# WiFi needs ~62KB + Mesh needs ~43KB = ~105KB total
-CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=98304
+# Force allocations <= 16KB to internal RAM
+# This ensures WiFi control structures AND TLS buffers stay in internal RAM
+# - WiFi DMA buffers: must be in internal RAM
+# - TLS buffers (8KB RX + 4KB TX = 12KB): mbedtls requires internal RAM for crypto operations
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=16384
+# Reserve 120KB of internal RAM for WiFi/Mesh/TLS/DMA operations
+# WiFi needs ~62KB + Mesh needs ~43KB + TLS needs ~12KB = ~117KB total
+CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=122880
 
 # WiFi Buffer Configuration
 # CRITICAL: WiFi buffers are DMA buffers and MUST be in internal RAM
