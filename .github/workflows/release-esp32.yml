@@ -63,7 +63,7 @@ jobs:
     - name: Install espflash
       run: cargo binstall espflash -y
 
-    - name: Create firmware binary
+    - name: Create full flash image (for initial programming via USB)
       working-directory: ./esp32-firmware
       run: |
         espflash save-image \
@@ -72,12 +72,35 @@ jobs:
           --partition-table partitions.csv \
           --skip-padding \
           target/xtensa-esp32s2-espidf/release/esp32-mesh-firmware \
+          esp32-mesh-firmware-${{ steps.version.outputs.VERSION }}-full.bin
+
+    - name: Create app-only binary (for OTA updates over WiFi)
+      working-directory: ./esp32-firmware
+      run: |
+        espflash save-image \
+          --chip esp32s2 \
+          --partition-table partitions.csv \
+          --skip-padding \
+          target/xtensa-esp32s2-espidf/release/esp32-mesh-firmware \
           esp32-mesh-firmware-${{ steps.version.outputs.VERSION }}.bin
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        files: esp32-firmware/esp32-mesh-firmware-${{ steps.version.outputs.VERSION }}.bin
+        files: |
+          esp32-firmware/esp32-mesh-firmware-${{ steps.version.outputs.VERSION }}.bin
+          esp32-firmware/esp32-mesh-firmware-${{ steps.version.outputs.VERSION }}-full.bin
         generate_release_notes: true
         draft: false
         prerelease: false
+        body: |
+          ## ESP32 Firmware Release
+
+          **For OTA Updates (over WiFi):**
+          - Use: `esp32-mesh-firmware-${{ steps.version.outputs.VERSION }}.bin`
+          - This is the app-only binary for OTA updates
+
+          **For Initial Flash (via USB):**
+          - Use: `esp32-mesh-firmware-${{ steps.version.outputs.VERSION }}-full.bin`
+          - This includes bootloader, partition table, and app
+          - Command: `espflash flash --monitor esp32-mesh-firmware-${{ steps.version.outputs.VERSION }}-full.bin`
