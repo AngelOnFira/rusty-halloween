@@ -33,7 +33,6 @@ const NUM_LEDS: usize = 35;
 const DEVICE_ID: &str = "esp32-light-1"; // Unique device identifier
 const POLL_INTERVAL_MS: u64 = 1000; // Poll server every 1 second
 const NTP_SYNC_INTERVAL_SECS: u64 = 3600; // Re-sync NTP every hour
-const SHOW_START_TIME_MS: u64 = 0; // Set this to the Unix timestamp when the show starts
 
 // Static cells for sharing state between tasks
 static STACK: StaticCell<embassy_net::Stack<'static>> = StaticCell::new();
@@ -112,8 +111,8 @@ async fn main(spawner: Spawner) -> ! {
 
     info!("System initialized! Starting show controller...");
 
-    // Create HTTP client for fetching instructions
-    let http_client = ShowClient::new(DEVICE_ID);
+    // Create HTTP client for fetching instructions (initializes TCP state on first call)
+    let http_client = ShowClient::new_with_init(DEVICE_ID);
 
     // Main loop: Poll for instructions and update LEDs
     let mut last_poll_ms = 0u64;
@@ -121,8 +120,16 @@ async fn main(spawner: Spawner) -> ! {
     let mut ntp_sync_counter = 0u32;
     let ntp_sync_interval_loops = (NTP_SYNC_INTERVAL_SECS * 1000 / 10) as u32; // Convert to 10ms loops
 
+    // Show start time received from server (0 means no show started)
+    let mut show_start_time_ms = 0u64;
+
     loop {
-        let current_show_time = time_sync.show_time_ms(SHOW_START_TIME_MS);
+        // Calculate current show time (0 if show hasn't started)
+        let current_show_time = if show_start_time_ms > 0 {
+            time_sync.show_time_ms(show_start_time_ms)
+        } else {
+            0
+        };
 
         // Re-sync NTP periodically (every NTP_SYNC_INTERVAL_SECS)
         ntp_sync_counter += 1;
@@ -151,13 +158,23 @@ async fn main(spawner: Spawner) -> ! {
             poll_counter = 0;
 
             match http_client.fetch_instructions(stack, last_poll_ms).await {
-                Ok(instructions) => {
-                    if !instructions.is_empty() {
-                        info!("Received {} new instructions", instructions.len());
-                        if let Some(last_instr) = instructions.last() {
+                Ok(response) => {
+                    // Update show start time from server (authoritative source)
+                    if response.show_start_time > 0 {
+                        if show_start_time_ms != response.show_start_time {
+                            info!("Show start time updated: {}ms", response.show_start_time);
+                            show_start_time_ms = response.show_start_time;
+                        }
+                    }
+
+                    if !response.instructions.is_empty() {
+                        info!("Received {} new instructions", response.instructions.len());
+                        if let Some(last_instr) = response.instructions.last() {
                             last_poll_ms = last_instr.timestamp;
                         }
-                        led_executor.add_instructions(instructions);
+                        led_executor.add_instructions(response.instructions);
+                        info!("Queue now has {} instructions, current show time: {}ms",
+                              led_executor.queue_len(), current_show_time);
                     }
                 }
                 Err(e) => {
@@ -168,6 +185,7 @@ async fn main(spawner: Spawner) -> ! {
 
         // Execute any due instructions and update LEDs
         if let Some(led_data) = led_executor.execute_due_instructions(current_show_time) {
+            defmt::info!("Updating LEDs with new color");
             led.write(brightness(gamma(led_data.iter().cloned()), 255))
                 .ok();
         }

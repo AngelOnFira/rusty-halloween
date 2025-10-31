@@ -6,7 +6,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use common::{DeviceCommand, DeviceInstructions, SerializableShow, TimedInstruction};
+use common::{SerializableShow};
 use serde::{Deserialize, Serialize};
 use std::{
     sync::Arc,
@@ -15,6 +15,29 @@ use std::{
 use tokio::sync::RwLock;
 use tower_http::cors::CorsLayer;
 use tracing::{info, warn, debug, error};
+
+// Simple ESP32-specific instruction format
+#[derive(Debug, Serialize)]
+struct Esp32Instruction {
+    timestamp: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    r: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    g: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    b: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    off: Option<bool>,
+}
+
+#[derive(Debug, Serialize)]
+struct Esp32Response {
+    device_id: String,
+    /// Server's authoritative show start time (Unix timestamp in ms)
+    /// ESP32 should use this for timing calculations
+    show_start_time: u64,
+    instructions: Vec<Esp32Instruction>,
+}
 
 #[derive(Clone)]
 struct AppState {
@@ -89,20 +112,42 @@ async fn upload_show(
     StatusCode::OK
 }
 
+#[derive(Deserialize)]
+struct StartQuery {
+    /// Optional delay in milliseconds before show actually starts
+    /// Use this to account for network latency + audio startup time
+    #[serde(default)]
+    delay_ms: u64,
+}
+
 /// Mark the show as started (called when audio playback begins)
-async fn start_show(State(state): State<AppState>) -> StatusCode {
+async fn start_show(
+    State(state): State<AppState>,
+    Query(query): Query<StartQuery>,
+) -> StatusCode {
     let mut show_lock = state.current_show.write().await;
 
     if let Some(show_state) = show_lock.as_mut() {
-        let start_time = SystemTime::now()
+        let current_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_millis() as u64;
 
+        // Apply delay to account for network latency + audio startup
+        let start_time = current_time + query.delay_ms;
+
         show_state.start_time = Some(start_time);
         show_state.is_playing = true;
 
-        info!("🎵 Show '{}' started playing NOW!", show_state.show.name);
+        if query.delay_ms > 0 {
+            info!(
+                "🎵 Show '{}' will start in {}ms (at Unix timestamp {})",
+                show_state.show.name, query.delay_ms, start_time
+            );
+        } else {
+            info!("🎵 Show '{}' started playing NOW!", show_state.show.name);
+        }
+
         StatusCode::OK
     } else {
         warn!("⚠️  Received start signal but no show is uploaded");
@@ -120,9 +165,21 @@ async fn device_instructions(
     State(state): State<AppState>,
     Path(device_id): Path<String>,
     Query(query): Query<InstructionsQuery>,
-) -> Result<Json<DeviceInstructions>, StatusCode> {
+) -> Result<Json<Esp32Response>, StatusCode> {
     let show_lock = state.current_show.read().await;
-    let show_state = show_lock.as_ref().ok_or(StatusCode::NOT_FOUND)?;
+
+    // If no show is loaded, return empty instructions (not an error)
+    let show_state = match show_lock.as_ref() {
+        Some(state) => state,
+        None => {
+            debug!("📡 No show loaded, returning empty instructions for device {}", device_id);
+            return Ok(Json(Esp32Response {
+                device_id,
+                show_start_time: 0, // No show = no start time
+                instructions: Vec::new(),
+            }));
+        }
+    };
 
     let from_timestamp = query.from;
     let to_timestamp = from_timestamp + 5000; // 5 seconds buffer
@@ -135,16 +192,21 @@ async fn device_instructions(
         to_timestamp,
     );
 
+    // Get show start time (0 if not started yet)
+    let show_start_time = show_state.start_time.unwrap_or(0);
+
     debug!(
-        "📡 Serving {} instructions for device {} ({}ms - {}ms)",
+        "📡 Serving {} instructions for device {} ({}ms - {}ms), show_start_time: {}",
         instructions.len(),
         device_id,
         from_timestamp,
-        to_timestamp
+        to_timestamp,
+        show_start_time
     );
 
-    Ok(Json(DeviceInstructions {
+    Ok(Json(Esp32Response {
         device_id,
+        show_start_time,
         instructions,
     }))
 }
@@ -231,67 +293,73 @@ async fn log_show_progress(state: AppState) {
 }
 
 /// Extract device-specific instructions from the show for a given time window
+/// Returns simple RGB instructions for ESP32 devices
 fn extract_device_instructions(
     show: &SerializableShow,
     device_id: &str,
     from: u64,
     to: u64,
-) -> Vec<TimedInstruction> {
+) -> Vec<Esp32Instruction> {
     let mut instructions = Vec::new();
 
-    // Parse device ID to determine device type and index
-    // Expected formats: "light-1", "laser-2", "rgb-1", etc.
-    let (device_type, device_index) = if let Some((dtype, idx)) = device_id.split_once('-') {
-        (dtype, idx.parse::<usize>().unwrap_or(1))
-    } else {
-        warn!("Invalid device ID format: {}", device_id);
+    // Handle ESP32 RGB devices (format: "esp32-light-1", "esp32-rgb-2", etc.)
+    // These devices get RGB commands aggregated from all lasers in the show
+    if device_id.starts_with("esp32-") {
+        debug!("Extracting instructions for ESP32 RGB device: {}", device_id);
+
+        // For ESP32 RGB devices, aggregate all laser colors and average them
+        for frame in &show.frames {
+            if frame.timestamp < from || frame.timestamp >= to {
+                continue;
+            }
+
+            // Collect all enabled laser colors
+            let mut r_sum = 0u32;
+            let mut g_sum = 0u32;
+            let mut b_sum = 0u32;
+            let mut count = 0u32;
+
+            for laser_opt in &frame.lasers {
+                if let Some(laser) = laser_opt {
+                    if laser.enable {
+                        r_sum += laser.hex[0] as u32;
+                        g_sum += laser.hex[1] as u32;
+                        b_sum += laser.hex[2] as u32;
+                        count += 1;
+                    }
+                }
+            }
+
+            // Create simple ESP32 instruction
+            let instruction = if count > 0 {
+                // Average the colors if any lasers are enabled
+                Esp32Instruction {
+                    timestamp: frame.timestamp,
+                    r: Some((r_sum / count) as u8),
+                    g: Some((g_sum / count) as u8),
+                    b: Some((b_sum / count) as u8),
+                    off: None,
+                }
+            } else {
+                // No lasers enabled, turn off
+                Esp32Instruction {
+                    timestamp: frame.timestamp,
+                    r: None,
+                    g: None,
+                    b: None,
+                    off: Some(true),
+                }
+            };
+
+            instructions.push(instruction);
+        }
+
         return instructions;
-    };
-
-    // Filter frames in the time window
-    for frame in &show.frames {
-        if frame.timestamp < from || frame.timestamp >= to {
-            continue;
-        }
-
-        // Extract relevant command for this device
-        let command = match device_type {
-            "light" => {
-                // Light devices (1-indexed)
-                if device_index > 0 && device_index <= frame.lights.len() {
-                    frame.lights[device_index - 1].map(|enabled| DeviceCommand::Light { enabled })
-                } else {
-                    None
-                }
-            }
-            "laser" => {
-                // Laser devices (1-indexed)
-                if device_index > 0 && device_index <= frame.lasers.len() {
-                    frame.lasers[device_index - 1].as_ref().map(|laser| {
-                        DeviceCommand::Rgb {
-                            r: laser.hex[0],
-                            g: laser.hex[1],
-                            b: laser.hex[2],
-                        }
-                    })
-                } else {
-                    None
-                }
-            }
-            _ => {
-                warn!("Unknown device type: {}", device_type);
-                None
-            }
-        };
-
-        if let Some(command) = command {
-            instructions.push(TimedInstruction {
-                timestamp: frame.timestamp,
-                command,
-            });
-        }
     }
 
+    // For non-ESP32 devices, return empty for now
+    // (This can be extended later if needed for other device types)
+    warn!("Non-ESP32 device requested: {}, returning empty instructions", device_id);
     instructions
 }
 

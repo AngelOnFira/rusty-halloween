@@ -6,7 +6,7 @@ use core::cmp::Ordering;
 
 use embassy_time::{Duration, Timer};
 use smart_leds::RGB8;
-use common::show::{DeviceCommand, TimedInstruction};
+use crate::esp32_types::Esp32Instruction;
 
 /// Maximum number of LEDs supported
 pub const MAX_LEDS: usize = 35;
@@ -15,7 +15,7 @@ pub const MAX_LEDS: usize = 35;
 #[derive(Clone, Debug)]
 struct QueuedInstruction {
     timestamp: u64,
-    command: DeviceCommand,
+    color: Option<RGB8>,  // None means this instruction doesn't change color
 }
 
 impl Eq for QueuedInstruction {}
@@ -56,20 +56,20 @@ impl LedExecutor {
     }
 
     /// Add a batch of instructions to the queue
-    pub fn add_instructions(&mut self, instructions: Vec<TimedInstruction>) {
+    pub fn add_instructions(&mut self, instructions: Vec<Esp32Instruction>) {
         for instr in instructions {
             self.instruction_queue.push(QueuedInstruction {
                 timestamp: instr.timestamp,
-                command: instr.command,
+                color: instr.to_color(),
             });
         }
     }
 
     /// Add a single instruction to the queue
-    pub fn add_instruction(&mut self, instruction: TimedInstruction) {
+    pub fn add_instruction(&mut self, instruction: Esp32Instruction) {
         self.instruction_queue.push(QueuedInstruction {
             timestamp: instruction.timestamp,
-            command: instruction.command,
+            color: instruction.to_color(),
         });
     }
 
@@ -93,8 +93,10 @@ impl LedExecutor {
         while let Some(next) = self.instruction_queue.peek() {
             if next.timestamp <= current_show_time_ms {
                 let instr = self.instruction_queue.pop().unwrap();
-                self.apply_command(&instr.command);
-                changed = true;
+                if let Some(color) = instr.color {
+                    self.current_color = color;
+                    changed = true;
+                }
             } else {
                 break; // No more due instructions
             }
@@ -104,33 +106,6 @@ impl LedExecutor {
             Some(self.generate_led_data())
         } else {
             None
-        }
-    }
-
-    /// Apply a command to update the current LED state
-    fn apply_command(&mut self, command: &DeviceCommand) {
-        match command {
-            DeviceCommand::Light { enabled } => {
-                if *enabled {
-                    // Turn on (use current color or default white)
-                    if self.current_color == RGB8::default() {
-                        self.current_color = RGB8::new(255, 255, 255);
-                    }
-                } else {
-                    // Turn off (black)
-                    self.current_color = RGB8::new(0, 0, 0);
-                }
-            }
-            DeviceCommand::Rgb { r, g, b } => {
-                // Set RGB color
-                self.current_color = RGB8::new(*r, *g, *b);
-            }
-            DeviceCommand::Custom { data } => {
-                // Custom command - could be used for special effects
-                // For now, just log it
-                #[cfg(feature = "defmt")]
-                defmt::warn!("Custom command not implemented: {} bytes", data.len());
-            }
         }
     }
 
@@ -208,17 +183,26 @@ mod tests {
         let mut executor = LedExecutor::new(10);
 
         // Add instructions out of order
-        executor.add_instruction(TimedInstruction {
+        executor.add_instruction(Esp32Instruction {
             timestamp: 1000,
-            command: DeviceCommand::Light { enabled: true },
+            r: Some(255),
+            g: Some(0),
+            b: Some(0),
+            off: None,
         });
-        executor.add_instruction(TimedInstruction {
+        executor.add_instruction(Esp32Instruction {
             timestamp: 500,
-            command: DeviceCommand::Rgb { r: 255, g: 0, b: 0 },
+            r: Some(0),
+            g: Some(255),
+            b: Some(0),
+            off: None,
         });
-        executor.add_instruction(TimedInstruction {
+        executor.add_instruction(Esp32Instruction {
             timestamp: 2000,
-            command: DeviceCommand::Light { enabled: false },
+            r: None,
+            g: None,
+            b: None,
+            off: Some(true),
         });
 
         // Should execute in timestamp order

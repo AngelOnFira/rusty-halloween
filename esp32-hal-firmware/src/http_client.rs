@@ -1,11 +1,10 @@
 extern crate alloc;
-use alloc::vec::Vec;
 
 use embassy_net::Stack;
 use embassy_net::tcp::client::{TcpClient, TcpClientState};
 use embassy_net::dns::DnsSocket;
 use embassy_time::{Duration, Timer};
-use common::show::{DeviceInstructions, TimedInstruction};
+use crate::esp32_types::Esp32Response;
 use heapless::String as HeaplessString;
 use static_cell::StaticCell;
 
@@ -22,28 +21,35 @@ const HTTP_RETRY_DELAY_MS: u64 = 1000;
 
 // Static state for TCP client (required by embassy-net)
 // Supports 2 concurrent connections with 1024-byte buffers
+// Must be initialized once before any HTTP requests are made
 static TCP_CLIENT_STATE: StaticCell<TcpClientState<2, 1024, 1024>> = StaticCell::new();
 
 pub struct ShowClient<'a> {
     device_id: &'a str,
     server_host: &'a str,
     server_port: u16,
+    tcp_state: &'a TcpClientState<2, 1024, 1024>,
 }
 
 impl<'a> ShowClient<'a> {
-    pub fn new(device_id: &'a str) -> Self {
+    /// Initialize the global TCP client state and return a ShowClient.
+    /// This initializes the TCP state once and creates a client that uses it.
+    pub fn new_with_init(device_id: &'a str) -> Self {
+        let tcp_state = TCP_CLIENT_STATE.init_with(|| TcpClientState::new());
         Self {
             device_id,
             server_host: SERVER_HOST,
             server_port: SERVER_PORT,
+            tcp_state,
         }
     }
 
-    pub fn with_server(device_id: &'a str, host: &'a str, port: u16) -> Self {
+    pub fn with_server(device_id: &'a str, host: &'a str, port: u16, tcp_state: &'a TcpClientState<2, 1024, 1024>) -> Self {
         Self {
             device_id,
             server_host: host,
             server_port: port,
+            tcp_state,
         }
     }
 
@@ -54,19 +60,19 @@ impl<'a> ShowClient<'a> {
     /// * `from_ms` - Timestamp in milliseconds from show start
     ///
     /// # Returns
-    /// A Vec of TimedInstructions if successful
+    /// An Esp32Response containing show_start_time and instructions if successful
     pub async fn fetch_instructions(
         &self,
         stack: &Stack<'_>,
         from_ms: u64,
-    ) -> Result<Vec<TimedInstruction>, FetchError> {
+    ) -> Result<Esp32Response, FetchError> {
         for attempt in 1..=HTTP_RETRY_COUNT {
             match self.fetch_instructions_inner(stack, from_ms).await {
-                Ok(instructions) => {
+                Ok(response) => {
                     if attempt > 1 {
                         defmt::info!("HTTP request succeeded on attempt {}", attempt);
                     }
-                    return Ok(instructions);
+                    return Ok(response);
                 }
                 Err(e) => {
                     if attempt < HTTP_RETRY_COUNT {
@@ -95,24 +101,21 @@ impl<'a> ShowClient<'a> {
         &self,
         stack: &Stack<'_>,
         from_ms: u64,
-    ) -> Result<Vec<TimedInstruction>, FetchError> {
+    ) -> Result<Esp32Response, FetchError> {
         // Build URL path
         use core::fmt::Write;
         let mut url = HeaplessString::<256>::new();
         write!(
             &mut url,
-            "http://{}/device/{}/instructions?from={}",
-            self.server_host, self.device_id, from_ms
+            "http://{}:{}/device/{}/instructions?from={}",
+            self.server_host, self.server_port, self.device_id, from_ms
         )
         .map_err(|_| FetchError::UrlTooLong)?;
 
         defmt::info!("Fetching from: {}", url.as_str());
 
-        // Initialize TCP client state on first call
-        let tcp_state = TCP_CLIENT_STATE.init_with(|| TcpClientState::new());
-
-        // Create TCP client and DNS socket from stack
-        let tcp_client = TcpClient::new(stack.clone(), tcp_state);
+        // Create TCP client and DNS socket from stack using the pre-initialized state
+        let tcp_client = TcpClient::new(stack.clone(), self.tcp_state);
         let dns = DnsSocket::new(stack.clone());
 
         // Create HTTP client (no TLS for now - plain HTTP)
@@ -146,18 +149,19 @@ impl<'a> ShowClient<'a> {
 
         defmt::info!("Received {} bytes", body.len());
 
-        // Parse JSON
-        let device_instructions: DeviceInstructions = serde_json_core::from_slice(body)
+        // Parse JSON using simple ESP32 format
+        let response: Esp32Response = serde_json_core::from_slice(body)
             .map_err(|_| FetchError::ParseFailed)?
             .0;
 
         defmt::info!(
-            "Parsed {} instructions for device {}",
-            device_instructions.instructions.len(),
-            device_instructions.device_id.as_str()
+            "Parsed {} instructions for device {}, show_start_time: {}",
+            response.instructions.len(),
+            response.device_id.as_str(),
+            response.show_start_time
         );
 
-        Ok(device_instructions.instructions)
+        Ok(response)
     }
 
     /// Poll the server repeatedly at the given interval
@@ -170,19 +174,19 @@ impl<'a> ShowClient<'a> {
         mut callback: F,
     ) -> !
     where
-        F: FnMut(Vec<TimedInstruction>),
+        F: FnMut(Esp32Response),
     {
         let mut last_fetch_ms = 0u64;
 
         loop {
             match self.fetch_instructions(stack, last_fetch_ms).await {
-                Ok(instructions) => {
-                    if !instructions.is_empty() {
+                Ok(response) => {
+                    if !response.instructions.is_empty() {
                         // Update last fetch timestamp to the latest instruction
-                        if let Some(last_instr) = instructions.last() {
+                        if let Some(last_instr) = response.instructions.last() {
                             last_fetch_ms = last_instr.timestamp;
                         }
-                        callback(instructions);
+                        callback(response);
                     }
                 }
                 Err(e) => {
