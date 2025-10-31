@@ -9,6 +9,8 @@
 use defmt::info;
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
+use embassy_sync::channel::Channel;
+use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use esp_backtrace as _;
 use esp_hal::{clock::CpuClock, rmt::Rmt, time::Rate, timer::timg::TimerGroup};
 use esp_hal_smartled::{SmartLedsAdapter, smart_led_buffer};
@@ -17,12 +19,13 @@ use smart_leds::{RGB8, SmartLedsWrite, brightness, gamma};
 
 extern crate alloc;
 
-use esp32_hal_firmware::{wifi, ntp};
+use esp32_hal_firmware::wifi;
 use esp32_hal_firmware::ntp::TimeSync;
 use esp32_hal_firmware::led_executor::LedExecutor;
 use esp32_hal_firmware::http_client::ShowClient;
 
 use static_cell::StaticCell;
+use portable_atomic::{AtomicU64, Ordering};
 
 // This creates a default app-descriptor required by the esp-idf bootloader.
 // For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
@@ -37,7 +40,8 @@ const NTP_SYNC_INTERVAL_SECS: u64 = 3600; // Re-sync NTP every hour
 // Static cells for sharing state between tasks
 static STACK: StaticCell<embassy_net::Stack<'static>> = StaticCell::new();
 static TIME_SYNC: StaticCell<TimeSync> = StaticCell::new();
-static LED_EXECUTOR: StaticCell<LedExecutor> = StaticCell::new();
+static INSTRUCTION_CHANNEL: StaticCell<Channel<NoopRawMutex, alloc::vec::Vec<esp32_hal_firmware::esp32_types::Esp32Instruction>, 4>> = StaticCell::new();
+static SHOW_START_TIME: AtomicU64 = AtomicU64::new(0);
 static RADIO_INIT: StaticCell<esp_radio::Controller<'static>> = StaticCell::new();
 
 #[esp_rtos::main]
@@ -95,103 +99,151 @@ async fn main(spawner: Spawner) -> ! {
 
     let time_sync = TIME_SYNC.init(time_sync);
 
-    // Spawn periodic NTP sync task
-    // spawner.spawn(ntp_sync_task(stack, time_sync)).ok();
+    // Initialize channel for instructions
+    let instruction_channel = INSTRUCTION_CHANNEL.init(Channel::new());
 
-    // Initialize RMT peripheral for smart LEDs
-    info!("Initializing smart LEDs on GPIO4...");
-    let rmt = Rmt::new(peripherals.RMT, Rate::from_mhz(80)).unwrap();
+    info!("System initialized! Starting show controller tasks...");
 
-    // Create SmartLED driver using esp-hal-smartled
-    let mut led =
-        SmartLedsAdapter::new(rmt.channel0, peripherals.GPIO4, smart_led_buffer!(NUM_LEDS));
+    // Spawn instruction executor task (handles LED control and initialization)
+    spawner.spawn(instruction_executor_task(time_sync, instruction_channel, peripherals.RMT, peripherals.GPIO4)).ok();
 
-    // Initialize LED executor
+    // Spawn polling task
+    spawner.spawn(polling_task(stack, instruction_channel)).ok();
+
+    info!("All tasks spawned! ESP32 light controller running.");
+
+    // Main task just sleeps - all work is done by spawned tasks
+    loop {
+        Timer::after(Duration::from_secs(60)).await;
+    }
+}
+
+/// Instruction executor task - manages timing, execution of instructions, and LED control
+///
+/// Receives instructions from polling task, filters out past ones, and executes at correct timestamps
+#[embassy_executor::task]
+async fn instruction_executor_task(
+    time_sync: &'static TimeSync,
+    instruction_channel: &'static Channel<NoopRawMutex, alloc::vec::Vec<esp32_hal_firmware::esp32_types::Esp32Instruction>, 4>,
+    rmt_peripheral: esp_hal::peripherals::RMT<'static>,
+    gpio4_peripheral: esp_hal::peripherals::GPIO4<'static>,
+) -> ! {
+    info!("Instruction executor task started");
+
+    // Initialize LED hardware inside task
+    let rmt = Rmt::new(rmt_peripheral, Rate::from_mhz(80)).unwrap();
+    let mut led = SmartLedsAdapter::new(rmt.channel0, gpio4_peripheral, smart_led_buffer!(NUM_LEDS));
+
+    info!("LED hardware initialized");
+
+    // Test LEDs on boot - show white for 2 seconds
+    let white_test = alloc::vec![RGB8::new(255, 255, 255); NUM_LEDS];
+    info!("Testing LEDs: setting all to white");
+    led.write(brightness(gamma(white_test.iter().cloned()), 255)).ok();
+    Timer::after(Duration::from_secs(2)).await;
+
+    // Turn off LEDs after test
+    let off = alloc::vec![RGB8::new(0, 0, 0); NUM_LEDS];
+    led.write(off.iter().cloned()).ok();
+    info!("LED test complete, starting instruction executor");
+
+    let instruction_receiver = instruction_channel.receiver();
     let mut led_executor = LedExecutor::new(NUM_LEDS);
 
-    info!("System initialized! Starting show controller...");
+    loop {
+        // Check for new instructions with 10ms timeout
+        let new_instructions = embassy_time::with_timeout(
+            Duration::from_millis(10),
+            instruction_receiver.receive()
+        ).await;
 
-    // Create HTTP client for fetching instructions (initializes TCP state on first call)
+        if let Ok(instructions) = new_instructions {
+            // Get current show time
+            let show_start_time = SHOW_START_TIME.load(Ordering::Relaxed);
+            let current_show_time = if show_start_time > 0 {
+                time_sync.show_time_ms(show_start_time)
+            } else {
+                0
+            };
+
+            // Filter out past instructions - only add future ones
+            let mut future_count = 0;
+            for instr in instructions {
+                if instr.timestamp > current_show_time {
+                    led_executor.add_instruction(instr);
+                    future_count += 1;
+                }
+            }
+
+            if future_count > 0 {
+                info!("Added {} future instructions (current show time: {}ms)",
+                      future_count, current_show_time);
+            }
+        }
+
+        // Execute any due instructions
+        let show_start_time = SHOW_START_TIME.load(Ordering::Relaxed);
+        if show_start_time > 0 {
+            let current_show_time = time_sync.show_time_ms(show_start_time);
+
+            if let Some(led_data) = led_executor.execute_due_instructions(current_show_time) {
+                // Update LEDs directly - no command channel needed
+                if let Some(&color) = led_data.first() {
+                    info!("Executing instruction at {}ms: RGB({},{},{})",
+                          current_show_time, color.r, color.g, color.b);
+                }
+                led.write(brightness(gamma(led_data.iter().cloned()), 255)).ok();
+            }
+        }
+
+        // Sleep until next instruction or default 10ms
+        Timer::after(Duration::from_millis(10)).await;
+    }
+}
+
+/// Polling task - fetches instructions from server
+///
+/// Polls server every second for new instructions and sends them to executor task
+#[embassy_executor::task]
+async fn polling_task(
+    stack: &'static embassy_net::Stack<'static>,
+    instruction_channel: &'static Channel<NoopRawMutex, alloc::vec::Vec<esp32_hal_firmware::esp32_types::Esp32Instruction>, 4>,
+) -> ! {
+    info!("Polling task started");
+
+    let instruction_sender = instruction_channel.sender();
     let http_client = ShowClient::new_with_init(DEVICE_ID);
-
-    // Main loop: Poll for instructions and update LEDs
     let mut last_poll_ms = 0u64;
-    let mut poll_counter = 0u32;
-    let mut ntp_sync_counter = 0u32;
-    let ntp_sync_interval_loops = (NTP_SYNC_INTERVAL_SECS * 1000 / 10) as u32; // Convert to 10ms loops
 
-    // Show start time received from server (0 means no show started)
-    let mut show_start_time_ms = 0u64;
+    info!("HTTP client initialized, starting polling loop with TEST pattern");
 
     loop {
-        // Calculate current show time (0 if show hasn't started)
-        let current_show_time = if show_start_time_ms > 0 {
-            time_sync.show_time_ms(show_start_time_ms)
-        } else {
-            0
-        };
-
-        // Re-sync NTP periodically (every NTP_SYNC_INTERVAL_SECS)
-        ntp_sync_counter += 1;
-        if ntp_sync_counter >= ntp_sync_interval_loops {
-            ntp_sync_counter = 0;
-            info!("Performing periodic NTP re-sync...");
-
-            // Try to re-sync, but don't fail if it doesn't work
-            // (we can continue with the current time offset)
-            match ntp::NtpClient::new().sync_time(stack).await {
-                Ok(new_time_ms) => {
-                    // Update time_sync with new timestamp
-                    // Note: This is a simple approach - in production you might want
-                    // to calculate drift and adjust smoothly
-                    info!("NTP re-sync successful: {}ms", new_time_ms);
+        // Use test endpoint for now to verify LED functionality
+        match http_client.fetch_test_instructions(stack).await {
+            Ok(response) => {
+                // Update show start time from server (authoritative source)
+                if response.show_start_time > 0 {
+                    let current = SHOW_START_TIME.load(Ordering::Relaxed);
+                    if current != response.show_start_time {
+                        info!("Show start time updated: {}ms", response.show_start_time);
+                        SHOW_START_TIME.store(response.show_start_time, Ordering::Relaxed);
+                    }
                 }
-                Err(e) => {
-                    defmt::warn!("NTP re-sync failed: {:?}, continuing with current time", e);
+
+                if !response.instructions.is_empty() {
+                    info!("Received {} TEST instructions from server", response.instructions.len());
+
+                    // Send instructions to executor task
+                    instruction_sender.send(response.instructions).await;
                 }
+            }
+            Err(e) => {
+                defmt::error!("Failed to fetch instructions: {:?}", e);
             }
         }
 
-        // Poll for new instructions every POLL_INTERVAL_MS
-        poll_counter += 1;
-        if poll_counter >= (POLL_INTERVAL_MS / 10) as u32 {
-            poll_counter = 0;
-
-            match http_client.fetch_instructions(stack, last_poll_ms).await {
-                Ok(response) => {
-                    // Update show start time from server (authoritative source)
-                    if response.show_start_time > 0 {
-                        if show_start_time_ms != response.show_start_time {
-                            info!("Show start time updated: {}ms", response.show_start_time);
-                            show_start_time_ms = response.show_start_time;
-                        }
-                    }
-
-                    if !response.instructions.is_empty() {
-                        info!("Received {} new instructions", response.instructions.len());
-                        if let Some(last_instr) = response.instructions.last() {
-                            last_poll_ms = last_instr.timestamp;
-                        }
-                        led_executor.add_instructions(response.instructions);
-                        info!("Queue now has {} instructions, current show time: {}ms",
-                              led_executor.queue_len(), current_show_time);
-                    }
-                }
-                Err(e) => {
-                    defmt::error!("Failed to fetch instructions: {:?}", e);
-                }
-            }
-        }
-
-        // Execute any due instructions and update LEDs
-        if let Some(led_data) = led_executor.execute_due_instructions(current_show_time) {
-            defmt::info!("Updating LEDs with new color");
-            led.write(brightness(gamma(led_data.iter().cloned()), 255))
-                .ok();
-        }
-
-        // Sleep briefly to allow other tasks to run
-        Timer::after(Duration::from_millis(10)).await;
+        // Poll every 1 second
+        Timer::after(Duration::from_millis(POLL_INTERVAL_MS)).await;
     }
 }
 

@@ -11,8 +11,8 @@ use static_cell::StaticCell;
 use reqwless::client::HttpClient;
 use reqwless::request::Method;
 
-const SERVER_HOST: &str = "192.168.0.77"; // Update with your server IP
-const SERVER_PORT: u16 = 3000;
+const SERVER_HOST: &str = "rusty-halloween-show-server.rustwood.org";
+const SERVER_PORT: u16 = 443; // HTTPS
 const MAX_RESPONSE_SIZE: usize = 4096;
 
 /// HTTP request retry configuration
@@ -51,6 +51,71 @@ impl<'a> ShowClient<'a> {
             server_port: port,
             tcp_state,
         }
+    }
+
+    /// Fetch test pattern instructions (10 seconds of blinking white LEDs)
+    /// This is useful for testing LED connectivity without needing a full show
+    pub async fn fetch_test_instructions(
+        &self,
+        stack: &Stack<'_>,
+    ) -> Result<Esp32Response, FetchError> {
+        // Build URL path for test endpoint
+        use core::fmt::Write;
+        let mut url = HeaplessString::<256>::new();
+        write!(
+            &mut url,
+            "https://{}/device/{}/test",
+            self.server_host, self.device_id
+        )
+        .map_err(|_| FetchError::UrlTooLong)?;
+
+        defmt::info!("Fetching test pattern from: {}", url.as_str());
+
+        // Create TCP client and DNS socket from stack
+        let tcp_client = TcpClient::new(stack.clone(), self.tcp_state);
+        let dns = DnsSocket::new(stack.clone());
+
+        // Create HTTP client
+        let mut client = HttpClient::new(&tcp_client, &dns);
+
+        // Create and send request
+        let mut request = client
+            .request(Method::GET, url.as_str())
+            .await
+            .map_err(|_| FetchError::RequestFailed)?;
+
+        let mut rx_buf = [0u8; MAX_RESPONSE_SIZE];
+        let response = request
+            .send(&mut rx_buf)
+            .await
+            .map_err(|_| FetchError::RequestFailed)?;
+
+        // Check status code
+        if response.status.0 != 200 {
+            defmt::error!("Server returned status: {}", response.status.0);
+            return Err(FetchError::InvalidStatus(response.status.0));
+        }
+
+        // Read and parse response
+        let body = response
+            .body()
+            .read_to_end()
+            .await
+            .map_err(|_| FetchError::ReadFailed)?;
+
+        defmt::info!("Received {} bytes of test pattern", body.len());
+
+        let response: Esp32Response = serde_json_core::from_slice(body)
+            .map_err(|_| FetchError::ParseFailed)?
+            .0;
+
+        defmt::info!(
+            "Parsed {} test instructions, show_start_time: {}",
+            response.instructions.len(),
+            response.show_start_time
+        );
+
+        Ok(response)
     }
 
     /// Fetch LED instructions from the server with retry logic
@@ -107,8 +172,8 @@ impl<'a> ShowClient<'a> {
         let mut url = HeaplessString::<256>::new();
         write!(
             &mut url,
-            "http://{}:{}/device/{}/instructions?from={}",
-            self.server_host, self.server_port, self.device_id, from_ms
+            "https://{}/device/{}/instructions?from={}",
+            self.server_host, self.device_id, from_ms
         )
         .map_err(|_| FetchError::UrlTooLong)?;
 

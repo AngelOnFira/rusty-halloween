@@ -2,11 +2,11 @@
 
 extern crate alloc;
 
-pub mod wifi;
-pub mod http_client;
-pub mod ntp;
-pub mod led_executor;
 pub mod esp32_types;
+pub mod http_client;
+pub mod led_executor;
+pub mod ntp;
+pub mod wifi;
 
 // Provide random() function for esp-mbedtls RNG
 // Uses ESP32-S2 hardware TRNG for cryptographically secure random numbers

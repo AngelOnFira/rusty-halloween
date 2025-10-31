@@ -73,6 +73,7 @@ async fn main() {
         .route("/show/start", post(start_show))
         .route("/show/status", get(show_status))
         .route("/device/:device_id/instructions", get(device_instructions))
+        .route("/device/:device_id/test", get(device_test_instructions))
         .route("/firmware/latest", get(get_latest_firmware))
         .route("/firmware/download/:version", get(download_firmware))
         .layer(CorsLayer::permissive())
@@ -290,6 +291,53 @@ async fn log_show_progress(state: AppState) {
             }
         }
     }
+}
+
+/// Test endpoint that returns a simple on/off pattern for the next 10 seconds
+/// This is useful for testing LED connectivity without needing a full show
+async fn device_test_instructions(
+    Path(device_id): Path<String>,
+) -> Result<Json<Esp32Response>, StatusCode> {
+    info!("🧪 Test instructions requested for device {}", device_id);
+
+    let current_time = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64;
+
+    // Generate a 10-second on/off pattern starting NOW
+    // Pattern: 500ms on (white), 500ms off, repeat 10 times
+    let mut instructions = Vec::new();
+
+    for i in 0..10 {
+        let base_time = i * 1000; // Every second
+
+        // White for 500ms
+        instructions.push(Esp32Instruction {
+            timestamp: base_time,
+            r: Some(255),
+            g: Some(255),
+            b: Some(255),
+            off: None,
+        });
+
+        // Off for 500ms
+        instructions.push(Esp32Instruction {
+            timestamp: base_time + 500,
+            r: Some(0),
+            g: Some(0),
+            b: Some(0),
+            off: None,
+        });
+    }
+
+    info!("🧪 Returning {} test instructions for 10 second pattern", instructions.len());
+
+    Ok(Json(Esp32Response {
+        device_id,
+        show_start_time: current_time, // Start NOW
+        instructions,
+    }))
 }
 
 /// Extract device-specific instructions from the show for a given time window
