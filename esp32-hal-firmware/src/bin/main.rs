@@ -10,15 +10,10 @@ use defmt::info;
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
-use esp_hal::{
-    clock::CpuClock,
-    rmt::Rmt,
-    time::Rate,
-    timer::timg::TimerGroup,
-};
+use esp_hal::{clock::CpuClock, rmt::Rmt, time::Rate, timer::timg::TimerGroup};
+use esp_hal_smartled::{SmartLedsAdapter, smart_led_buffer};
 use esp_println as _;
-use smart_leds::{brightness, gamma, SmartLedsWrite, RGB8};
-use esp_hal_smartled::{smart_led_buffer, SmartLedsAdapter};
+use smart_leds::{RGB8, SmartLedsWrite, brightness, gamma};
 
 extern crate alloc;
 
@@ -52,7 +47,8 @@ async fn main(spawner: Spawner) -> ! {
     // Create SmartLED driver using esp-hal-smartled
     // The smart_led_buffer! macro allocates a static buffer for 35 LEDs
     const NUM_LEDS: usize = 35;
-    let mut led = SmartLedsAdapter::new(rmt.channel0, peripherals.GPIO4, smart_led_buffer!(NUM_LEDS));
+    let mut led =
+        SmartLedsAdapter::new(rmt.channel0, peripherals.GPIO4, smart_led_buffer!(NUM_LEDS));
     let mut color_data: [RGB8; NUM_LEDS] = [RGB8::default(); NUM_LEDS];
 
     info!("Smart LEDs initialized! Starting color cycle...");

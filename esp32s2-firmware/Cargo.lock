@@ -1459,7 +1459,6 @@ name = "esp32s2-firmware"
 version = "0.1.0"
 dependencies = [
  "crc",
- "critical-section",
  "defmt 1.0.1",
  "embassy-executor",
  "embassy-futures",

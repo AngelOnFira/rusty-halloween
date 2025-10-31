@@ -71,7 +71,7 @@ smoltcp = { version = "0.12.0", default-features = false, features = [
   "socket-udp",
 ] }
 
-critical-section = "1.2.0"
+# critical-section = "1.2.0"
 static_cell      = "2.1.1"
 
 # Serialization and collections
