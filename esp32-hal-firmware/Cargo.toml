@@ -25,6 +25,7 @@ esp-bootloader-esp-idf = { version = "0.4.0", features = ["defmt", "esp32s2"] }
 embassy-net = { version = "0.7.1", features = [
   "defmt",
   "dhcpv4",
+  "dns",
   "medium-ethernet",
   "tcp",
   "udp",
@@ -70,6 +71,24 @@ static_cell      = "2.1.1"
 smart-leds = "0.4.0"
 esp-hal-smartled = { path = "./esp-hal-community/esp-hal-smartled", features = ["esp32s2"] }
 
+# HTTP client with TLS support via esp-mbedtls
+# Using local version to patch for esp-mbedtls compatibility
+reqwless = { path = "./reqwless", default-features = false, features = ["esp-mbedtls"] }
+esp-mbedtls = { path = "./esp-mbedtls/esp-mbedtls", features = ["esp32s2", "esp-hal", "async", "edge-nal"] }
+
+# JSON deserialization (no_std)
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+serde-json-core = "0.6"
+heapless = "0.8"
+
+# Shared types with server
+common = { path = "../common", default-features = false }
+
+
+# Patch reqwless to use our local esp-mbedtls (avoids duplicate mbedtls linking)
+[patch."https://github.com/esp-rs/esp-mbedtls.git"]
+esp-mbedtls = { path = "./esp-mbedtls/esp-mbedtls" }
+esp-mbedtls-sys = { path = "./esp-mbedtls/esp-mbedtls-sys" }
 
 [profile.dev]
 # Rust debug is too slow.

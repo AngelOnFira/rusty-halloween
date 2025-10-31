@@ -1,5 +1,13 @@
 use serde::{Deserialize, Serialize};
 
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+#[cfg(not(feature = "std"))]
+use alloc::string::String;
+
 // Device count constants
 pub const MAX_LIGHTS: usize = 7;
 pub const MAX_LASERS: usize = 5;

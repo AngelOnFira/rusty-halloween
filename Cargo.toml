@@ -12,6 +12,7 @@ members = [
 exclude = [
     "esp32-firmware",
     "esp32s2-firmware",
+    "esp32-hal-firmware",
 ]
 
 [lib]
