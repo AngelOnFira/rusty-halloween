@@ -49,7 +49,7 @@ impl Esp32Instruction {
 /// Device instructions response from server
 #[derive(Debug, Clone, Deserialize)]
 pub struct Esp32Response {
-    pub device_id: String,
+    pub device_id: u32,
     /// Server's authoritative show start time (Unix timestamp in milliseconds)
     /// ESP32 uses this to calculate show time: current_time - show_start_time
     pub show_start_time: u64,

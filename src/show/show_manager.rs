@@ -298,7 +298,7 @@ impl ShowManager {
 async fn post_show_to_server(show: SerializableShow) {
     // Get server URL from environment variable or use default
     let server_url = std::env::var("SHOW_SERVER_URL")
-        .unwrap_or_else(|_| "http://localhost:3000".to_string());
+        .unwrap_or_else(|_| "http://192.168.0.77:3000".to_string());
 
     let url = format!("{}/show/upload", server_url);
 
@@ -328,7 +328,7 @@ async fn post_show_to_server(show: SerializableShow) {
 async fn notify_show_start() {
     // Get server URL from environment variable or use default
     let server_url = std::env::var("SHOW_SERVER_URL")
-        .unwrap_or_else(|_| "http://localhost:3000".to_string());
+        .unwrap_or_else(|_| "http://192.168.0.77:3000".to_string());
 
     let url = format!("{}/show/start", server_url);
 

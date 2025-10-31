@@ -33,7 +33,6 @@ esp_bootloader_esp_idf::esp_app_desc!();
 
 // Configuration constants
 const NUM_LEDS: usize = 35;
-const DEVICE_ID: &str = "esp32-light-1"; // Unique device identifier
 const POLL_INTERVAL_MS: u64 = 1000; // Poll server every 1 second
 const NTP_SYNC_INTERVAL_SECS: u64 = 3600; // Re-sync NTP every hour
 
@@ -43,6 +42,7 @@ static TIME_SYNC: StaticCell<TimeSync> = StaticCell::new();
 static INSTRUCTION_CHANNEL: StaticCell<Channel<NoopRawMutex, alloc::vec::Vec<esp32_hal_firmware::esp32_types::Esp32Instruction>, 4>> = StaticCell::new();
 static SHOW_START_TIME: AtomicU64 = AtomicU64::new(0);
 static RADIO_INIT: StaticCell<esp_radio::Controller<'static>> = StaticCell::new();
+static DEVICE_ID: portable_atomic::AtomicU32 = portable_atomic::AtomicU32::new(0);
 
 #[esp_rtos::main]
 async fn main(spawner: Spawner) -> ! {
@@ -52,6 +52,13 @@ async fn main(spawner: Spawner) -> ! {
     let peripherals = esp_hal::init(config);
 
     esp_alloc::heap_allocator!(#[unsafe(link_section = ".dram2_uninit")] size: 139264);
+
+    // Generate random device ID using hardware RNG (0-99999)
+    use esp_hal::rng::Rng;
+    let mut rng = Rng::new();
+    let device_id = rng.random() % 100000;
+    DEVICE_ID.store(device_id, Ordering::Relaxed);
+    info!("Generated device ID: {}", device_id);
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     esp_rtos::start(timg0.timer0);
@@ -108,7 +115,7 @@ async fn main(spawner: Spawner) -> ! {
     spawner.spawn(instruction_executor_task(time_sync, instruction_channel, peripherals.RMT, peripherals.GPIO4)).ok();
 
     // Spawn polling task
-    spawner.spawn(polling_task(stack, instruction_channel)).ok();
+    spawner.spawn(polling_task(time_sync, stack, instruction_channel)).ok();
 
     info!("All tasks spawned! ESP32 light controller running.");
 
@@ -206,20 +213,28 @@ async fn instruction_executor_task(
 /// Polls server every second for new instructions and sends them to executor task
 #[embassy_executor::task]
 async fn polling_task(
+    time_sync: &'static TimeSync,
     stack: &'static embassy_net::Stack<'static>,
     instruction_channel: &'static Channel<NoopRawMutex, alloc::vec::Vec<esp32_hal_firmware::esp32_types::Esp32Instruction>, 4>,
 ) -> ! {
     info!("Polling task started");
 
     let instruction_sender = instruction_channel.sender();
-    let http_client = ShowClient::new_with_init(DEVICE_ID);
-    let mut last_poll_ms = 0u64;
+    let device_id = DEVICE_ID.load(Ordering::Relaxed);
+    let http_client = ShowClient::new_with_init(device_id);
 
-    info!("HTTP client initialized, starting polling loop with TEST pattern");
+    info!("HTTP client initialized, starting polling loop");
 
     loop {
-        // Use test endpoint for now to verify LED functionality
-        match http_client.fetch_test_instructions(stack).await {
+        // Calculate current show time to fetch from
+        let show_start_time = SHOW_START_TIME.load(Ordering::Relaxed);
+        let current_show_time = if show_start_time > 0 {
+            time_sync.show_time_ms(show_start_time)
+        } else {
+            0
+        };
+
+        match http_client.fetch_instructions(stack, current_show_time).await {
             Ok(response) => {
                 // Update show start time from server (authoritative source)
                 if response.show_start_time > 0 {
@@ -231,7 +246,7 @@ async fn polling_task(
                 }
 
                 if !response.instructions.is_empty() {
-                    info!("Received {} TEST instructions from server", response.instructions.len());
+                    info!("Received {} new instructions from server", response.instructions.len());
 
                     // Send instructions to executor task
                     instruction_sender.send(response.instructions).await;

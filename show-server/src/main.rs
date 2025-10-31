@@ -32,7 +32,7 @@ struct Esp32Instruction {
 
 #[derive(Debug, Serialize)]
 struct Esp32Response {
-    device_id: String,
+    device_id: u32,
     /// Server's authoritative show start time (Unix timestamp in ms)
     /// ESP32 should use this for timing calculations
     show_start_time: u64,
@@ -44,6 +44,7 @@ struct AppState {
     current_show: Arc<RwLock<Option<ShowState>>>,
 }
 
+#[derive(Debug)]
 struct ShowState {
     show: SerializableShow,
     upload_time: u64,  // milliseconds since epoch when show was uploaded
@@ -107,6 +108,8 @@ async fn upload_show(
         is_playing: false,
     };
 
+    dbg!(&show_state);
+
     *state.current_show.write().await = Some(show_state);
 
     info!("✅ Show uploaded and ready for playback");
@@ -164,7 +167,7 @@ struct InstructionsQuery {
 /// Get device-specific instructions for the next 5 seconds
 async fn device_instructions(
     State(state): State<AppState>,
-    Path(device_id): Path<String>,
+    Path(device_id): Path<u32>,
     Query(query): Query<InstructionsQuery>,
 ) -> Result<Json<Esp32Response>, StatusCode> {
     let show_lock = state.current_show.read().await;
@@ -188,7 +191,7 @@ async fn device_instructions(
     // Filter frames for the time window and device
     let instructions = extract_device_instructions(
         &show_state.show,
-        &device_id,
+        device_id,
         from_timestamp,
         to_timestamp,
     );
@@ -204,6 +207,8 @@ async fn device_instructions(
         to_timestamp,
         show_start_time
     );
+
+    debug!("instructions: {:?}", &instructions);
 
     Ok(Json(Esp32Response {
         device_id,
@@ -296,7 +301,7 @@ async fn log_show_progress(state: AppState) {
 /// Test endpoint that returns a simple on/off pattern for the next 10 seconds
 /// This is useful for testing LED connectivity without needing a full show
 async fn device_test_instructions(
-    Path(device_id): Path<String>,
+    Path(device_id): Path<u32>,
 ) -> Result<Json<Esp32Response>, StatusCode> {
     info!("🧪 Test instructions requested for device {}", device_id);
 
@@ -342,72 +347,54 @@ async fn device_test_instructions(
 
 /// Extract device-specific instructions from the show for a given time window
 /// Returns simple RGB instructions for ESP32 devices
+/// Each ESP32 device is assigned a specific LED index using modulo: led_index = device_id % total_leds
 fn extract_device_instructions(
     show: &SerializableShow,
-    device_id: &str,
+    device_id: u32,
     from: u64,
     to: u64,
 ) -> Vec<Esp32Instruction> {
     let mut instructions = Vec::new();
 
-    // Handle ESP32 RGB devices (format: "esp32-light-1", "esp32-rgb-2", etc.)
-    // These devices get RGB commands aggregated from all lasers in the show
-    if device_id.starts_with("esp32-") {
-        debug!("Extracting instructions for ESP32 RGB device: {}", device_id);
+    // Get total number of LEDs from the show (use first frame to determine)
+    let total_leds = 7;
 
-        // For ESP32 RGB devices, aggregate all laser colors and average them
-        for frame in &show.frames {
-            if frame.timestamp < from || frame.timestamp >= to {
-                continue;
-            }
+    // Assign LED index using modulo
+    let led_index = (device_id % total_leds as u32) as usize;
 
-            // Collect all enabled laser colors
-            let mut r_sum = 0u32;
-            let mut g_sum = 0u32;
-            let mut b_sum = 0u32;
-            let mut count = 0u32;
+    debug!(
+        "Extracting instructions for device {} → LED index {} (total LEDs: {})",
+        device_id, led_index, total_leds
+    );
 
-            for laser_opt in &frame.lasers {
-                if let Some(laser) = laser_opt {
-                    if laser.enable {
-                        r_sum += laser.hex[0] as u32;
-                        g_sum += laser.hex[1] as u32;
-                        b_sum += laser.hex[2] as u32;
-                        count += 1;
-                    }
-                }
-            }
+    for frame in &show.frames {
+        if frame.timestamp < from || frame.timestamp >= to {
+            continue;
+        }
 
-            // Create simple ESP32 instruction
-            let instruction = if count > 0 {
-                // Average the colors if any lasers are enabled
+        // Get the specific LED for this device
+        if let Some(Some(light_on)) = frame.lights.get(led_index) {
+            let instruction = if *light_on {
                 Esp32Instruction {
                     timestamp: frame.timestamp,
-                    r: Some((r_sum / count) as u8),
-                    g: Some((g_sum / count) as u8),
-                    b: Some((b_sum / count) as u8),
+                    r: Some(255),
+                    g: Some(255),
+                    b: Some(255),
                     off: None,
                 }
             } else {
-                // No lasers enabled, turn off
                 Esp32Instruction {
                     timestamp: frame.timestamp,
-                    r: None,
-                    g: None,
-                    b: None,
-                    off: Some(true),
+                    r: Some(0),
+                    g: Some(0),
+                    b: Some(0),
+                    off: None,
                 }
             };
-
             instructions.push(instruction);
         }
-
-        return instructions;
     }
 
-    // For non-ESP32 devices, return empty for now
-    // (This can be extended later if needed for other device types)
-    warn!("Non-ESP32 device requested: {}, returning empty instructions", device_id);
     instructions
 }
 
@@ -479,7 +466,7 @@ async fn get_latest_firmware() -> Result<Json<FirmwareInfo>, StatusCode> {
     info!("✅ Found firmware version: {}", release.tag_name);
 
     let server_url = std::env::var("SERVER_URL")
-        .unwrap_or_else(|_| "http://localhost:3000".to_string());
+        .unwrap_or_else(|_| "http://192.168.0.77:3000".to_string());
 
     let firmware_info = FirmwareInfo {
         version: release.tag_name.clone(),

@@ -9,10 +9,10 @@ use heapless::String as HeaplessString;
 use static_cell::StaticCell;
 
 use reqwless::client::HttpClient;
-use reqwless::request::Method;
+use reqwless::request::{Method, RequestBuilder};
 
-const SERVER_HOST: &str = "rusty-halloween-show-server.rustwood.org";
-const SERVER_PORT: u16 = 443; // HTTPS
+const SERVER_HOST: &str = "192.168.0.77";
+const SERVER_PORT: u16 = 3000;
 const MAX_RESPONSE_SIZE: usize = 4096;
 
 /// HTTP request retry configuration
@@ -25,7 +25,7 @@ const HTTP_RETRY_DELAY_MS: u64 = 1000;
 static TCP_CLIENT_STATE: StaticCell<TcpClientState<2, 1024, 1024>> = StaticCell::new();
 
 pub struct ShowClient<'a> {
-    device_id: &'a str,
+    device_id: u32,
     server_host: &'a str,
     server_port: u16,
     tcp_state: &'a TcpClientState<2, 1024, 1024>,
@@ -34,7 +34,7 @@ pub struct ShowClient<'a> {
 impl<'a> ShowClient<'a> {
     /// Initialize the global TCP client state and return a ShowClient.
     /// This initializes the TCP state once and creates a client that uses it.
-    pub fn new_with_init(device_id: &'a str) -> Self {
+    pub fn new_with_init(device_id: u32) -> Self {
         let tcp_state = TCP_CLIENT_STATE.init_with(|| TcpClientState::new());
         Self {
             device_id,
@@ -44,7 +44,7 @@ impl<'a> ShowClient<'a> {
         }
     }
 
-    pub fn with_server(device_id: &'a str, host: &'a str, port: u16, tcp_state: &'a TcpClientState<2, 1024, 1024>) -> Self {
+    pub fn with_server(device_id: u32, host: &'a str, port: u16, tcp_state: &'a TcpClientState<2, 1024, 1024>) -> Self {
         Self {
             device_id,
             server_host: host,
@@ -64,8 +64,8 @@ impl<'a> ShowClient<'a> {
         let mut url = HeaplessString::<256>::new();
         write!(
             &mut url,
-            "https://{}/device/{}/test",
-            self.server_host, self.device_id
+            "http://{}:{}/device/{}/test",
+            self.server_host, self.server_port, self.device_id
         )
         .map_err(|_| FetchError::UrlTooLong)?;
 
@@ -78,11 +78,17 @@ impl<'a> ShowClient<'a> {
         // Create HTTP client
         let mut client = HttpClient::new(&tcp_client, &dns);
 
-        // Create and send request
+        // Create request with proper headers
+        let headers = [
+            ("Host", self.server_host),
+            ("User-Agent", "ESP32-Firmware/1.0"),
+        ];
+
         let mut request = client
             .request(Method::GET, url.as_str())
             .await
-            .map_err(|_| FetchError::RequestFailed)?;
+            .map_err(|_| FetchError::RequestFailed)?
+            .headers(&headers);
 
         let mut rx_buf = [0u8; MAX_RESPONSE_SIZE];
         let response = request
@@ -172,8 +178,8 @@ impl<'a> ShowClient<'a> {
         let mut url = HeaplessString::<256>::new();
         write!(
             &mut url,
-            "https://{}/device/{}/instructions?from={}",
-            self.server_host, self.device_id, from_ms
+            "http://{}:{}/device/{}/instructions?from={}",
+            self.server_host, self.server_port, self.device_id, from_ms
         )
         .map_err(|_| FetchError::UrlTooLong)?;
 
@@ -183,14 +189,20 @@ impl<'a> ShowClient<'a> {
         let tcp_client = TcpClient::new(stack.clone(), self.tcp_state);
         let dns = DnsSocket::new(stack.clone());
 
-        // Create HTTP client (no TLS for now - plain HTTP)
+        // Create HTTP client
         let mut client = HttpClient::new(&tcp_client, &dns);
 
-        // Create request
+        // Create request with proper headers
+        let headers = [
+            ("Host", self.server_host),
+            ("User-Agent", "ESP32-Firmware/1.0"),
+        ];
+
         let mut request = client
             .request(Method::GET, url.as_str())
             .await
-            .map_err(|_| FetchError::RequestFailed)?;
+            .map_err(|_| FetchError::RequestFailed)?
+            .headers(&headers);
 
         // Send request
         let mut rx_buf = [0u8; MAX_RESPONSE_SIZE];
@@ -222,7 +234,7 @@ impl<'a> ShowClient<'a> {
         defmt::info!(
             "Parsed {} instructions for device {}, show_start_time: {}",
             response.instructions.len(),
-            response.device_id.as_str(),
+            response.device_id,
             response.show_start_time
         );
 
