@@ -12,13 +12,19 @@ pub enum UartMessage {
 
 pub struct UartController {
     #[cfg(feature = "pi")]
-    uart: Uart,
+    laser_uart: Uart,
+
+    #[cfg(feature = "pi")]
+    dmx_now_uart: Uart,
 }
 
 impl UartController {
-    pub async fn init() -> Result<Self, Error> {
+    pub fn init() -> Result<Self, Error> {
         #[cfg(feature = "pi")]
-        let uart = Uart::with_path("/dev/serial0", 57_600, Parity::None, 8, 1)?;
+        let laser_uart = Uart::with_path("/dev/serial0", 57_600, Parity::None, 8, 1)?;
+
+        #[cfg(feature = "pi")]
+        let dmx_now_uart = Uart::with_path("/tmp/wireless-dmx-raw", 250_000, Parity::None, 8, 1)?;
 
         Ok(UartController {
             #[cfg(feature = "pi")]
@@ -26,7 +32,7 @@ impl UartController {
         })
     }
 
-    pub fn send_data(&mut self, data: Vec<u8>) -> Result<(), Error> {
+    pub fn send_data(&mut self, data: UartMessage) -> Result<(), Error> {
         #[cfg(feature = "pi")]
         {
             // Send data in chunks of 8 bytes
@@ -37,16 +43,11 @@ impl UartController {
             // Block until the data is sent
             self.uart.drain()?;
         }
-        // Print out the array of bytes that were sent in binary format
-        // for byte in &data {
-        //     print!("{:08b} ", byte);
-        // }
-        // println!();
 
         Ok(())
     }
 
-    pub async fn start(mut self, mut rx: mpsc::Receiver<UartMessage>) {
+    async fn start(mut self, mut rx: mpsc::Receiver<UartMessage>) {
         while let Some(message) = rx.recv().await {
             match message {
                 UartMessage::Laser(data) => {
@@ -56,18 +57,28 @@ impl UartController {
                     }
                     println!();
 
-                    if let Err(e) = self.send_data(data) {
-                        error!("Failed to send projector data: {}", e);
+                    #[cfg(feature = "pi")]
+                    {
+                        // Send data in chunks of 8 bytes
+                        for chunk in data.chunks(8) {
+                            self.laser_uart.write(chunk)?;
+                        }
+            
+                        self.uart.drain()?;
                     }
                 }
                 UartMessage::DMX(data) => {
-                    if let Err(e) = self.send_data(data) {
-                        error!("Failed to send DMX data: {}", e);
+                    #[cfg(feature = "pi")]
+                    {
+                        // Send data in chunks of 8 bytes
+                        for chunk in data.chunks(8) {
+                            self.dmx_now_uart.write(chunk)?;
+                        }
+            
+                        self.uart.drain()?;
                     }
                 }
             }
-            // // Add a 50ms delay before the next data is handled
-            // tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
         }
     }
 }

@@ -8,7 +8,7 @@ pub mod pack;
 
 type DmxFrame = u8;
 
-const DMX_CHANNELS: usize = 255;
+const DMX_CHANNELS: usize = 512;
 
 pub enum DmxMessage {
     Send,
@@ -47,10 +47,6 @@ impl DmxState {
 
                     let mut data = Vec::new();
 
-                    // Add the header to the start of the array
-                    // TODO: Set this up correctly
-                    data.push(0xA0);
-
                     // Add the rest of the values
                     data.extend_from_slice(&self.values);
 
@@ -71,7 +67,6 @@ impl DmxState {
                     
                     // Send the zeroed state
                     let mut data = Vec::new();
-                    data.push(0xA0); // Add header
                     data.extend_from_slice(&self.values);
                     
                     if let Err(e) = uart_tx.send(UartMessage::DMX(data)).await {
