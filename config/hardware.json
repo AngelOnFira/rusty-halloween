@@ -1,100 +1,183 @@
 {
     "light-1": {
-        "protocol": "GPIO",
+        "protocol": "DMX",
         "id": 1,
-        "pin": 28
+        "format": [
+            "state"
+        ]
     },
     "light-2": {
-        "protocol": "GPIO",
+        "protocol": "DMX",
         "id": 2,
-        "pin": 27
+        "format": [
+            "state"
+        ]
     },
     "light-3": {
-        "protocol": "GPIO",
+        "protocol": "DMX",
         "id": 3,
-        "pin": 16
+        "format": [
+            "state"
+        ]
     },
     "light-4": {
-        "protocol": "GPIO",
+        "protocol": "DMX",
         "id": 4,
-        "pin": 18
+        "format": [
+            "state"
+        ]
     },
     "light-5": {
-        "protocol": "GPIO",
+        "protocol": "DMX",
         "id": 5,
-        "pin": 22
+        "format": [
+            "state"
+        ]
     },
     "light-6": {
-        "protocol": "GPIO",
+        "protocol": "DMX",
         "id": 6,
-        "pin": 24
+        "format": [
+            "state"
+        ]
     },
     "light-7": {
-        "protocol": "GPIO",
+        "protocol": "DMX",
         "id": 7,
-        "pin": 26
+        "format": [
+            "state"
+        ]
     },
     "laser-1": {
-        "protocol": "SERIAL",
-        "id": 1
+        "protocol": "DMX",
+        "id": 17,
+        "format": [
+            "red",
+            "green",
+            "blue"
+        ]
     },
     "laser-2": {
-        "protocol": "SERIAL",
-        "id": 2
+        "protocol": "DMX",
+        "id": 23,
+        "format": [
+            "red",
+            "green",
+            "blue"
+        ]
     },
     "laser-3": {
-        "protocol": "SERIAL",
-        "id": 3
+        "protocol": "DMX",
+        "id": 29,
+        "format": [
+            "red",
+            "green",
+            "blue"
+        ]
     },
     "laser-4": {
-        "protocol": "SERIAL",
-        "id": 4
+        "protocol": "DMX",
+        "id": 35,
+        "format": [
+            "red",
+            "green",
+            "blue"
+        ]
     },
     "laser-5": {
         "protocol": "SERIAL",
         "id": 5
     },
-    "lp-1": {
-        "protocol" : "DMX",
+    "pwm-1": {
+        "protocol": "DMX",
         "id": 1,
         "format": [
-            "state",
-            "",
-            "gallery",
-            "pattern",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "colour",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            ""
+            "out-1",
+            "out-2",
+            "out-3",
+            "out-4",
+            "out-5",
+            "out-6",
+            "out-7",
+            "out-8"
+        ]
+    },
+    "rgb-1": {
+        "protocol": "DMX",
+        "id": 17,
+        "format": [
+            "seg-1-r",
+            "seg-1-g",
+            "seg-1-b",
+            "seg-2-r",
+            "seg-2-g",
+            "seg-2-b",
+            "seg-3-r",
+            "seg-3-g",
+            "seg-3-b",
+            "seg-4-r",
+            "seg-4-g",
+            "seg-4-b",
+            "seg-5-r",
+            "seg-5-g",
+            "seg-5-b",
+            "seg-6-r",
+            "seg-6-g",
+            "seg-6-b",
+            "seg-7-r",
+            "seg-7-g",
+            "seg-7-b",
+            "seg-8-r",
+            "seg-8-g",
+            "seg-8-b"
+        ]
+    },
+    "rgb-2": {
+        "protocol": "DMX",
+        "id": 49,
+        "format": [
+            "seg-1-r",
+            "seg-1-g",
+            "seg-1-b",
+            "seg-2-r",
+            "seg-2-g",
+            "seg-2-b",
+            "seg-3-r",
+            "seg-3-g",
+            "seg-3-b",
+            "seg-4-r",
+            "seg-4-g",
+            "seg-4-b",
+            "seg-5-r",
+            "seg-5-g",
+            "seg-5-b",
+            "seg-6-r",
+            "seg-6-g",
+            "seg-6-b",
+            "seg-7-r",
+            "seg-7-g",
+            "seg-7-b",
+            "seg-8-r",
+            "seg-8-g",
+            "seg-8-b"
+        ]
+    },
+    "fog-1": {
+        "protocol": "DMX",
+        "id": 81,
+        "format": [
+            "machine-1",
+            "machine-2",
+            "machine-3",
+            "machine-4",
+            "duration",
+            "off-duration",
+            "enable"
         ]
     },
     "turret-1": {
-        "protocol" : "DMX",
-        "id": 41,
+        "protocol": "DMX",
+        "id": 97,
         "format": [
             "pan",
             "tilt",
@@ -102,8 +185,8 @@
         ]
     },
     "turret-2": {
-        "protocol" : "DMX",
-        "id": 44,
+        "protocol": "DMX",
+        "id": 100,
         "format": [
             "pan",
             "tilt",
@@ -111,8 +194,8 @@
         ]
     },
     "turret-3": {
-        "protocol" : "DMX",
-        "id": 47,
+        "protocol": "DMX",
+        "id": 103,
         "format": [
             "pan",
             "tilt",
@@ -120,12 +203,165 @@
         ]
     },
     "turret-4": {
-        "protocol" : "DMX",
-        "id": 50,
+        "protocol": "DMX",
+        "id": 106,
         "format": [
             "pan",
             "tilt",
             "state"
+        ]
+    },
+    "bird-1": {
+        "protocol": "DMX",
+        "id": 113,
+        "format": [
+            "mode",
+            "speed",
+            "left-wing",
+            "right-wing",
+            "beak",
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "effect",
+            "effect-rate",
+            "track",
+            "volume"
+        ]
+    },
+    "spot-1": {
+        "protocol": "DMX",
+        "id": 129,
+        "format": [
+            "pan",
+            "pan-fine",
+            "tilt",
+            "tilt-fine",
+            "colour-function",
+            "colour",
+            "litho-function",
+            "litho",
+            "litho-rotate",
+            "effect",
+            "effect-rotate",
+            "focus",
+            "iris",
+            "shutter",
+            "dimmer",
+            "motor-speed",
+            "macro",
+            "control"
+        ]
+    },
+    "spot-2": {
+        "protocol": "DMX",
+        "id": 147,
+        "format": [
+            "pan",
+            "pan-fine",
+            "tilt",
+            "tilt-fine",
+            "colour-function",
+            "colour",
+            "litho-function",
+            "litho",
+            "litho-rotate",
+            "effect",
+            "effect-rotate",
+            "focus",
+            "iris",
+            "shutter",
+            "dimmer",
+            "motor-speed",
+            "macro",
+            "control"
+        ]
+    },
+    "spot-3": {
+        "protocol": "DMX",
+        "id": 165,
+        "format": [
+            "pan",
+            "pan-fine",
+            "tilt",
+            "tilt-fine",
+            "colour-function",
+            "colour",
+            "litho-function",
+            "litho",
+            "litho-rotate",
+            "effect",
+            "effect-rotate",
+            "focus",
+            "iris",
+            "shutter",
+            "dimmer",
+            "motor-speed",
+            "macro",
+            "control"
+        ]
+    },
+    "spot-4": {
+        "protocol": "DMX",
+        "id": 183,
+        "format": [
+            "pan",
+            "pan-fine",
+            "tilt",
+            "tilt-fine",
+            "colour-function",
+            "colour",
+            "litho-function",
+            "litho",
+            "litho-rotate",
+            "effect",
+            "effect-rotate",
+            "focus",
+            "iris",
+            "shutter",
+            "dimmer",
+            "motor-speed",
+            "macro",
+            "control"
+        ]
+    },
+    "lp-1": {
+        "protocol": "DMX",
+        "id": 256,
+        "format": [
+            "state",
+            "size",
+            "gallery",
+            "pattern",
+            "zoom",
+            "rotation",
+            "h-move",
+            "v-move",
+            "h-zoom",
+            "v-zoom",
+            "forced-colour",
+            "colour",
+            "nodes",
+            "node-expand",
+            "drawing",
+            "distortion-1",
+            "distortion-2",
+            "p2-select",
+            "p2-size",
+            "p2-gallery",
+            "p2-pattern",
+            "p2-zoom",
+            "p2-rotation",
+            "p2-h-move",
+            "p2-v-move",
+            "p2-h-flip",
+            "p2-v-flip",
+            "p2-forced-colour",
+            "p2-colour",
+            "p2-nodes",
+            "p2-node-expand",
+            "p2-drawing"
         ]
     }
 }

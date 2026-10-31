@@ -62,7 +62,7 @@ async fn main() -> Result<(), Error> {
     // Initialize UART controller
     let uart_tx = {
         let (uart_tx, uart_rx) = mpsc::channel(100);
-        let uart_controller = UartController::init().await.unwrap();
+        let uart_controller = UartController::init().unwrap();
         tokio::spawn(async move {
             uart_controller.start(uart_rx).await;
         });
@@ -150,9 +150,13 @@ async fn main() -> Result<(), Error> {
                             .await
                             .unwrap();
                     }
-                    InternalMessage::DmxSendRequest | InternalMessage::DmxZeroOut => {
+                    InternalMessage::DmxSendRequest => {
                         info!("DMX request received");
                         dmx_tx.send(DmxMessage::Send).await.unwrap();
+                    }
+                    InternalMessage::DmxZeroOut => {
+                        info!("DMX zero out received");
+                        dmx_tx.send(DmxMessage::ZeroOut).await.unwrap();
                     }
                 },
             }
@@ -178,6 +182,13 @@ async fn main() -> Result<(), Error> {
 
     info!("Starting queue worker...");
 
+    // Play a specific show first with SHOW=<show folder name>, otherwise pick
+    // one at random
+    let first_show = match std::env::var("SHOW") {
+        Ok(show_name) => ShowChoice::Name(format!("{}-instructions-exported.json", show_name)),
+        Err(_) => ShowChoice::Random { last_song: None },
+    };
+
     let queue_handle = tokio::spawn(async move {
         // Send startup command
         show_worker_channel_tx
@@ -191,7 +202,7 @@ async fn main() -> Result<(), Error> {
                 // ShowElement::LightTest,
                 ShowElement::RunInit,
                 ShowElement::Home,
-                ShowElement::PrepareShow(ShowChoice::Random { last_song: None }),
+                ShowElement::PrepareShow(first_show),
             ])
             .await
             .unwrap();

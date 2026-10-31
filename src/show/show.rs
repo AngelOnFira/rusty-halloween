@@ -1,19 +1,18 @@
 use std::path::Path;
 
-use log::info;
+use log::{info, warn};
 
 use crate::{
     audio::Audio,
-    config::Config,
+    config::{Config, DmxDevice},
     prelude::{LoadedSong, LoadingSong},
 };
 
-use super::{LaserDataFrame, MAX_LASERS, MAX_LIGHTS, MAX_PROJECTORS, MAX_TURRETS};
+use super::{LaserDataFrame, MAX_LASERS, MAX_LIGHTS};
 
 // Re-export types from common
 pub use common::{
-    DmxStateData, DmxStateIndex, DmxStateVarPosition, Frame, Laser, Projector,
-    SerializableShow, Turret,
+    DmxStateData, DmxStateIndex, DmxStateVarPosition, Frame, Laser, SerializableShow,
 };
 
 /// A show contains a song and a list of frames. The song won't be loaded in
@@ -111,7 +110,7 @@ impl LoadedShow {
     }
 }
 
-// Frame, Laser, Projector, and Turret types are now imported from common
+// Frame and Laser types are now imported from common
 
 #[derive(Clone, Debug)]
 pub struct DmxState {
@@ -154,20 +153,29 @@ impl UnloadedShow {
 
             let mut lights = vec![None; MAX_LIGHTS];
             let mut lasers = vec![None; MAX_LASERS];
-            let mut projectors = vec![None; MAX_PROJECTORS];
-            let mut turrets = vec![None; MAX_TURRETS];
+            let mut dmx = Vec::new();
 
             // Process each device in the frame
             for (device_name, device_state) in frame {
                 if let Some(light_num) = device_name.strip_prefix("light-") {
-                    if let Ok(index) = light_num.parse::<usize>() {
-                        if index <= MAX_LIGHTS {
-                            let value = device_state.as_f64().unwrap_or(0.0) > 0.0;
+                    let value = device_state.as_f64().unwrap_or(0.0) > 0.0;
+
+                    // Lights patched over DMX are switched fully on or off,
+                    // otherwise they're GPIO lights
+                    if let Some(channel) = config.get_dmx_state_var_position(device_name, "state")
+                    {
+                        dmx.push((channel, if value { DmxStateData::MAX } else { 0 }));
+                    } else if let Ok(index) = light_num.parse::<usize>() {
+                        if (1..=MAX_LIGHTS).contains(&index) {
                             lights[index - 1] = Some(value);
                         }
                     }
                 } else if let Some(laser_num) = device_name.strip_prefix("laser-") {
-                    if let Ok(index) = laser_num.parse::<usize>() {
+                    if let Some(device) = config.dmx_devices.get(device_name.as_str()) {
+                        // Lasers patched over DMX (the pumpkins) light up in
+                        // the laser's colour
+                        dmx.extend(parse_laser_as_rgb(device_name, device, device_state));
+                    } else if let Ok(index) = laser_num.parse::<usize>() {
                         if index <= MAX_LASERS {
                             let laser = if device_state.is_number() {
                                 // Reset command
@@ -291,52 +299,10 @@ impl UnloadedShow {
                             lasers[index - 1] = laser;
                         }
                     }
-                } else if let Some(projector_num) = device_name.strip_prefix("lp-") {
-                    if let Ok(index) = projector_num.parse::<usize>() {
-                        if index <= MAX_PROJECTORS {
-                            let projector = Projector {
-                                state: (
-                                    config.get_dmx_state_var_position(device_name, "state"),
-                                    device_state["state"].as_u64().unwrap_or(0) as u8,
-                                ),
-                                gallery: (
-                                    config.get_dmx_state_var_position(device_name, "gallery"),
-                                    device_state["gallery"].as_u64().unwrap_or(0) as u8,
-                                ),
-                                pattern: (
-                                    config.get_dmx_state_var_position(device_name, "pattern"),
-                                    device_state["pattern"].as_u64().unwrap_or(0) as u8,
-                                ),
-                                colour: (
-                                    config.get_dmx_state_var_position(device_name, "colour"),
-                                    device_state["colour"].as_u64().unwrap_or(0) as u8,
-                                ),
-                            };
-                            projectors[index - 1] = Some(projector);
-                        }
-                    }
-                } else if let Some(turret_num) = device_name.strip_prefix("turret-") {
-                    if let Ok(index) = turret_num.parse::<usize>() {
-                        if index <= MAX_TURRETS {
-                            let turret = Turret {
-                                state: (
-                                    config.get_dmx_state_var_position(device_name, "state"),
-                                    device_state["state"].as_u64().unwrap_or(0) as u8,
-                                ),
-                                pan: (
-                                    config.get_dmx_state_var_position(device_name, "pan"),
-                                    device_state["pan"].as_u64().unwrap_or(0) as u8,
-                                ),
-                                tilt: (
-                                    config.get_dmx_state_var_position(device_name, "tilt"),
-                                    device_state["tilt"].as_u64().unwrap_or(0) as u8,
-                                ),
-                            };
-                            turrets[index - 1] = Some(turret);
-                        }
-                    }
+                } else if let Some(device) = config.dmx_devices.get(device_name.as_str()) {
+                    dmx.extend(parse_dmx_device(device_name, device, device_state));
                 } else {
-                    panic!("Unknown device: {}", device_name);
+                    warn!("Unknown device {} at {}ms, skipping", device_name, timestamp);
                 }
             }
 
@@ -344,8 +310,7 @@ impl UnloadedShow {
                 timestamp,
                 lights,
                 lasers,
-                projectors,
-                turrets,
+                dmx,
             };
 
             // dbg!("Frame: {:?}", &frame);
@@ -377,10 +342,299 @@ impl UnloadedShow {
                     })
                     .collect(),
                 lasers: (0..MAX_LASERS).map(|_| None).collect(),
-                projectors: (0..MAX_PROJECTORS).map(|_| None).collect(),
-                turrets: (0..MAX_TURRETS).map(|_| None).collect(),
+                dmx: Vec::new(),
             })
             .collect::<Vec<Frame>>()
+    }
+}
+
+/// Turn a DMX device's state in a show frame into channel writes. The state is
+/// either an object of format keywords to values, or a single number that is
+/// written to every named channel of the device (e.g. `"lp-1": 0` for off).
+///
+/// A keyword's value is a number for one channel, or an array of numbers that
+/// fills consecutive channels starting at that keyword (e.g. an RGB segment).
+/// Only the keywords in the frame are written, the rest keep their last value.
+fn parse_dmx_device(
+    device_name: &str,
+    device: &DmxDevice,
+    device_state: &serde_json::Value,
+) -> Vec<DmxStateVarPosition> {
+    let mut positions = Vec::new();
+
+    if device_state.is_number() {
+        if let Some(value) = to_dmx_value(device_name, "", device_state) {
+            for (_, channel) in device.named_channels() {
+                positions.push((channel, value));
+            }
+        }
+
+        return positions;
+    }
+
+    let Some(state) = device_state.as_object() else {
+        warn!("DMX device {}: unsupported state {}, skipping", device_name, device_state);
+        return positions;
+    };
+
+    for (var_name, value) in state {
+        let Some(channel) = device.channel(var_name) else {
+            warn!("DMX device {}: unknown keyword {}, skipping", device_name, var_name);
+            continue;
+        };
+
+        match value.as_array() {
+            Some(values) => {
+                for (offset, value) in values.iter().enumerate() {
+                    let channel = channel + offset as DmxStateIndex;
+                    if channel > device.last_channel() {
+                        warn!(
+                            "DMX device {}: {} writes past the device's last channel {}, dropping the rest",
+                            device_name,
+                            var_name,
+                            device.last_channel()
+                        );
+                        break;
+                    }
+
+                    if let Some(value) = to_dmx_value(device_name, var_name, value) {
+                        positions.push((channel, value));
+                    }
+                }
+            }
+            None => {
+                if let Some(value) = to_dmx_value(device_name, var_name, value) {
+                    positions.push((channel, value));
+                }
+            }
+        }
+    }
+
+    positions
+}
+
+/// Convert a show value to a DMX value, clamping it to 0-255 instead of
+/// wrapping
+fn to_dmx_value(
+    device_name: &str,
+    var_name: &str,
+    value: &serde_json::Value,
+) -> Option<DmxStateData> {
+    let Some(number) = value.as_f64() else {
+        warn!("DMX device {}: {} is not a number ({}), skipping", device_name, var_name, value);
+        return None;
+    };
+
+    let max = DmxStateData::MAX as f64;
+    if !(0.0..=max).contains(&number) {
+        warn!("DMX device {}: {} is out of range ({}), clamping", device_name, var_name, number);
+    }
+
+    Some(number.round().clamp(0.0, max) as DmxStateData)
+}
+
+/// Halloween colours for the RGB devices (the pumpkins) that stand in for the
+/// serial lasers. The old laser cues only use pure red, green, or blue.
+const LASER_PALETTE: [(&str, [DmxStateData; 3]); 3] = [
+    // Red becomes orange
+    ("f00", [255, 70, 0]),
+    // Green becomes toxic green
+    ("0f0", [90, 255, 0]),
+    // Blue becomes purple
+    ("00f", [150, 0, 255]),
+];
+
+/// Turn a laser cue into a colour for the RGB device patched in place of that
+/// laser. A number (the laser's off command) turns it off, otherwise the
+/// laser's `hex` colour is swapped for its palette colour.
+fn parse_laser_as_rgb(
+    device_name: &str,
+    device: &DmxDevice,
+    device_state: &serde_json::Value,
+) -> Vec<DmxStateVarPosition> {
+    let colour = if device_state.is_number() {
+        [0, 0, 0]
+    } else {
+        let hex = device_state.get("hex").and_then(|v| v.as_str()).unwrap_or("");
+        match LASER_PALETTE
+            .iter()
+            .find(|(laser_hex, _)| laser_hex.eq_ignore_ascii_case(hex))
+        {
+            Some((_, colour)) => *colour,
+            None => {
+                warn!("Laser {}: no palette colour for hex {:?}, skipping", device_name, hex);
+                return Vec::new();
+            }
+        }
+    };
+
+    ["red", "green", "blue"]
+        .into_iter()
+        .zip(colour)
+        .filter_map(|(var_name, value)| device.channel(var_name).map(|channel| (channel, value)))
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Write a show file to a temporary directory and load it with the 2026
+    /// hardware config
+    fn load_test_show(test_name: &str, show_json: &str) -> UnloadedShow {
+        let dir = std::env::temp_dir()
+            .join(format!("rusty-halloween-{}-{}", test_name, std::process::id()))
+            .join("test-show");
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("instructions-exported.json");
+        std::fs::write(&path, show_json).unwrap();
+
+        let config = Config::load_from_json("config/hardware.json").unwrap();
+        let show = UnloadedShow::load_show_file(&path, &config);
+
+        std::fs::remove_dir_all(dir.parent().unwrap()).unwrap();
+        show
+    }
+
+    fn sorted(mut positions: Vec<DmxStateVarPosition>) -> Vec<DmxStateVarPosition> {
+        positions.sort();
+        positions
+    }
+
+    #[test]
+    fn test_legacy_keys_translate_to_dmx() {
+        let show = load_test_show(
+            "legacy",
+            r#"{
+                "song": "test.mp3",
+                "0": {
+                    "light-2": 1,
+                    "turret-1": {"state": 1, "pan": 120, "tilt": 45},
+                    "lp-1": {"state": 1, "gallery": 255, "pattern": 4, "colour": 10},
+                    "laser-5": 0,
+                    "projector-9": {"state": 1}
+                },
+                "1000": {
+                    "light-2": 0,
+                    "lp-1": 0
+                }
+            }"#,
+        );
+
+        assert_eq!(show.name, "test-show");
+        assert_eq!(show.frames.len(), 2);
+
+        let frame = &show.frames[0];
+        assert_eq!(frame.timestamp, 0);
+
+        // Lights are on DMX now, so nothing is left for GPIO
+        assert!(frame.lights.iter().all(|light| light.is_none()));
+
+        // Lasers that aren't patched over DMX are parsed the same as before
+        assert!(frame.lasers[4].is_some());
+
+        // The laser projector gets last year's values unchanged
+        assert_eq!(
+            sorted(frame.dmx.clone()),
+            vec![
+                (2, 255),
+                (97, 120),
+                (98, 45),
+                (99, 1),
+                (256, 1),
+                (258, 255),
+                (259, 4),
+                (267, 10),
+            ]
+        );
+
+        // A bare number turns off every named channel on the laser
+        let frame = &show.frames[1];
+        assert_eq!(frame.timestamp, 1000);
+        let mut expected = vec![(2, 0)];
+        expected.extend((256..=287).map(|channel| (channel, 0)));
+        assert_eq!(sorted(frame.dmx.clone()), expected);
+    }
+
+    #[test]
+    fn test_lasers_become_pumpkins() {
+        let show = load_test_show(
+            "pumpkins",
+            r#"{
+                "0": {
+                    "laser-1": {"config": {}, "points": [[0, 0, 7, 0, 0]], "hex": "f00", "value": "bat"},
+                    "laser-2": {"config": {}, "points": [[0, 0, 0, 7, 0]], "hex": "0f0", "value": "bat"},
+                    "laser-3": {"config": {}, "points": [[0, 0, 0, 0, 7]], "hex": "00f", "value": "bat"},
+                    "laser-4": {"config": {}, "points": [[0, 0, 7, 0, 0]], "hex": "F00", "value": "bat"},
+                    "laser-5": {"config": {}, "points": [[0, 0, 0, 7, 0]], "hex": "0f0", "value": "bat"}
+                },
+                "1000": {
+                    "laser-1": 0,
+                    "laser-2": {"config": {}, "points": [], "hex": "ff0", "value": "bat"}
+                }
+            }"#,
+        );
+
+        // Lasers 1-4 are pumpkins on RGB-1's odd segments (1, 3, 5, 7), in the
+        // Halloween palette. Laser 5 is still a serial laser
+        let frame = &show.frames[0];
+        assert_eq!(
+            sorted(frame.dmx.clone()),
+            vec![
+                (17, 255),
+                (18, 70),
+                (19, 0),
+                (23, 90),
+                (24, 255),
+                (25, 0),
+                (29, 150),
+                (30, 0),
+                (31, 255),
+                (35, 255),
+                (36, 70),
+                (37, 0),
+            ]
+        );
+        assert!(frame.lasers[..4].iter().all(|laser| laser.is_none()));
+        assert!(frame.lasers[4].is_some());
+
+        // Off turns the pumpkin off, and colours outside the palette are
+        // skipped so the pumpkin keeps its last colour
+        assert_eq!(
+            sorted(show.frames[1].dmx.clone()),
+            vec![(17, 0), (18, 0), (19, 0)]
+        );
+    }
+
+    #[test]
+    fn test_new_fixture_keys() {
+        let show = load_test_show(
+            "fixtures",
+            r#"{
+                "0": {
+                    "rgb-1": {"seg-1-r": [255, 80, 0]},
+                    "rgb-2": {"seg-8-g": [10, 20, 30]},
+                    "fog-1": {"enable": 300, "machine-1": -5, "not-a-keyword": 1},
+                    "bird-1": {"volume": 127.6}
+                }
+            }"#,
+        );
+
+        assert_eq!(
+            sorted(show.frames[0].dmx.clone()),
+            vec![
+                (17, 255),
+                (18, 80),
+                (19, 0),
+                // The array is cut off at the end of rgb-2's footprint
+                (71, 10),
+                (72, 20),
+                // Clamped instead of wrapping
+                (81, 0),
+                (87, 255),
+                (125, 128),
+            ]
+        );
     }
 }
 

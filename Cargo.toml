@@ -41,6 +41,8 @@ notify = "6.1.1"
 # Embedded
 rppal = { version = "0.22.1", optional = true }
 packed_struct = "0.10.0"
+# Raw mode for the DMX-Now virtual serial port
+libc = "0.2"
 kira = { version = "0.8.5" }
 
 # Embed the audio files

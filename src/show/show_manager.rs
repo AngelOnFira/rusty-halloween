@@ -228,11 +228,13 @@ impl ShowManager {
         // Find all folders in the shows folder
         let shows = std::fs::read_dir("shows").unwrap();
 
+        // Only look at folders, so files like .DS_Store are skipped
         let names = shows
             .into_iter()
+            .filter_map(Result::ok)
+            .filter(|show| show.path().is_dir())
             .map(|show| {
-                show.unwrap()
-                    .path()
+                show.path()
                     .file_name()
                     .unwrap()
                     .to_str()
@@ -720,40 +722,16 @@ async fn show_task_loop(
                             }
                         }
 
-                        // Go through all the DMX devices and send the data.
-                        // Start with the projectors
-                        for projector in curr_frame.projectors.iter() {
-                            if let Some(projector) = projector {
-                                show_manager
-                                    .message_queue
-                                    .send(MessageKind::InternalMessage(
-                                        InternalMessage::DmxUpdateState(vec![
-                                            projector.state,
-                                            projector.gallery,
-                                            projector.pattern,
-                                            projector.colour,
-                                        ]),
-                                    ))
-                                    .await
-                                    .unwrap();
-                            }
-                        }
-
-                        // Send all the turrets data
-                        for turret in curr_frame.turrets.iter() {
-                            if let Some(turret) = turret {
-                                show_manager
-                                    .message_queue
-                                    .send(MessageKind::InternalMessage(
-                                        InternalMessage::DmxUpdateState(vec![
-                                            turret.state,
-                                            turret.pan,
-                                            turret.tilt,
-                                        ]),
-                                    ))
-                                    .await
-                                    .unwrap();
-                            }
+                        // Send the DMX channel updates for every DMX device
+                        // in this frame
+                        if !curr_frame.dmx.is_empty() {
+                            show_manager
+                                .message_queue
+                                .send(MessageKind::InternalMessage(
+                                    InternalMessage::DmxUpdateState(curr_frame.dmx.clone()),
+                                ))
+                                .await
+                                .unwrap();
                         }
 
                         // Now that a frame is done sending everything send all

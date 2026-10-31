@@ -70,7 +70,7 @@ impl LightController {
         // inverted
 
         // Make sure the pin input is not outside of the range of pins
-        if pin as usize > self.pins.len() {
+        if pin as usize >= self.pins.len() {
             error!("Light {}: pin {} is out of range", pin, pin);
             return;
         }

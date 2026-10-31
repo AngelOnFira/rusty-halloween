@@ -11,12 +11,11 @@ use alloc::string::String;
 // Device count constants
 pub const MAX_LIGHTS: usize = 7;
 pub const MAX_LASERS: usize = 5;
-pub const MAX_PROJECTORS: usize = 1;
-pub const MAX_TURRETS: usize = 4;
 
-// Type aliases for DMX state
+// Type aliases for DMX state. Indexes are DMX channels (1-512), so they need
+// more than 8 bits
 pub type DmxStateData = u8;
-pub type DmxStateIndex = u8;
+pub type DmxStateIndex = u16;
 pub type DmxStateVarPosition = (DmxStateIndex, DmxStateData);
 
 /// A serializable show that contains just the frame data without audio
@@ -27,14 +26,14 @@ pub struct SerializableShow {
 }
 
 /// A frame consists of a timestamp since the beginning of this show, a list of
-/// commands for the lights, and a list of commands for the lasers.
+/// commands for the GPIO lights, a list of commands for the lasers, and the
+/// DMX channel writes for every DMX device in the frame.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Frame {
     pub timestamp: u64,
     pub lights: Vec<Option<bool>>,
     pub lasers: Vec<Option<Laser>>,
-    pub projectors: Vec<Option<Projector>>,
-    pub turrets: Vec<Option<Turret>>,
+    pub dmx: Vec<DmxStateVarPosition>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -47,21 +46,6 @@ pub struct Laser {
     // Laser data
     pub hex: [u8; 3],
     pub value: u8,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Projector {
-    pub state: DmxStateVarPosition,
-    pub gallery: DmxStateVarPosition,
-    pub pattern: DmxStateVarPosition,
-    pub colour: DmxStateVarPosition,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Turret {
-    pub state: DmxStateVarPosition,
-    pub pan: DmxStateVarPosition,
-    pub tilt: DmxStateVarPosition,
 }
 
 // Device instruction types for ESP32 devices

@@ -39,6 +39,12 @@ impl DmxState {
         mut rx: mpsc::Receiver<DmxMessage>,
         uart_tx: mpsc::Sender<UartMessage>,
     ) {
+        // Start the rig dark. Zero is the safe value for every fixture (fog
+        // master enable off, laser output off)
+        if let Err(e) = uart_tx.send(UartMessage::DMX(self.values.to_vec())).await {
+            error!("Failed to send initial DMX data: {}", e);
+        }
+
         while let Some(message) = rx.recv().await {
             match message {
                 DmxMessage::Send => {
@@ -54,6 +60,11 @@ impl DmxState {
                 }
                 DmxMessage::UpdateState(state) => {
                     for (index, value) in state {
+                        if index < 1 || index as usize > DMX_CHANNELS {
+                            error!("DMX channel {} is outside of 1-{}, skipping", index, DMX_CHANNELS);
+                            continue;
+                        }
+
                         // DMX addresses start at 1, not 0. Translate the DMX index to the
                         // correct array index
                         let index = index as usize - 1;
@@ -91,5 +102,46 @@ impl Debug for DmxState {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_update_and_send_full_universe() {
+        let config = Config::load_from_json("config/hardware.json").unwrap();
+        let (dmx_tx, dmx_rx) = mpsc::channel(10);
+        let (uart_tx, mut uart_rx) = mpsc::channel(10);
+        tokio::spawn(DmxState::init(config).start(dmx_rx, uart_tx));
+
+        // The rig starts dark
+        let UartMessage::DMX(data) = uart_rx.recv().await.unwrap() else {
+            panic!("Expected DMX data");
+        };
+        assert_eq!(data, vec![0; DMX_CHANNELS]);
+
+        // Out of range channels are skipped instead of panicking
+        dmx_tx
+            .send(DmxMessage::UpdateState(vec![(0, 1), (1, 7), (512, 9), (513, 3)]))
+            .await
+            .unwrap();
+        dmx_tx.send(DmxMessage::Send).await.unwrap();
+
+        let UartMessage::DMX(data) = uart_rx.recv().await.unwrap() else {
+            panic!("Expected DMX data");
+        };
+        assert_eq!(data.len(), DMX_CHANNELS);
+        assert_eq!(data[0], 7);
+        assert_eq!(data[511], 9);
+        assert_eq!(data.iter().filter(|&&value| value != 0).count(), 2);
+
+        // Zeroing out blacks out the whole universe
+        dmx_tx.send(DmxMessage::ZeroOut).await.unwrap();
+        let UartMessage::DMX(data) = uart_rx.recv().await.unwrap() else {
+            panic!("Expected DMX data");
+        };
+        assert_eq!(data, vec![0; DMX_CHANNELS]);
     }
 }
