@@ -1,5 +1,6 @@
 use rust_embed::RustEmbed;
 
+mod fog;
 mod show;
 mod show_manager;
 

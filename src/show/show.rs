@@ -321,6 +321,9 @@ impl UnloadedShow {
         // Sort frames by timestamp
         frames.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
 
+        // Drive the fog machines from the existing light and laser cues
+        super::fog::add_fog_cues(&mut frames, config);
+
         UnloadedShow {
             name: show_name.to_string(),
             frames,
@@ -496,9 +499,42 @@ mod tests {
         show
     }
 
+    /// Channels of the fog controller (fog-1) in the 2026 hardware config
+    const FOG_CHANNELS: std::ops::RangeInclusive<DmxStateIndex> = 81..=87;
+
     fn sorted(mut positions: Vec<DmxStateVarPosition>) -> Vec<DmxStateVarPosition> {
         positions.sort();
         positions
+    }
+
+    /// A frame's DMX writes from the show itself, leaving out the generated
+    /// fog cues
+    fn show_dmx(frame: &Frame) -> Vec<DmxStateVarPosition> {
+        sorted(
+            frame
+                .dmx
+                .iter()
+                .copied()
+                .filter(|(channel, _)| !FOG_CHANNELS.contains(channel))
+                .collect(),
+        )
+    }
+
+    /// The generated fog cues, as (timestamp, writes) for each frame that has any
+    fn fog_cues(show: &UnloadedShow) -> Vec<(u64, Vec<DmxStateVarPosition>)> {
+        show.frames
+            .iter()
+            .map(|frame| {
+                let fog = frame
+                    .dmx
+                    .iter()
+                    .copied()
+                    .filter(|(channel, _)| FOG_CHANNELS.contains(channel))
+                    .collect::<Vec<_>>();
+                (frame.timestamp, sorted(fog))
+            })
+            .filter(|(_, fog)| !fog.is_empty())
+            .collect()
     }
 
     #[test]
@@ -535,7 +571,7 @@ mod tests {
 
         // The laser projector gets last year's values unchanged
         assert_eq!(
-            sorted(frame.dmx.clone()),
+            show_dmx(frame),
             vec![
                 (2, 255),
                 (97, 120),
@@ -553,7 +589,7 @@ mod tests {
         assert_eq!(frame.timestamp, 1000);
         let mut expected = vec![(2, 0)];
         expected.extend((256..=287).map(|channel| (channel, 0)));
-        assert_eq!(sorted(frame.dmx.clone()), expected);
+        assert_eq!(show_dmx(frame), expected);
     }
 
     #[test]
@@ -579,7 +615,7 @@ mod tests {
         // Halloween palette. Laser 5 is still a serial laser
         let frame = &show.frames[0];
         assert_eq!(
-            sorted(frame.dmx.clone()),
+            show_dmx(frame),
             vec![
                 (17, 255),
                 (18, 70),
@@ -601,9 +637,121 @@ mod tests {
         // Off turns the pumpkin off, and colours outside the palette are
         // skipped so the pumpkin keeps its last colour
         assert_eq!(
-            sorted(show.frames[1].dmx.clone()),
+            show_dmx(&show.frames[1]),
             vec![(17, 0), (18, 0), (19, 0)]
         );
+    }
+
+    #[test]
+    fn test_fog_follows_light_and_laser() {
+        let show = load_test_show(
+            "fog",
+            r#"{
+                "0": {"light-4": 1, "lp-1": {"state": 1}},
+                "2000": {"light-4": 0, "lp-1": {"state": 0}},
+                "3000": {"lp-1": {"state": 1}},
+                "6000": {"lp-1": 0},
+                "7000": {"lp-1": {"state": 1}},
+                "8000": {"lp-1": 0},
+                "13000": {"lp-1": {"state": 1}},
+                "14000": {"lp-1": 0},
+                "21000": {"lp-1": {"state": 1}},
+                "22000": {"light-4": 1},
+                "24000": {"lp-1": {"state": 255}}
+            }"#,
+        );
+
+        assert_eq!(
+            fog_cues(&show),
+            vec![
+                // The fog controller is enabled, fog 3 turns on with light-4,
+                // and fog 1 fires when the laser turns on
+                (0, vec![(81, 255), (83, 255), (87, 255)]),
+                // 3000: the laser turns on during fog 1's burst, so it's
+                // skipped. Fog 3 is held on for 5s, even though light-4 turned
+                // off at 2000
+                (5000, vec![(81, 0), (83, 0)]),
+                // Fog 2 takes the next turn
+                (7000, vec![(82, 255)]),
+                (12000, vec![(82, 0)]),
+                // 13000: fog 1 is still resting until 20000, so it's skipped
+                (21000, vec![(81, 255)]),
+                (22000, vec![(83, 255)]),
+                // The burst is cut short at the end of the show. 255 turns the
+                // laser off, so it doesn't trigger anything
+                (24000, vec![(81, 0)]),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_fog_holds_on_after_light_flickers() {
+        let show = load_test_show(
+            "fog-hold",
+            r#"{
+                "0": {"light-4": 1},
+                "500": {"light-4": 0},
+                "1000": {"light-4": 1},
+                "1500": {"light-4": 0},
+                "10000": {"light-4": 1},
+                "17000": {"light-4": 0},
+                "20000": {"light-4": 1},
+                "21000": {"light-4": 0},
+                "25000": {"light-4": 1},
+                "26000": {"light-4": 0},
+                "40000": {"light-4": 1},
+                "41000": {"light-4": 0}
+            }"#,
+        );
+
+        assert_eq!(
+            fog_cues(&show),
+            vec![
+                (0, vec![(83, 255), (87, 255)]),
+                // Flickering keeps fog 3 on until 5s after the last time the
+                // light turned on
+                (6000, vec![(83, 0)]),
+                // The light stays on longer than 5s, so fog 3 follows it
+                (10000, vec![(83, 255)]),
+                (17000, vec![(83, 0)]),
+                // The light comes back on right as the hold runs out, so fog 3
+                // stays on and holds for another 5s
+                (20000, vec![(83, 255)]),
+                (30000, vec![(83, 0)]),
+                // The hold is cut short at the end of the show
+                (40000, vec![(83, 255)]),
+                (41000, vec![(83, 0)]),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_fog_bursts_never_overlap() {
+        // Turn the laser on and off every second for two minutes
+        let cues = (0..120)
+            .map(|second| format!(r#""{}": {{"lp-1": {{"state": {}}}}}"#, second * 1000, (second + 1) % 2))
+            .collect::<Vec<_>>()
+            .join(",");
+        let show = load_test_show("fog-overlap", &format!("{{{}}}", cues));
+
+        let mut on = [false; 2];
+        let mut last_on = [None; 2];
+        for (timestamp, writes) in fog_cues(&show) {
+            for (channel, value) in writes {
+                if let Some(machine) = [81, 82].iter().position(|&c| c == channel) {
+                    if value > 0 {
+                        // Each machine rests 15s after a 5s burst
+                        if let Some(last) = last_on[machine] {
+                            assert!(timestamp - last >= 20_000, "fog {} fired too soon", machine + 1);
+                        }
+                        last_on[machine] = Some(timestamp);
+                    }
+                    on[machine] = value > 0;
+                }
+            }
+            assert!(!(on[0] && on[1]), "fog 1 and 2 are on together at {}ms", timestamp);
+        }
+        assert!(last_on.iter().all(|last| last.is_some()));
     }
 
     #[test]

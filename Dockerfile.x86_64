@@ -1,0 +1,8 @@
+# Ubuntu 16.04 based, so the binary only needs glibc 2.23 and still runs on
+# older distros
+FROM ghcr.io/cross-rs/x86_64-unknown-linux-gnu:0.2.5
+
+# Install pkg-config and ALSA dev headers for audio playback
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends pkg-config libasound2-dev \
+ && rm -rf /var/lib/apt/lists/*

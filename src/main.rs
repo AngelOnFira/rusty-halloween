@@ -1,7 +1,7 @@
 use anyhow::Error;
 use chrono::Local;
 use env_logger::Builder;
-use log::{info, LevelFilter};
+use log::{error, info, LevelFilter};
 use rusty_halloween::{
     audio::Audio,
     config::Config,
@@ -158,6 +158,10 @@ async fn main() -> Result<(), Error> {
                         info!("DMX zero out received");
                         dmx_tx.send(DmxMessage::ZeroOut).await.unwrap();
                     }
+                    InternalMessage::DmxShutdown => {
+                        info!("DMX shutdown received");
+                        dmx_tx.send(DmxMessage::Shutdown).await.unwrap();
+                    }
                 },
             }
         }
@@ -212,13 +216,30 @@ async fn main() -> Result<(), Error> {
 
     // let _ = tokio::join!(handle, worker_handle, queue_handle);
 
-    match signal::ctrl_c().await {
-        Ok(()) => {}
-        Err(err) => {
-            eprintln!("Unable to listen for shutdown signal: {}", err);
-            // we also shut down in case of error
+    // Wait for Ctrl-C or a terminate signal
+    let mut terminate = signal::unix::signal(signal::unix::SignalKind::terminate())?;
+    tokio::select! {
+        result = signal::ctrl_c() => {
+            if let Err(err) = result {
+                eprintln!("Unable to listen for shutdown signal: {}", err);
+                // we also shut down in case of error
+            }
         }
-    };
+        _ = terminate.recv() => {}
+    }
+
+    // Black out DMX before exiting. DMX-Now keeps repeating the last frame it
+    // got, so otherwise the fog machines and lights would stay on
+    info!("Shutting down, blacking out DMX...");
+    if let Err(e) = message_queue_tx
+        .send(MessageKind::InternalMessage(InternalMessage::DmxShutdown))
+        .await
+    {
+        error!("Failed to black out DMX: {}", e);
+    }
+
+    // Give the DMX and UART actors time to write the blackout
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
 
     // let _tx_clone = message_queue_tx.clone();
 

@@ -31,6 +31,9 @@ pub enum InternalMessage {
     DmxSendRequest,
     /// Zero out all DMX channels
     DmxZeroOut,
+    /// Zero out all DMX channels and ignore any DMX updates after it, for
+    /// shutting down
+    DmxShutdown,
 }
 
 // Add new enum for audio controller messages

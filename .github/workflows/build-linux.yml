@@ -1,0 +1,67 @@
+on:
+  push:
+  workflow_dispatch:
+
+name: Linux x86_64 build
+
+jobs:
+  linux_x86_64:
+    name: Linux x86_64
+    runs-on: ubuntu-latest
+    env:
+      TARGET: x86_64-unknown-linux-gnu
+    steps:
+      - uses: actions/checkout@v4
+
+      # Installs the toolchain from the rust-toolchain file
+      - name: Install Rust
+        run: rustup toolchain install --profile minimal
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ env.TARGET }}
+
+      - name: Install cross
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cross
+
+      # Builds inside Ubuntu 16.04 (Dockerfile.x86_64), so the binary runs on
+      # older distros instead of needing the runner's glibc
+      - name: Build
+        run: cross build --target $TARGET --release --bin rusty-halloween
+
+      - name: Check runtime requirements
+        run: |
+          bin=target/$TARGET/release/rusty-halloween
+          libs=$(readelf -d "$bin" | grep NEEDED | sed 's/.*\[\(.*\)\]/\1/' | tr '\n' ' ')
+          glibc=$(objdump -T "$bin" | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -1)
+          echo "Shared libraries: $libs"
+          echo "Needs $glibc or newer"
+          {
+            echo "### Linux x86_64 runtime requirements"
+            echo "- Needs **$glibc** or newer (check with \`ldd --version\`)"
+            echo "- Shared libraries: \`$libs\`"
+          } >> $GITHUB_STEP_SUMMARY
+
+          # libssl's soname changes between distro releases, so a binary linked
+          # against it won't start on older or newer systems
+          if echo "$libs" | grep -q libssl; then
+            echo "::error::Binary links against OpenSSL"
+            exit 1
+          fi
+
+      # The binary reads config/ and shows/ from the working directory. Songs
+      # aren't in git, so copy them into shows/ after unpacking
+      - name: Package
+        run: |
+          mkdir -p dist/rusty-halloween
+          cp target/$TARGET/release/rusty-halloween dist/rusty-halloween/
+          cp -r config shows dist/rusty-halloween/
+          tar -czf rusty-halloween-x86_64-linux.tar.gz -C dist rusty-halloween
+
+      - name: Archive binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: rusty-halloween-x86_64-linux
+          path: rusty-halloween-x86_64-linux.tar.gz

@@ -14,6 +14,9 @@ pub enum DmxMessage {
     Send,
     UpdateState(Vec<DmxStateVarPosition>),
     ZeroOut,
+    /// Zero out all channels, then ignore every message after it so the
+    /// universe stays dark until the program exits
+    Shutdown,
 }
 
 pub struct DmxState {
@@ -45,7 +48,14 @@ impl DmxState {
             error!("Failed to send initial DMX data: {}", e);
         }
 
+        let mut shut_down = false;
+
         while let Some(message) = rx.recv().await {
+            // Show frames that were already queued can't turn anything back on
+            if shut_down {
+                continue;
+            }
+
             match message {
                 DmxMessage::Send => {
                     // Debug print the values
@@ -83,6 +93,15 @@ impl DmxState {
                     if let Err(e) = uart_tx.send(UartMessage::DMX(data)).await {
                         error!("Failed to send zeroed DMX data: {}", e);
                     }
+                }
+                DmxMessage::Shutdown => {
+                    self.values = [0; DMX_CHANNELS];
+
+                    if let Err(e) = uart_tx.send(UartMessage::DMX(self.values.to_vec())).await {
+                        error!("Failed to send shutdown DMX data: {}", e);
+                    }
+
+                    shut_down = true;
                 }
             }
         }
@@ -143,5 +162,35 @@ mod tests {
             panic!("Expected DMX data");
         };
         assert_eq!(data, vec![0; DMX_CHANNELS]);
+    }
+
+    #[tokio::test]
+    async fn test_shutdown_stays_dark() {
+        let config = Config::load_from_json("config/hardware.json").unwrap();
+        let (dmx_tx, dmx_rx) = mpsc::channel(10);
+        let (uart_tx, mut uart_rx) = mpsc::channel(10);
+        tokio::spawn(DmxState::init(config).start(dmx_rx, uart_tx));
+        uart_rx.recv().await.unwrap();
+
+        // Turn on a fog machine, then shut down
+        dmx_tx
+            .send(DmxMessage::UpdateState(vec![(81, 255), (87, 255)]))
+            .await
+            .unwrap();
+        dmx_tx.send(DmxMessage::Shutdown).await.unwrap();
+
+        let UartMessage::DMX(data) = uart_rx.recv().await.unwrap() else {
+            panic!("Expected DMX data");
+        };
+        assert_eq!(data, vec![0; DMX_CHANNELS]);
+
+        // Show frames that arrive after shutting down are ignored
+        dmx_tx
+            .send(DmxMessage::UpdateState(vec![(81, 255), (87, 255)]))
+            .await
+            .unwrap();
+        dmx_tx.send(DmxMessage::Send).await.unwrap();
+        let next = tokio::time::timeout(std::time::Duration::from_millis(100), uart_rx.recv()).await;
+        assert!(next.is_err(), "Expected nothing to be sent after shutting down");
     }
 }
